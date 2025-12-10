@@ -99,7 +99,7 @@ public class BatteryInfo {
     public void setTechnology(String technology) {
         this.technology = technology;
     }
-    
+
     public int getScale() {
         return scale;
     }

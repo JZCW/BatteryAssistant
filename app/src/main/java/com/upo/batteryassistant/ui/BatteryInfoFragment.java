@@ -1,12 +1,16 @@
 package com.upo.batteryassistant.ui;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowInsets;
 import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
@@ -51,6 +55,28 @@ public class BatteryInfoFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_battery_info, container, false);
         initViews(view);
+        
+        // 处理WindowInsets，确保内容避开状态栏和导航栏
+        ViewCompat.setOnApplyWindowInsetsListener(view, new androidx.core.view.OnApplyWindowInsetsListener() {
+            @Override
+            public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+                int statusBarHeight = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top;
+                int navigationBarHeight = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom;
+                
+                // 为ScrollView添加padding以避开状态栏和导航栏
+                View scrollView = v.findViewById(R.id.scroll_view);
+                if (scrollView != null) {
+                    scrollView.setPadding(
+                        scrollView.getPaddingLeft(),
+                        statusBarHeight + 16, // 状态栏高度 + 原有padding
+                        scrollView.getPaddingRight(),
+                        navigationBarHeight + 16 // 导航栏高度 + 原有padding
+                    );
+                }
+                return ViewCompat.onApplyWindowInsets(v, insets);
+            }
+        });
+        
         return view;
     }
 
