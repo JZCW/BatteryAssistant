@@ -18,7 +18,7 @@ import com.upo.batteryassistant.manager.BatteryInfoManager;
 public class BatteryInfoFragment extends Fragment {
     private BatteryInfoManager batteryInfoManager;
 
-    // UI组件
+    // UI组件 - 基础信息
     private TextView tvLevel;
     private TextView tvStatus;
     private TextView tvVoltage;
@@ -26,6 +26,16 @@ public class BatteryInfoFragment extends Fragment {
     private TextView tvCurrent;
     private TextView tvHealth;
     private TextView tvTechnology;
+    private TextView tvPlugged;
+    private TextView tvLow;
+    
+    // UI组件 - 高级信息
+    private TextView tvCurrentAverage;
+    private TextView tvChargeTime;
+    private TextView tvChargeCounter;
+    private TextView tvEnergyCounter;
+    private TextView tvCycleCount;
+    private TextView tvCapacityLevel;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -63,6 +73,7 @@ public class BatteryInfoFragment extends Fragment {
     }
 
     private void initViews(View view) {
+        // 基础信息
         tvLevel = view.findViewById(R.id.tv_level);
         tvStatus = view.findViewById(R.id.tv_status);
         tvVoltage = view.findViewById(R.id.tv_voltage);
@@ -70,6 +81,16 @@ public class BatteryInfoFragment extends Fragment {
         tvCurrent = view.findViewById(R.id.tv_current);
         tvHealth = view.findViewById(R.id.tv_health);
         tvTechnology = view.findViewById(R.id.tv_technology);
+        tvPlugged = view.findViewById(R.id.tv_plugged);
+        tvLow = view.findViewById(R.id.tv_low);
+        
+        // 高级信息
+        tvCurrentAverage = view.findViewById(R.id.tv_current_average);
+        tvChargeTime = view.findViewById(R.id.tv_charge_time);
+        tvChargeCounter = view.findViewById(R.id.tv_charge_counter);
+        tvEnergyCounter = view.findViewById(R.id.tv_energy_counter);
+        tvCycleCount = view.findViewById(R.id.tv_cycle_count);
+        tvCapacityLevel = view.findViewById(R.id.tv_capacity_level);
     }
 
     private void updateBatteryInfo(BatteryInfo info) {
@@ -93,11 +114,11 @@ public class BatteryInfoFragment extends Fragment {
                 // 温度
                 tvTemperature.setText(String.format("%.1f °C", info.getTemperatureCelsius()));
 
-                // 电流
-                if (info.getCurrent() != 0) {
-                    tvCurrent.setText(String.format("%d mA", info.getCurrent()));
+                // 电流（微安转毫安）
+                if (info.getCurrent() != 0 && info.getCurrent() != Integer.MIN_VALUE) {
+                    tvCurrent.setText(String.format("%.1f mA", info.getCurrentMilliAmps()));
                 } else {
-                    tvCurrent.setText("需要Root权限");
+                    tvCurrent.setText("不可用");
                 }
 
                 // 健康状态
@@ -109,6 +130,52 @@ public class BatteryInfoFragment extends Fragment {
                 } else {
                     tvTechnology.setText("未知");
                 }
+
+                // 插电方式
+                tvPlugged.setText(info.getPluggedText());
+
+                // 低电量警告
+                tvLow.setText(info.isLow() ? "是" : "否");
+
+                // ========== 高级信息 ==========
+                
+                // 平均电流
+                if (info.getCurrentAverage() != 0 && info.getCurrentAverage() != Integer.MIN_VALUE) {
+                    tvCurrentAverage.setText(String.format("%.1f mA", info.getCurrentAverageMilliAmps()));
+                } else {
+                    tvCurrentAverage.setText("不可用");
+                }
+
+                // 剩余充电时间
+                if (info.getChargeTimeRemaining() >= 0) {
+                    tvChargeTime.setText(info.getChargeTimeRemainingText());
+                } else {
+                    tvChargeTime.setText("无法计算");
+                }
+
+                // 充电计数器
+                if (info.getChargeCounter() != 0 && info.getChargeCounter() != Long.MIN_VALUE) {
+                    tvChargeCounter.setText(String.format("%.1f mAh", info.getChargeCounterMilliAmpHours()));
+                } else {
+                    tvChargeCounter.setText("不可用");
+                }
+
+                // 剩余能量
+                if (info.getEnergyCounter() != 0 && info.getEnergyCounter() != Long.MIN_VALUE) {
+                    tvEnergyCounter.setText(String.format("%.3f Wh", info.getEnergyCounterWattHours()));
+                } else {
+                    tvEnergyCounter.setText("不可用");
+                }
+
+                // 循环次数
+                if (info.getCycleCount() >= 0) {
+                    tvCycleCount.setText(String.format("%d 次", info.getCycleCount()));
+                } else {
+                    tvCycleCount.setText("不可用");
+                }
+
+                // 容量级别
+                tvCapacityLevel.setText(info.getCapacityLevelText());
             }
         });
     }
