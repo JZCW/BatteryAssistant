@@ -26,9 +26,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
-        // 设置沉浸式状态栏
-        setupImmersiveStatusBar();
+
+        // 设置沉浸式布局
+        setupImmersiveLayout();
 
         // 初始化电池信息管理器
         batteryInfoManager = BatteryInfoManager.getInstance(this);
@@ -43,35 +43,6 @@ public class MainActivity extends AppCompatActivity {
                     .replace(R.id.fragment_container, batteryInfoFragment)
                     .commit();
         }
-        
-        // 处理WindowInsets，确保整个Activity内容适应状态栏和导航栏
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ 使用WindowInsetsController
-            getWindow().getInsetsController().setSystemBarsBehavior(
-                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            );
-        }
-        
-        // 设置WindowInsets监听器
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
-            // 让内容延伸到系统栏下方
-            ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.fragment_container), (view, windowInsets) -> {
-                // 获取系统栏的insets
-                Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                
-                // 设置padding以避免内容被系统栏遮挡
-                view.setPadding(
-                    systemBars.left,
-                    systemBars.top,
-                    systemBars.right,
-                    systemBars.bottom
-                );
-                
-                return windowInsets;
-            });
-            
-            return insets;
-        });
     }
 
     @Override
@@ -101,26 +72,41 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * 设置沉浸式状态栏
+     * 设置沉浸式布局
      */
-    private void setupImmersiveStatusBar() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Android 11+ (API 30+)
-            WindowInsetsController controller = getWindow().getInsetsController();
-            if (controller != null) {
-                controller.setSystemBarsAppearance(
-                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
-                    WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-                );
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            // Android 5.0+ (API 21+)
-            getWindow().getDecorView().setSystemUiVisibility(
-                View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+    private void setupImmersiveLayout() {
+        WindowInsetsController controller = getWindow().getInsetsController();
+        if (controller != null) {
+            controller.setSystemBarsAppearance(
+                0, // 浅色字
+                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
             );
-            getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
+            // 处理WindowInsets，确保整个Activity内容适应状态栏和导航栏
+            controller.setSystemBarsBehavior(
+                WindowInsetsController.BEHAVIOR_DEFAULT
+            );
         }
+
+        // 设置WindowInsets监听器
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
+            // 让内容延伸到系统栏下方
+            ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.fragment_container), (view, windowInsets) -> {
+                // 获取系统栏的insets
+                Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                
+                // 设置padding以避免内容被系统栏遮挡
+                view.setPadding(
+                    systemBars.left,
+                    systemBars.top,
+                    systemBars.right,
+                    systemBars.bottom
+                );
+                
+                return windowInsets;
+            });
+            
+            return insets;
+        });
     }
 
     /**
