@@ -8,6 +8,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import com.upo.batteryassistant.R;
@@ -42,6 +43,35 @@ public class MainActivity extends AppCompatActivity {
                     .replace(R.id.fragment_container, batteryInfoFragment)
                     .commit();
         }
+        
+        // 处理WindowInsets，确保整个Activity内容适应状态栏和导航栏
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Android 11+ 使用WindowInsetsController
+            getWindow().getInsetsController().setSystemBarsBehavior(
+                WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            );
+        }
+        
+        // 设置WindowInsets监听器
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
+            // 让内容延伸到系统栏下方
+            ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.fragment_container), (view, windowInsets) -> {
+                // 获取系统栏的insets
+                Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                
+                // 设置padding以避免内容被系统栏遮挡
+                view.setPadding(
+                    systemBars.left,
+                    systemBars.top,
+                    systemBars.right,
+                    systemBars.bottom
+                );
+                
+                return windowInsets;
+            });
+            
+            return insets;
+        });
     }
 
     @Override
