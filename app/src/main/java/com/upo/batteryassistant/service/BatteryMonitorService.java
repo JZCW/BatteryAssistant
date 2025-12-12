@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.manager.BatteryInfoManager;
+import com.upo.batteryassistant.manager.ChargeHistoryManager;
 import com.upo.batteryassistant.ui.MainActivity;
 
 /**
@@ -26,7 +27,9 @@ public class BatteryMonitorService extends Service {
     private static final int NOTIFICATION_ID = 1;
     
     private BatteryInfoManager batteryInfoManager;
+    private ChargeHistoryManager chargeHistoryManager;
     private BroadcastReceiver batteryReceiver;
+    private BroadcastReceiver powerReceiver;
     private NotificationManager notificationManager;
     private BatteryInfo currentBatteryInfo;
 
@@ -35,13 +38,20 @@ public class BatteryMonitorService extends Service {
         super.onCreate();
         
         batteryInfoManager = BatteryInfoManager.getInstance(this);
+        chargeHistoryManager = ChargeHistoryManager.getInstance(this);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         
         // 创建通知渠道（Android 8.0+）
         createNotificationChannel();
         
+        // 初始化充放电历史管理器
+        chargeHistoryManager.init();
+        
         // 注册电池状态监听
         registerBatteryReceiver();
+        
+        // 注册充电器事件监听
+        registerPowerReceiver();
         
         // 立即获取一次电池信息
         updateBatteryInfo();
@@ -58,6 +68,7 @@ public class BatteryMonitorService extends Service {
     public void onDestroy() {
         super.onDestroy();
         unregisterBatteryReceiver();
+        unregisterPowerReceiver();
     }
 
     @Override
@@ -112,6 +123,46 @@ public class BatteryMonitorService extends Service {
             try {
                 unregisterReceiver(batteryReceiver);
                 batteryReceiver = null;
+            } catch (IllegalArgumentException e) {
+                // 接收器未注册，忽略
+            }
+        }
+    }
+    
+    /**
+     * 注册充电器事件广播接收器
+     */
+    private void registerPowerReceiver() {
+        if (powerReceiver != null) {
+            return;
+        }
+        
+        powerReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if (Intent.ACTION_POWER_CONNECTED.equals(action)) {
+                    chargeHistoryManager.onPowerConnected();
+                } else if (Intent.ACTION_POWER_DISCONNECTED.equals(action)) {
+                    chargeHistoryManager.onPowerDisconnected();
+                }
+            }
+        };
+        
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_POWER_CONNECTED);
+        filter.addAction(Intent.ACTION_POWER_DISCONNECTED);
+        registerReceiver(powerReceiver, filter);
+    }
+    
+    /**
+     * 注销充电器事件广播接收器
+     */
+    private void unregisterPowerReceiver() {
+        if (powerReceiver != null) {
+            try {
+                unregisterReceiver(powerReceiver);
+                powerReceiver = null;
             } catch (IllegalArgumentException e) {
                 // 接收器未注册，忽略
             }

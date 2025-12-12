@@ -11,6 +11,8 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.fragment.app.Fragment;
+import com.google.android.material.tabs.TabLayout;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.manager.BatteryInfoManager;
 import com.upo.batteryassistant.service.BatteryMonitorService;
@@ -20,7 +22,9 @@ import com.upo.batteryassistant.service.BatteryMonitorService;
  */
 public class MainActivity extends AppCompatActivity {
     private BatteryInfoManager batteryInfoManager;
+    private TabLayout tabLayout;
     private BatteryInfoFragment batteryInfoFragment;
+    private ChargeHistoryFragment chargeHistoryFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,11 +40,63 @@ public class MainActivity extends AppCompatActivity {
         // 启动电池监控服务
         startBatteryMonitorService();
 
+        // 设置TabLayout
+        setupTabs();
+
         // 设置Fragment
         if (savedInstanceState == null) {
-            batteryInfoFragment = new BatteryInfoFragment();
+            showFragment(0);
+        }
+    }
+    
+    /**
+     * 设置TabLayout
+     */
+    private void setupTabs() {
+        tabLayout = findViewById(R.id.tab_layout);
+        
+        // 添加标签
+        tabLayout.addTab(tabLayout.newTab().setText("电池信息"));
+        tabLayout.addTab(tabLayout.newTab().setText("充放电历史"));
+        
+        // 设置标签选择监听
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                showFragment(tab.getPosition());
+            }
+            
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+            }
+            
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+            }
+        });
+    }
+    
+    /**
+     * 显示指定位置的Fragment
+     */
+    private void showFragment(int position) {
+        Fragment fragment = null;
+        
+        if (position == 0) {
+            if (batteryInfoFragment == null) {
+                batteryInfoFragment = new BatteryInfoFragment();
+            }
+            fragment = batteryInfoFragment;
+        } else if (position == 1) {
+            if (chargeHistoryFragment == null) {
+                chargeHistoryFragment = new ChargeHistoryFragment();
+            }
+            fragment = chargeHistoryFragment;
+        }
+        
+        if (fragment != null) {
             getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, batteryInfoFragment)
+                    .replace(R.id.fragment_container, fragment)
                     .commit();
         }
     }
@@ -99,9 +155,21 @@ public class MainActivity extends AppCompatActivity {
                     systemBars.left,
                     systemBars.top,
                     systemBars.right,
-                    systemBars.bottom
+                    0  // 底部不需要padding，因为TabLayout在底部
                 );
                 
+                return windowInsets;
+            });
+            
+            // 为TabLayout设置底部padding，避开导航栏
+            ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.tab_layout), (view, windowInsets) -> {
+                Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+                view.setPadding(
+                    view.getPaddingLeft(),
+                    view.getPaddingTop(),
+                    view.getPaddingRight(),
+                    systemBars.bottom
+                );
                 return windowInsets;
             });
             
