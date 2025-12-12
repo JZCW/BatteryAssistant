@@ -44,9 +44,26 @@ public class ChargeHistoryFragment extends Fragment {
         mainHandler = new Handler(Looper.getMainLooper());
         
         setupRecyclerView();
-        loadMoreData();
+        
+        // 如果adapter为空或没有数据，加载数据
+        if (adapter == null || adapter.getItemCount() == 0) {
+            currentPage = 0;
+            hasMore = true;
+            loadMoreData();
+        }
         
         return view;
+    }
+    
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 确保数据已加载
+        if (adapter != null && adapter.getItemCount() == 0 && !isLoading) {
+            currentPage = 0;
+            hasMore = true;
+            loadMoreData();
+        }
     }
     
     private void setupRecyclerView() {

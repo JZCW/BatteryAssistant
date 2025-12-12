@@ -80,25 +80,42 @@ public class MainActivity extends AppCompatActivity {
      * 显示指定位置的Fragment
      */
     private void showFragment(int position) {
-        Fragment fragment = null;
+        // 确保Fragment已创建
+        if (batteryInfoFragment == null) {
+            batteryInfoFragment = new BatteryInfoFragment();
+        }
+        if (chargeHistoryFragment == null) {
+            chargeHistoryFragment = new ChargeHistoryFragment();
+        }
+        
+        // 使用show/hide而不是replace，保持Fragment状态
+        androidx.fragment.app.FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
         
         if (position == 0) {
-            if (batteryInfoFragment == null) {
-                batteryInfoFragment = new BatteryInfoFragment();
+            // 显示电池信息Fragment
+            if (!batteryInfoFragment.isAdded()) {
+                transaction.add(R.id.fragment_container, batteryInfoFragment);
+            } else {
+                transaction.show(batteryInfoFragment);
             }
-            fragment = batteryInfoFragment;
+            // 隐藏充放电历史Fragment
+            if (chargeHistoryFragment.isAdded()) {
+                transaction.hide(chargeHistoryFragment);
+            }
         } else if (position == 1) {
-            if (chargeHistoryFragment == null) {
-                chargeHistoryFragment = new ChargeHistoryFragment();
+            // 显示充放电历史Fragment
+            if (!chargeHistoryFragment.isAdded()) {
+                transaction.add(R.id.fragment_container, chargeHistoryFragment);
+            } else {
+                transaction.show(chargeHistoryFragment);
             }
-            fragment = chargeHistoryFragment;
+            // 隐藏电池信息Fragment
+            if (batteryInfoFragment.isAdded()) {
+                transaction.hide(batteryInfoFragment);
+            }
         }
         
-        if (fragment != null) {
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragment_container, fragment)
-                    .commit();
-        }
+        transaction.commit();
     }
 
     @Override
