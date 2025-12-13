@@ -34,6 +34,7 @@ public final class DatabaseContract {
         public static final String COLUMN_LEVEL_CHANGE = "level_change";
         
         // 阶段类型常量
+        public static final int SESSION_TYPE_UNKNOWN = -1;  // 未知阶段
         public static final int SESSION_TYPE_CHARGE = 0;    // 充电阶段
         public static final int SESSION_TYPE_DISCHARGE = 1; // 放电阶段
     }
