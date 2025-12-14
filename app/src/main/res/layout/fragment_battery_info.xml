@@ -194,6 +194,35 @@
                     android:background="?attr/colorControlNormal"
                     android:alpha="0.12" />
 
+                <!-- 平均电流 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="平均电流"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_current_average"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorControlNormal"
+                    android:alpha="0.12" />
+
                 <!-- 健康状态 -->
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -223,35 +252,6 @@
                     android:background="?attr/colorControlNormal"
                     android:alpha="0.12" />
 
-                <!-- 电池技术类型 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingVertical="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="电池类型"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/tv_technology"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="--"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorControlNormal"
-                    android:alpha="0.12" />
-
                 <!-- 插电方式 -->
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -268,83 +268,6 @@
 
                     <TextView
                         android:id="@+id/tv_plugged"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="--"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorControlNormal"
-                    android:alpha="0.12" />
-
-                <!-- 是否低电量 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingVertical="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="低电量警告"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/tv_low"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="--"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- 高级信息卡片 -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="高级信息"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:paddingBottom="16dp" />
-
-                <!-- 平均电流 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingVertical="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="平均电流"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/tv_current_average"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
@@ -416,35 +339,6 @@
                     android:background="?attr/colorControlNormal"
                     android:alpha="0.12" />
 
-                <!-- 剩余能量 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:paddingVertical="8dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="剩余能量"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:id="@+id/tv_energy_counter"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="--"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="?attr/colorControlNormal"
-                    android:alpha="0.12" />
-
                 <!-- 循环次数 -->
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -474,7 +368,7 @@
                     android:background="?attr/colorControlNormal"
                     android:alpha="0.12" />
 
-                <!-- 容量级别 -->
+                <!-- 是否低电量 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -485,11 +379,59 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="容量级别"
+                        android:text="低电量警告"
                         android:textSize="14sp" />
 
                     <TextView
-                        android:id="@+id/tv_capacity_level"
+                        android:id="@+id/tv_low"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- 高级信息卡片 -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="16dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="4dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="高级信息"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:paddingBottom="16dp" />
+
+                <!-- 满电容量 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="满电容量"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_full_capacity"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"

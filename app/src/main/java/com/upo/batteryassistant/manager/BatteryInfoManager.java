@@ -63,11 +63,9 @@ public class BatteryInfoManager {
         BatteryInfo info = new BatteryInfo();
 
         // ========== 从Intent EXTRA获取基础信息 ==========
-        
         // 电量级别和最大值
         int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
         int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-        info.setScale(scale);
         if (level >= 0 && scale > 0) {
             // 计算电量百分比
             info.setLevel((int) (level * 100.0f / scale));
@@ -87,8 +85,6 @@ public class BatteryInfoManager {
         // 充电状态
         int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
         info.setStatus(status);
-        info.setCharging(status == BatteryManager.BATTERY_STATUS_CHARGING ||
-                status == BatteryManager.BATTERY_STATUS_FULL);
 
         // 健康状态
         info.setHealth(batteryStatus.getIntExtra(BatteryManager.EXTRA_HEALTH, -1));
@@ -96,42 +92,20 @@ public class BatteryInfoManager {
         // 插电方式
         info.setPlugged(batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1));
 
-        // 电池是否存在
-        info.setPresent(batteryStatus.getBooleanExtra(BatteryManager.EXTRA_PRESENT, false));
+        // 是否低电量
+        info.setLow(batteryStatus.getBooleanExtra(BatteryManager.EXTRA_BATTERY_LOW, false));
 
-        // 电池技术类型
-        info.setTechnology(batteryStatus.getStringExtra(BatteryManager.EXTRA_TECHNOLOGY));
+        // 容量级别
+        // int EXTRA_CAPACITY_LEVEL
 
-        // 是否低电量（API 28+）
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            info.setLow(batteryStatus.getBooleanExtra(BatteryManager.EXTRA_BATTERY_LOW, false));
-        }
+        // 循环次数
+        info.setCycleCount(batteryStatus.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1));
 
-        // 容量级别（API 36+）
-        if (android.os.Build.VERSION.SDK_INT >= 36) {
-            info.setCapacityLevel(batteryStatus.getIntExtra(BatteryManager.EXTRA_CAPACITY_LEVEL, 
-                    BatteryManager.BATTERY_CAPACITY_LEVEL_UNKNOWN));
-        }
+        // int EXTRA_ICON_SMALL
 
-        // 充电状态（API 34+）
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            info.setChargingStatus(batteryStatus.getIntExtra(BatteryManager.EXTRA_CHARGING_STATUS, -1));
-        }
-
-        // 循环次数（API 34+）
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            info.setCycleCount(batteryStatus.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1));
-        }
-
-        // ========== 使用BatteryManager获取高级属性（API 21+） ==========
+        // ========== 使用BatteryManager获取高级属性 ==========
         BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
-        if (batteryManager != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            // 电量百分比
-            int capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-            if (capacity != Integer.MIN_VALUE) {
-                info.setCapacity(capacity);
-            }
-
+        if (batteryManager != null) {
             // 当前电流（微安）
             int currentNow = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
             if (currentNow != Integer.MIN_VALUE) {
@@ -151,21 +125,14 @@ public class BatteryInfoManager {
             }
 
             // 剩余能量（纳瓦时）
-            long energyCounter = batteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_ENERGY_COUNTER);
-            if (energyCounter != Long.MIN_VALUE) {
-                info.setEnergyCounter(energyCounter);
-            }
+            // long BATTERY_PROPERTY_ENERGY_COUNTER //多数设备不可用
 
-            // 剩余充电时间（API 28+）
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                long chargeTimeRemaining = batteryManager.computeChargeTimeRemaining();
-                info.setChargeTimeRemaining(chargeTimeRemaining);
-            }
+            // 剩余充电时间 //TODO 实现自己的计算方法
+            long chargeTimeRemaining = batteryManager.computeChargeTimeRemaining();
+            info.setChargeTimeRemaining(chargeTimeRemaining);
 
-            // 是否正在充电（API 23+）
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-                info.setCharging(batteryManager.isCharging());
-            }
+            // 是否正在充电
+            // boolean isCharging  始终返回false
         }
 
         return info;
