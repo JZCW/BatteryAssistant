@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
 import com.upo.batteryassistant.data.BatteryInfo;
+import com.upo.batteryassistant.util.BatterySysfsReader;
+import com.upo.batteryassistant.util.RootUtil;
 
 /**
  * 电池信息管理器
@@ -56,11 +58,11 @@ public class BatteryInfoManager {
         IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = context.registerReceiver(null, filter);
 
-        if (batteryStatus == null) {
-            return null;
-        }
+    if (batteryStatus == null) {
+      return null;
+    }
 
-        BatteryInfo info = new BatteryInfo();
+    BatteryInfo info = new BatteryInfo();
 
         // ========== 从Intent EXTRA获取基础信息 ==========
         // 电量级别和最大值
@@ -135,6 +137,9 @@ public class BatteryInfoManager {
             // boolean isCharging  始终返回false
         }
 
+        // ========== Root 高级信息填充 ==========
+        fillAdvancedInfoIfRootAvailable(info);
+
         return info;
     }
 
@@ -174,6 +179,21 @@ public class BatteryInfoManager {
                 // 接收器未注册，忽略
             }
         }
+    }
+
+    /**
+     * 使用 root 从 /sys/class/power_supply 读取高级信息并填充到 BatteryInfo
+     */
+    private void fillAdvancedInfoIfRootAvailable(BatteryInfo info) {
+        if (info == null) {
+            return;
+        }
+        if (!RootUtil.isRootAvailable()) {
+            return;
+        }
+        BatterySysfsReader.fillBatteryAdvancedFields(info);
+        BatterySysfsReader.fillUsbAdvancedFields(info);
+        BatterySysfsReader.fillWirelessAdvancedFields(info);
     }
 }
 
