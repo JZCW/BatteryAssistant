@@ -115,14 +115,14 @@ public class BatterySysfsReader {
     if (chargeCounter != null) {
       info.setAdvBattChargeCounterUah(chargeCounter);
       // 保持与原有字段一定同步：微安时 -> 毫安时
-      info.setChargeCounter(chargeCounter);
+      // info.setChargeCounter(chargeCounter);
     }
 
     Long chargeFull = readLong(BASE_BATT + "charge_full");
     if (chargeFull != null) {
       info.setAdvBattChargeFullUah(chargeFull);
       // 也同步一份到 fullCapacity（mAh）
-      info.setFullCapacity((int) (chargeFull / 1000));
+      // info.setFullCapacity((int) (chargeFull / 1000));
     }
 
     Long chargeFullDesign = readLong(BASE_BATT + "charge_full_design");
@@ -133,7 +133,7 @@ public class BatterySysfsReader {
     Integer cycle = readInt(BASE_BATT + "cycle_count");
     if (cycle != null) {
       info.setAdvBattCycleCount(cycle);
-      info.setCycleCount(cycle);
+      // info.setCycleCount(cycle);
     }
 
     Integer tte = readInt(BASE_BATT + "time_to_empty_avg");
@@ -191,6 +191,16 @@ public class BatterySysfsReader {
     String health = readString(BASE_BATT + "health");
     if (health != null) {
       info.setAdvBattHealthText(health);
+    }
+
+    String chargeType = readString(BASE_BATT + "charge_type");
+    if (chargeType != null) {
+      info.setAdvBattChargeType(chargeType);
+    }
+
+    Integer present = readInt(BASE_BATT + "present");
+    if (present != null) {
+      info.setAdvBattPresent(present);
     }
   }
 

@@ -57,6 +57,13 @@ public class BatteryInfoFragment extends Fragment {
   private TextView tvAdvBattCcEnd;
   private TextView tvAdvBattCcLimit;
   private TextView tvAdvBattCcLimitMax;
+  private TextView tvAdvBattCapacity;
+  private TextView tvAdvBattHealth;
+  private TextView tvAdvBattStatus;
+  private TextView tvAdvBattTechnology;
+  private TextView tvAdvBattModelName;
+  private TextView tvAdvBattChargeType;
+  private TextView tvAdvBattPresent;
 
   private TextView tvAdvUsbOnline;
   private TextView tvAdvUsbVoltageNow;
@@ -148,6 +155,13 @@ public class BatteryInfoFragment extends Fragment {
     tvAdvBattCcEnd = view.findViewById(R.id.tv_adv_batt_cc_end);
     tvAdvBattCcLimit = view.findViewById(R.id.tv_adv_batt_cc_limit);
     tvAdvBattCcLimitMax = view.findViewById(R.id.tv_adv_batt_cc_limit_max);
+    tvAdvBattCapacity = view.findViewById(R.id.tv_adv_batt_capacity);
+    tvAdvBattHealth = view.findViewById(R.id.tv_adv_batt_health);
+    tvAdvBattStatus = view.findViewById(R.id.tv_adv_batt_status);
+    tvAdvBattTechnology = view.findViewById(R.id.tv_adv_batt_technology);
+    tvAdvBattModelName = view.findViewById(R.id.tv_adv_batt_model_name);
+    tvAdvBattChargeType = view.findViewById(R.id.tv_adv_batt_charge_type);
+    tvAdvBattPresent = view.findViewById(R.id.tv_adv_batt_present);
 
     tvAdvUsbOnline = view.findViewById(R.id.tv_adv_usb_online);
     tvAdvUsbVoltageNow = view.findViewById(R.id.tv_adv_usb_voltage_now);
@@ -354,6 +368,48 @@ public class BatteryInfoFragment extends Fragment {
                     tvAdvBattCcLimitMax.setText(info.getAdvBattChargeCtrlLimitMax() + " (原始)");
                 } else {
                     tvAdvBattCcLimitMax.setText("不可用");
+                }
+
+                if (info.getAdvBattCapacity() > 0) {
+                    tvAdvBattCapacity.setText(info.getAdvBattCapacity() + " %");
+                } else {
+                    tvAdvBattCapacity.setText("不可用");
+                }
+
+                if (info.getAdvBattHealthText() != null && !info.getAdvBattHealthText().isEmpty()) {
+                    tvAdvBattHealth.setText(info.getAdvBattHealthText());
+                } else {
+                    tvAdvBattHealth.setText("不可用");
+                }
+
+                if (info.getAdvBattStatusText() != null && !info.getAdvBattStatusText().isEmpty()) {
+                    tvAdvBattStatus.setText(info.getAdvBattStatusText());
+                } else {
+                    tvAdvBattStatus.setText("不可用");
+                }
+
+                if (info.getAdvBattTechnology() != null && !info.getAdvBattTechnology().isEmpty()) {
+                    tvAdvBattTechnology.setText(info.getAdvBattTechnology());
+                } else {
+                    tvAdvBattTechnology.setText("不可用");
+                }
+
+                if (info.getAdvBattModelName() != null && !info.getAdvBattModelName().isEmpty()) {
+                    tvAdvBattModelName.setText(info.getAdvBattModelName());
+                } else {
+                    tvAdvBattModelName.setText("不可用");
+                }
+
+                if (info.getAdvBattChargeType() != null && !info.getAdvBattChargeType().isEmpty()) {
+                    tvAdvBattChargeType.setText(info.getAdvBattChargeType());
+                } else {
+                    tvAdvBattChargeType.setText("不可用");
+                }
+
+                if (info.getAdvBattPresent() > 0) {
+                    tvAdvBattPresent.setText(info.getAdvBattPresent() + " %");
+                } else {
+                    tvAdvBattPresent.setText("不可用");
                 }
 
                 // USB 高级字段

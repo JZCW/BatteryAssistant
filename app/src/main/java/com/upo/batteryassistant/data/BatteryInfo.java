@@ -23,13 +23,14 @@ public class BatteryInfo {
 
   // ========== Root 高级信息扩展字段（直接从 /sys/class/power_supply 读取） ==========
   // battery 电池基础/状态
-  private int advBattCapacity;              // capacity（百分比）
-  private int advBattHealth;                // health 原始值
-  private String advBattHealthText;         // health 文本（可选覆盖）
-  private String advBattStatusText;         // status 文本
-  private String advBattTechnology;         // technology
-  private String advBattModelName;          // model_name
+  private int advBattCapacity;              // capacity（百分比）#
+  private String advBattHealthText;         // health 文本（可选覆盖）#
+  private String advBattStatusText;         // status 文本 #
+  private String advBattTechnology;         // technology #
+  private String advBattModelName;          // model_name #
   private int advBattTempDeciC;             // temp，0.1°C
+  private int advBattPresent;               // present #
+  private String advBattChargeType;         // charge_type #
 
   // battery 电压/电流/功率（原始单位：一般为微伏/微安/微瓦）
   private long advBattVoltageNowUv;
@@ -189,14 +190,6 @@ public class BatteryInfo {
 
   public void setAdvBattCapacity(int advBattCapacity) {
     this.advBattCapacity = advBattCapacity;
-  }
-
-  public int getAdvBattHealth() {
-    return advBattHealth;
-  }
-
-  public void setAdvBattHealth(int advBattHealth) {
-    this.advBattHealth = advBattHealth;
   }
 
   public String getAdvBattHealthText() {
@@ -381,6 +374,22 @@ public class BatteryInfo {
 
   public void setAdvBattChargeCtrlLimitMax(int advBattChargeCtrlLimitMax) {
     this.advBattChargeCtrlLimitMax = advBattChargeCtrlLimitMax;
+  }
+
+  public String getAdvBattChargeType() {
+    return advBattChargeType;
+  }
+
+  public void setAdvBattChargeType(String advBattChargeType) {
+    this.advBattChargeType = advBattChargeType;
+  }
+
+  public int getAdvBattPresent() {
+    return advBattPresent;
+  }
+
+  public void setAdvBattPresent(int advBattPresent) {
+    this.advBattPresent = advBattPresent;
   }
 
   public boolean isAdvUsbOnline() {
