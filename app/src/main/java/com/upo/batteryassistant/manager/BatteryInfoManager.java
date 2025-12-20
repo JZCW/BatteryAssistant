@@ -8,6 +8,10 @@ import android.os.BatteryManager;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.util.BatterySysfsReader;
 import com.upo.batteryassistant.util.RootUtil;
+import com.upo.batteryassistant.service.BatteryServiceConnector;
+import com.upo.batteryassistant.service.BatteryData;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 电池信息管理器
@@ -18,6 +22,7 @@ public class BatteryInfoManager {
     private Context context;
     private BatteryInfoListener listener;
     private BroadcastReceiver batteryReceiver;
+    private BatteryServiceConnector serviceConnector;
 
     /**
      * 电池信息更新监听器
@@ -28,6 +33,7 @@ public class BatteryInfoManager {
 
     private BatteryInfoManager(Context context) {
         this.context = context.getApplicationContext();
+        this.serviceConnector = new BatteryServiceConnector();
     }
 
     /**
@@ -137,7 +143,7 @@ public class BatteryInfoManager {
             // boolean isCharging  始终返回false
         }
 
-        // ========== Root 高级信息填充 ==========
+        // ========== Magic Service 高级信息填充 ==========
         fillAdvancedInfoIfRootAvailable(info);
 
         return info;
@@ -182,12 +188,53 @@ public class BatteryInfoManager {
     }
 
     /**
-     * 使用 root 从 /sys/class/power_supply 读取高级信息并填充到 BatteryInfo
+     * 使用 Magic Service 从 /sys/class/power_supply 读取高级信息并填充到 BatteryInfo
      */
     private void fillAdvancedInfoIfRootAvailable(BatteryInfo info) {
         if (info == null) {
             return;
         }
+        
+        // 尝试使用Magic Service获取高级信息
+        try {
+            // 连接到Magic Service
+            if (serviceConnector.connect()) {
+                BatteryData data = serviceConnector.getBatteryStatus().get(2, TimeUnit.SECONDS);
+                if (data != null) {
+                    // 填充高级电池信息
+                    info.setAdvBattCapacity(data.getCapacity());
+                    info.setAdvBattTempDeciC(data.getTemperature());
+                    info.setAdvBattVoltageNowUv(data.getVoltageNow());
+                    info.setAdvBattCurrentNowUa((int) data.getCurrentNow());
+                    info.setAdvBattStatusText(data.getStatus());
+                    info.setAdvBattHealthText(data.getHealth());
+                    info.setAdvBattTechnology(data.getTechnology());
+                    info.setAdvBattChargeCounterUah(data.getChargeCounter());
+                    info.setAdvBattChargeFullUah(data.getChargeFull());
+                    info.setAdvBattCycleCount(data.getCycleCount());
+                    info.setAdvBattChargeCtrlStartThr(data.getChargeStartThreshold());
+                    info.setAdvBattChargeCtrlEndThr(data.getChargeEndThreshold());
+                    info.setAdvBattChargeCtrlLimit(data.getChargeLimit());
+                    
+                    // USB信息
+                    info.setAdvUsbOnline(data.isUsbOnline());
+                    info.setAdvUsbVoltageNowUv(data.getUsbVoltageNow());
+                    info.setAdvUsbCurrentNowUa((int) data.getUsbCurrentNow());
+                    
+                    // 无线充电信息
+                    info.setAdvWlsOnline(data.isWirelessOnline());
+                    info.setAdvWlsVoltageNowUv(data.getWirelessVoltageNow());
+                    info.setAdvWlsCurrentNowUa((int) data.getWirelessCurrentNow());
+                    
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            // Magic Service不可用时，回退到原有RootUtil
+            android.util.Log.w("BatteryInfoManager", "Magic Service unavailable, falling back to RootUtil", e);
+        }
+        
+        // 降级到原有RootUtil方案
         if (!RootUtil.isRootAvailable()) {
             return;
         }
@@ -195,5 +242,34 @@ public class BatteryInfoManager {
         BatterySysfsReader.fillUsbAdvancedFields(info);
         BatterySysfsReader.fillWirelessAdvancedFields(info);
     }
+    
+    /**
+     * 设置充电阈值
+     */
+    public CompletableFuture<Boolean> setChargeThreshold(int startThreshold, int endThreshold) {
+        return serviceConnector.setChargeThreshold(startThreshold, endThreshold);
+    }
+    
+    /**
+     * 设置充电限制
+     */
+    public CompletableFuture<Boolean> setChargeLimit(int limit) {
+        return serviceConnector.setChargeLimit(limit);
+    }
+    
+    /**
+     * 启用/禁用充电
+     */
+    public CompletableFuture<Boolean> enableCharging(boolean enable) {
+        return serviceConnector.enableCharging(enable);
+    }
+    
+    /**
+     * 清理资源
+     */
+    public void cleanup() {
+        if (serviceConnector != null) {
+            serviceConnector.cleanup();
+        }
+    }
 }
-
