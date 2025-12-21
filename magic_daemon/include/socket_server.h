@@ -31,7 +31,7 @@ public:
     SocketServer(const std::string& socketPath);
     ~SocketServer();
     
-    void start();
+    bool start();
     void stop();
     
     void setClientConnectedCallback(std::function<void()> callback) {

@@ -4,6 +4,7 @@
 #include "logger.h"
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <cstring>
@@ -17,7 +18,7 @@ SocketServer::~SocketServer() {
     stop();
 }
 
-void SocketServer::start() {
+bool SocketServer::start() {
     // 删除旧的socket文件
     unlink(socketPath.c_str());
     
@@ -25,7 +26,7 @@ void SocketServer::start() {
     serverFd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (serverFd < 0) {
         LOG_ERROR("Failed to create socket");
-        return;
+        return false;
     }
     
     // 绑定地址
@@ -37,14 +38,14 @@ void SocketServer::start() {
     if (bind(serverFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
         LOG_ERROR("Failed to bind socket");
         close(serverFd);
-        return;
+        return false;
     }
     
     // 开始监听
     if (listen(serverFd, 5) < 0) {
         LOG_ERROR("Failed to listen on socket");
         close(serverFd);
-        return;
+        return false;
     }
     
     // 设置权限
@@ -54,6 +55,7 @@ void SocketServer::start() {
     serverThread = std::thread(&SocketServer::runServer, this);
     
     LOG_INFO("Socket server started on " + socketPath);
+    return true;
 }
 
 void SocketServer::stop() {

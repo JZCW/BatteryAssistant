@@ -2,6 +2,7 @@
 #include "logger.h"
 #include <fstream>
 #include <filesystem>
+#include <vector>
 
 ChargeController ChargeController::instance;
 
@@ -124,15 +125,15 @@ ChargeConfig ChargeController::getCurrentConfig() const {
 bool ChargeController::applyConfig(const ChargeConfig& config) {
     bool success = true;
     
-    if (setChargeThreshold(config.startThreshold, config.endThreshold)) {
+    if (!setChargeThreshold(config.startThreshold, config.endThreshold)) {
         success = false;
     }
     
-    if (setChargeLimit(config.limit)) {
+    if (!setChargeLimit(config.limit)) {
         success = false;
     }
     
-    if (enableCharging(config.chargingEnabled)) {
+    if (!enableCharging(config.chargingEnabled)) {
         success = false;
     }
     

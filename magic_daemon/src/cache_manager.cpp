@@ -1,4 +1,5 @@
 #include "cache_manager.h"
+#include "logger.h"
 
 CacheManager CacheManager::instance;
 
