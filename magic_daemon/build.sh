@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Android NDK 构建脚本 - 专为 Android 15+ arm64-v8a 设计
-# 使用方法: ./build_android.sh
+# Android NDK 构建脚本
 
 # 固定配置 - 仅支持 arm64-v8a 和 Android 16+
 ABI="arm64-v8a"
@@ -10,7 +9,13 @@ API=36  # Android 16 对应的 API 级别
 # 设置路径
 NDK_PATH="/cache/user/android/sdk/ndk/29.0.14206865"
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILD_DIR="$PROJECT_ROOT/build_android"
+BUILD_DIR="$PROJECT_ROOT/build"
+
+# 从module.prop文件中提取信息
+id=$(grep "id=" magiskModule/module.prop | cut -d'=' -f2)
+version=$(grep "version=" magiskModule/module.prop | cut -d'=' -f2)
+versionCode=$(grep "versionCode=" magiskModule/module.prop | cut -d'=' -f2)
+zipFile="${id}_${version}.zip"
 
 # 检查 NDK 是否存在
 if [ ! -d "$NDK_PATH" ]; then
@@ -39,6 +44,16 @@ cmake .. \
 make -j$(nproc)
 
 echo ""
-echo "构建完成! 可执行文件位于: $BUILD_DIR/battery_service_daemon"
-echo "文件信息:"
-file "$BUILD_DIR/battery_service_daemon"
+echo "编译完成："
+file "$BUILD_DIR/$id"
+
+cd $PROJECT_ROOT
+cp build/$id magiskModule/$id
+
+7z a $zipFile ./magiskModule/* > /dev/null
+echo "构建完成!"
+
+rm -f magiskModule/$id
+
+
+
