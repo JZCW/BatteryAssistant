@@ -10,7 +10,6 @@ void Logger::init(const std::string& logPath) {
     if (!initialized) {
         logFile.open(logPath, std::ios::app);
         initialized = true;
-        info("Logger initialized: " + logPath);
     }
 }
 
