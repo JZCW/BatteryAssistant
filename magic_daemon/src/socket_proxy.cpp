@@ -89,9 +89,16 @@ void SocketProxy::runProxy() {
         fd_set readFds;
         FD_ZERO(&readFds);
         FD_SET(appSocketFd, &readFds);
-        FD_SET(daemonSocketFd, &readFds);
         
-        int maxFd = (appSocketFd > daemonSocketFd) ? appSocketFd : daemonSocketFd;
+        int maxFd = appSocketFd;
+        
+        // 只有在Daemon连接正常时才监听daemon socket
+        if (daemonSocketFd >= 0) {
+            FD_SET(daemonSocketFd, &readFds);
+            if (daemonSocketFd > maxFd) {
+                maxFd = daemonSocketFd;
+            }
+        }
         
         // 等待数据可读
         int ready = select(maxFd + 1, &readFds, nullptr, nullptr, nullptr);
@@ -110,35 +117,78 @@ void SocketProxy::runProxy() {
             ssize_t bytesRead = read(appSocketFd, buffer, sizeof(buffer));
             
             if (bytesRead <= 0) {
-                LOG_INFO("App disconnected");
+                LOG_INFO("App disconnected, proxy will exit");
                 running = false;
                 break;
             }
             
-            // 转发到守护进程
-            ssize_t bytesWritten = write(daemonSocketFd, buffer, bytesRead);
-            if (bytesWritten != bytesRead) {
-                LOG_ERROR("Failed to write to daemon: " + std::string(strerror(errno)));
-                break;
+            // 如果Daemon未连接，尝试连接
+            if (daemonSocketFd < 0) {
+                LOG_WARN("Daemon not connected, attempting to reconnect...");
+                if (!connectToDaemon()) {
+                    LOG_ERROR("Failed to reconnect to daemon, discarding app data");
+                    continue;
+                }
+                // 重新设置非阻塞模式
+                flags = fcntl(daemonSocketFd, F_GETFL, 0);
+                fcntl(daemonSocketFd, F_SETFL, flags | O_NONBLOCK);
+            }
+            
+            // 转发到守护进程 - 确保写入完整
+            ssize_t totalWritten = 0;
+            while (totalWritten < bytesRead) {
+                ssize_t bytesWritten = write(daemonSocketFd, buffer + totalWritten, bytesRead - totalWritten);
+                if (bytesWritten < 0) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        // 等待socket可写
+                        fd_set writeFds;
+                        FD_ZERO(&writeFds);
+                        FD_SET(daemonSocketFd, &writeFds);
+                        select(daemonSocketFd + 1, nullptr, &writeFds, nullptr, nullptr);
+                        continue;
+                    }
+                    LOG_ERROR("Failed to write to daemon: " + std::string(strerror(errno)));
+                    // Daemon写入失败，关闭连接并稍后重连
+                    close(daemonSocketFd);
+                    daemonSocketFd = -1;
+                    break;
+                }
+                totalWritten += bytesWritten;
             }
         }
         
-        if (FD_ISSET(daemonSocketFd, &readFds)) {
+        if (daemonSocketFd >= 0 && FD_ISSET(daemonSocketFd, &readFds)) {
             char buffer[8192];
             ssize_t bytesRead = read(daemonSocketFd, buffer, sizeof(buffer));
             
             if (bytesRead <= 0) {
-                LOG_INFO("Daemon disconnected");
-                running = false;
-                break;
+                LOG_WARN("Daemon disconnected, will attempt to reconnect on next request");
+                // 关闭daemon socket，但不退出
+                close(daemonSocketFd);
+                daemonSocketFd = -1;
+                continue;
             }
             
-            // 转发到应用
-            ssize_t bytesWritten = write(appSocketFd, buffer, bytesRead);
-            if (bytesWritten != bytesRead) {
-                LOG_ERROR("Failed to write to app: " + std::string(strerror(errno)));
-                break;
+            // 转发到应用 - 确保写入完整
+            ssize_t totalWritten = 0;
+            while (totalWritten < bytesRead) {
+                ssize_t bytesWritten = write(appSocketFd, buffer + totalWritten, bytesRead - totalWritten);
+                if (bytesWritten < 0) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                        // 等待socket可写
+                        fd_set writeFds;
+                        FD_ZERO(&writeFds);
+                        FD_SET(appSocketFd, &writeFds);
+                        select(appSocketFd + 1, nullptr, &writeFds, nullptr, nullptr);
+                        continue;
+                    }
+                    LOG_ERROR("Failed to write to app: " + std::string(strerror(errno)));
+                    running = false;
+                    break;
+                }
+                totalWritten += bytesWritten;
             }
+            if (!running) break;
         }
     }
     
@@ -148,16 +198,15 @@ void SocketProxy::runProxy() {
 bool SocketProxy::start() {
     LOG_INFO("Starting socket proxy...");
     
-    // 连接到应用
+    // 连接到应用 - 必须成功
     if (!connectToApp()) {
+        LOG_ERROR("Failed to connect to app, proxy cannot start");
         return false;
     }
     
-    // 连接到守护进程
+    // 尝试连接到守护进程，但即使失败也继续运行（稍后会重连）
     if (!connectToDaemon()) {
-        close(appSocketFd);
-        appSocketFd = -1;
-        return false;
+        LOG_WARN("Failed to connect to daemon initially, will retry on first request");
     }
     
     running = true;
@@ -171,18 +220,21 @@ void SocketProxy::stop() {
     LOG_INFO("Stopping socket proxy...");
     running = false;
     
-    if (proxyThread.joinable()) {
-        proxyThread.join();
-    }
-    
+    // 关闭app socket，这会导致select返回并退出循环
     if (appSocketFd >= 0) {
         close(appSocketFd);
         appSocketFd = -1;
     }
     
+    // 关闭daemon socket
     if (daemonSocketFd >= 0) {
         close(daemonSocketFd);
         daemonSocketFd = -1;
+    }
+    
+    // 等待线程退出
+    if (proxyThread.joinable()) {
+        proxyThread.join();
     }
     
     LOG_INFO("Socket proxy stopped");

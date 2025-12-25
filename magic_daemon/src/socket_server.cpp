@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <cstring>
 #include <iostream>
+#include <arpa/inet.h>
 
 SocketServer::SocketServer(const std::string& socketName)
     : socketName(socketName), serverFd(-1) {
@@ -117,8 +118,11 @@ void SocketServer::runServer() {
                 clientConnectedCallback();
             }
             
-            // 立即处理客户端请求
+            // 处理客户端请求（保持持久连接，处理多个请求）
             handleClient(clientFd);
+            
+            // 客户端断开后，继续等待新的连接
+            LOG_DEBUG("Client handler finished, waiting for new connection...");
             
         } else if (errno != EINTR) {
             LOG_ERROR("Accept failed: " + std::string(strerror(errno)) +
@@ -143,23 +147,35 @@ void SocketServer::runServer() {
 }
 
 void SocketServer::handleClient(int clientFd) {
-    try {
-        // 读取请求
-        std::string request = readRequest(clientFd);
-        
-        // 立即处理请求
-        std::string response = processRequest(request);
-        
-        // 发送响应
-        sendResponse(clientFd, response);
-        
-    } catch (const std::exception& e) {
-        LOG_ERROR("Error handling client: " + std::string(e.what()));
+    LOG_INFO("Starting client handler, fd: " + std::to_string(clientFd) +
+             " - will maintain persistent connection");
+    
+    // 持续处理多个请求，直到连接断开
+    while (running) {
+        try {
+            // 读取请求
+            std::string request = readRequest(clientFd);
+            
+            // 立即处理请求
+            std::string response = processRequest(request);
+            
+            // 发送响应
+            sendResponse(clientFd, response);
+            
+            LOG_DEBUG("Request processed successfully, waiting for next request...");
+            
+        } catch (const std::exception& e) {
+            LOG_ERROR("Error handling client request: " + std::string(e.what()));
+            // 连接断开或出错，退出循环
+            break;
+        }
     }
     
+    // 关闭客户端连接
     close(clientFd);
     activeClients--;
-    LOG_INFO("Client disconnected, active clients: " + std::to_string(activeClients));
+    LOG_INFO("Client disconnected, fd: " + std::to_string(clientFd) +
+             ", active clients: " + std::to_string(activeClients));
     
     // 通知客户端断开回调
     if (clientDisconnectedCallback) {
@@ -168,11 +184,14 @@ void SocketServer::handleClient(int clientFd) {
 }
 
 std::string SocketServer::readRequest(int clientFd) {
-    // 读取请求长度
-    int length;
+    // 读取请求长度（使用网络字节序）
+    int32_t length;
     if (read(clientFd, &length, sizeof(length)) != sizeof(length)) {
         throw std::runtime_error("Failed to read request length");
     }
+    
+    // 从网络字节序转换为主机字节序
+    length = ntohl(length);
     
     // 验证长度
     if (length <= 0 || length > 1024 * 1024) {
@@ -194,9 +213,12 @@ std::string SocketServer::readRequest(int clientFd) {
 }
 
 void SocketServer::sendResponse(int clientFd, const std::string& response) {
-    int responseLength = response.length();
+    int32_t responseLength = static_cast<int32_t>(response.length());
     
-    if (write(clientFd, &responseLength, sizeof(responseLength)) != sizeof(responseLength)) {
+    // 转换为网络字节序
+    int32_t networkLength = htonl(responseLength);
+    
+    if (write(clientFd, &networkLength, sizeof(networkLength)) != sizeof(networkLength)) {
         throw std::runtime_error("Failed to write response length");
     }
     
