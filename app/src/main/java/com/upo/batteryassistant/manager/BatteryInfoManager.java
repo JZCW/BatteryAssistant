@@ -195,12 +195,22 @@ public class BatteryInfoManager {
             return;
         }
         
+        android.util.Log.d("BatteryInfoManager", "Attempting to get advanced battery info from Magic Service");
+        
         // 尝试使用Magic Service获取高级信息
         try {
+            // 首先运行详细诊断
+            String diagnostics = serviceConnector.testConnectionWithDiagnostics();
+            android.util.Log.d("BatteryInfoManager", "Socket diagnostics:\n" + diagnostics);
+            
             // 连接到Magic Service
+            android.util.Log.d("BatteryInfoManager", "Attempting to connect to Magic Service...");
             if (serviceConnector.connect()) {
-                BatteryData data = serviceConnector.getBatteryStatus().get(2, TimeUnit.SECONDS);
+                android.util.Log.d("BatteryInfoManager", "Connected to Magic Service successfully, requesting battery status...");
+                
+                BatteryData data = serviceConnector.getBatteryStatus().get(5, TimeUnit.SECONDS);
                 if (data != null) {
+                    android.util.Log.d("BatteryInfoManager", "Received battery data from Magic Service");
                     // 填充高级电池信息
                     info.setAdvBattCapacity(data.getCapacity());
                     info.setAdvBattTempDeciC(data.getTemperature());
@@ -226,9 +236,16 @@ public class BatteryInfoManager {
                     info.setAdvWlsVoltageNowUv(data.getWirelessVoltageNow());
                     info.setAdvWlsCurrentNowUa((int) data.getWirelessCurrentNow());
                     
+                    android.util.Log.i("BatteryInfoManager", "Successfully filled advanced battery info from Magic Service");
                     return;
+                } else {
+                    android.util.Log.w("BatteryInfoManager", "Magic Service returned null data");
                 }
+            } else {
+                android.util.Log.w("BatteryInfoManager", "Failed to connect to Magic Service");
             }
+        } catch (java.util.concurrent.TimeoutException e) {
+            android.util.Log.e("BatteryInfoManager", "Magic Service request timed out", e);
         } catch (Exception e) {
             // Magic Service不可用时，回退到原有RootUtil
             android.util.Log.w("BatteryInfoManager", "Magic Service unavailable, falling back to RootUtil", e);

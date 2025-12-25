@@ -37,7 +37,8 @@ int main() {
         dataCollector.start();
         
         // 启动Socket服务器
-        SocketServer server("/data/local/tmp/battery_service.sock");
+        LOG_INFO("Initializing SocketServer with abstract namespace...");
+        SocketServer server("battery_service");
         
         // 设置客户端连接回调
         server.setClientConnectedCallback([&dataCollector]() {
@@ -48,26 +49,46 @@ int main() {
             dataCollector.onClientDisconnected();
         });
         
+        LOG_INFO("Starting socket server...");
         if (!server.start()) {
             LOG_ERROR("Failed to start socket server");
             return 1;
         }
         
+        // 验证socket服务器状态
+        sleep(1); // 给服务器一点时间完全启动
+        if (!server.isRunning()) {
+            LOG_ERROR("Socket server started but is not running");
+            return 1;
+        }
+        
         LOG_INFO("Battery Service Daemon started successfully");
-        LOG_INFO("Socket: /data/local/tmp/battery_service.sock");
+        LOG_INFO("Socket: abstract namespace 'battery_service'");
         LOG_INFO("Log: /data/local/tmp/battery_service.log");
+        LOG_INFO("Active clients: " + std::to_string(server.getActiveClients()));
         
         // 主循环
+        LOG_INFO("Entering main event loop...");
+        int loopCount = 0;
         while (running) {
             sleep(1); // 等待信号
+            loopCount++;
+            
+            // 每60秒记录一次状态
+            if (loopCount % 60 == 0) {
+                LOG_INFO("Daemon status: running=" + std::string(running ? "true" : "false") +
+                        ", active_clients=" + std::to_string(server.getActiveClients()));
+            }
         }
         
         // 清理
         LOG_INFO("Shutting down Battery Service Daemon...");
+        LOG_INFO("Stopping socket server...");
         server.stop();
+        LOG_INFO("Stopping data collector...");
         dataCollector.stop();
         
-        LOG_INFO("Battery Service Daemon stopped");
+        LOG_INFO("Battery Service Daemon stopped cleanly");
         
     } catch (const std::exception& e) {
         LOG_ERROR("Exception: " + std::string(e.what()));

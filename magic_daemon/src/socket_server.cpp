@@ -10,8 +10,9 @@
 #include <cstring>
 #include <iostream>
 
-SocketServer::SocketServer(const std::string& socketPath) 
-    : socketPath(socketPath), serverFd(-1) {
+SocketServer::SocketServer(const std::string& socketName)
+    : socketName(socketName), serverFd(-1) {
+    // Store the original socket name, we'll add null byte when binding
 }
 
 SocketServer::~SocketServer() {
@@ -19,63 +20,88 @@ SocketServer::~SocketServer() {
 }
 
 bool SocketServer::start() {
-    // 删除旧的socket文件
-    unlink(socketPath.c_str());
+    LOG_INFO("Starting socket server with abstract namespace: " + socketName);
+    
+    // Abstract namespace sockets don't create files, so no need to unlink
+    LOG_INFO("Using abstract namespace socket: " + socketName);
     
     // 创建socket
     serverFd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (serverFd < 0) {
-        LOG_ERROR("Failed to create socket");
+        LOG_ERROR("Failed to create socket: " + std::string(strerror(errno)));
         return false;
     }
+    LOG_INFO("Socket created successfully, fd: " + std::to_string(serverFd));
     
-    // 绑定地址
+    // 绑定地址 - for abstract namespace, the first byte should be null
     struct sockaddr_un addr;
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
-    strncpy(addr.sun_path, socketPath.c_str(), sizeof(addr.sun_path) - 1);
+    // For abstract namespace, first byte should be null, then socket name
+    addr.sun_path[0] = '\0';  // Set first byte to null for abstract namespace
+    strncpy(&addr.sun_path[1], socketName.c_str(), sizeof(addr.sun_path) - 2);
     
-    if (bind(serverFd, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
-        LOG_ERROR("Failed to bind socket");
+    // Calculate the length of the address structure
+    // For abstract namespace, we need to include the null byte + socket name length
+    socklen_t addrLen = offsetof(struct sockaddr_un, sun_path) + 1 + socketName.length();
+    
+    LOG_INFO("Attempting to bind abstract namespace socket");
+    if (bind(serverFd, (struct sockaddr*)&addr, addrLen) < 0) {
+        LOG_ERROR("Failed to bind abstract namespace socket: " + std::string(strerror(errno)));
         close(serverFd);
         return false;
     }
+    LOG_INFO("Abstract namespace socket bound successfully");
     
     // 开始监听
+    LOG_INFO("Starting to listen on socket with backlog=5");
     if (listen(serverFd, 5) < 0) {
-        LOG_ERROR("Failed to listen on socket");
+        LOG_ERROR("Failed to listen on socket: " + std::string(strerror(errno)));
         close(serverFd);
         return false;
     }
+    LOG_INFO("Socket listening started successfully");
     
-    // 设置权限
-    chmod(socketPath.c_str(), 0666);
+    // Abstract namespace sockets don't have file permissions
+    LOG_INFO("Abstract namespace socket doesn't require file permissions");
     
     running = true;
     serverThread = std::thread(&SocketServer::runServer, this);
     
-    LOG_INFO("Socket server started on " + socketPath);
+    LOG_INFO("Socket server started successfully on abstract namespace: " + socketName);
     return true;
 }
 
 void SocketServer::stop() {
+    LOG_INFO("Stopping socket server...");
     running = false;
     
+    // 首先关闭socket文件描述符，这会导致accept()返回EBADF
     if (serverFd >= 0) {
+        LOG_DEBUG("Closing server socket fd: " + std::to_string(serverFd));
         close(serverFd);
         serverFd = -1;
     }
     
+    // 等待服务器线程退出
     if (serverThread.joinable()) {
+        LOG_DEBUG("Waiting for server thread to join...");
         serverThread.join();
+        LOG_DEBUG("Server thread joined successfully");
     }
     
-    unlink(socketPath.c_str());
+    // Abstract namespace sockets don't create files, so no need to unlink
+    LOG_INFO("Abstract namespace socket closed (no file to remove)");
+    
     LOG_INFO("Socket server stopped");
 }
 
 void SocketServer::runServer() {
+    LOG_INFO("Server thread started, waiting for client connections...");
+    
     while (running) {
+        LOG_DEBUG("Waiting for client connection...");
+        
         // 阻塞等待连接，零CPU开销
         struct sockaddr_un clientAddr;
         socklen_t clientLen = sizeof(clientAddr);
@@ -83,7 +109,8 @@ void SocketServer::runServer() {
         
         if (clientFd >= 0) {
             activeClients++;
-            LOG_INFO("Client connected, active clients: " + std::to_string(activeClients));
+            LOG_INFO("Client connected successfully, fd: " + std::to_string(clientFd) +
+                    ", active clients: " + std::to_string(activeClients));
             
             // 通知客户端连接回调
             if (clientConnectedCallback) {
@@ -94,9 +121,25 @@ void SocketServer::runServer() {
             handleClient(clientFd);
             
         } else if (errno != EINTR) {
-            LOG_ERROR("Accept error: " + std::string(strerror(errno)));
+            LOG_ERROR("Accept failed: " + std::string(strerror(errno)) +
+                     " (errno: " + std::to_string(errno) + ")");
+            
+            if (errno == EBADF) {
+                LOG_ERROR("Invalid socket file descriptor, server may be stopping");
+                break;
+            } else if (errno == EINVAL) {
+                LOG_ERROR("Socket not listening, attempting to restart listen");
+                if (listen(serverFd, 5) < 0) {
+                    LOG_ERROR("Failed to restart listening: " + std::string(strerror(errno)));
+                    break;
+                }
+            }
+        } else {
+            LOG_DEBUG("Accept interrupted by signal, continuing...");
         }
     }
+    
+    LOG_INFO("Server thread exiting");
 }
 
 void SocketServer::handleClient(int clientFd) {

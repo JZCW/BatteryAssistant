@@ -9,7 +9,7 @@
 
 class SocketServer {
 private:
-    std::string socketPath;
+    std::string socketName; // Abstract namespace socket name (starts with null byte internally)
     int serverFd;
     std::atomic<bool> running{true};
     std::atomic<int> activeClients{0};
@@ -28,7 +28,7 @@ private:
     std::string processOtherRequest(const Json::Value& request);
     
 public:
-    SocketServer(const std::string& socketPath);
+    SocketServer(const std::string& socketName); // socketName: abstract namespace socket name (not a file path)
     ~SocketServer();
     
     bool start();

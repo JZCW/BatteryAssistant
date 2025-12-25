@@ -34,7 +34,7 @@ find_package(PkgConfig REQUIRED)
 set(JSONCPP_INCLUDE_DIRS ${jsoncpp_SOURCE_DIR}/include)
 set(JSONCPP_LIBRARIES jsoncpp_static)
 
-# 源文件
+# 源文件 (主daemon)
 set(SOURCES
     src/main.cpp
     src/data_collector.cpp
@@ -44,8 +44,18 @@ set(SOURCES
     src/logger.cpp
 )
 
+# Socket代理源文件
+set(PROXY_SOURCES
+    src/socket_proxy_main.cpp
+    src/socket_proxy.cpp
+    src/logger.cpp
+)
+
 # 创建可执行文件
 add_executable(batteryAssistant ${SOURCES})
+
+# 创建socket代理可执行文件
+add_executable(batteryProxy ${PROXY_SOURCES})
 
 # 链接库 - Android 中 pthread 是自动链接的
 target_link_libraries(batteryAssistant
@@ -55,8 +65,15 @@ target_link_libraries(batteryAssistant
 target_include_directories(batteryAssistant PRIVATE ${JSONCPP_INCLUDE_DIRS})
 target_compile_options(batteryAssistant PRIVATE ${JSONCPP_CFLAGS_OTHER})
 
+# 链接socket代理的库
+target_link_libraries(batteryProxy dl)
+target_include_directories(batteryProxy PRIVATE ${JSONCPP_INCLUDE_DIRS})
+
 # 安装规则
 install(TARGETS batteryAssistant
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+)
+install(TARGETS batteryProxy
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 )
 
