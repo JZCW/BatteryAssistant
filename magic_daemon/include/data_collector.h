@@ -7,6 +7,12 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <variant>
+
+enum class DataType {
+    INT,
+    STRING
+};
 
 class DataCollector {
 private:
@@ -25,8 +31,8 @@ private:
     
     void collectLoop();
     BatteryData readAllFiles();
-    std::string readFile(const std::string& path);
-    std::string getFileName(const std::string& path);
+    template<typename T>
+    void readFile(const std::string& path, T& target, DataType type);
     long getCurrentTimestamp();
     
 public:

@@ -5,56 +5,9 @@
 #include <filesystem>
 #include <thread>
 #include <chrono>
+#include <type_traits>
 
-DataCollector::DataCollector() {
-    // 初始化文件路径列表
-    batteryFiles = {
-        "/sys/class/power_supply/battery/capacity",
-        "/sys/class/power_supply/battery/temp",
-        "/sys/class/power_supply/battery/voltage_now",
-        "/sys/class/power_supply/battery/current_now",
-        "/sys/class/power_supply/battery/status",
-        "/sys/class/power_supply/battery/health",
-        "/sys/class/power_supply/battery/charge_counter",
-        "/sys/class/power_supply/battery/charge_full",
-        "/sys/class/power_supply/battery/charge_full_design",
-        "/sys/class/power_supply/battery/cycle_count",
-        "/sys/class/power_supply/battery/time_to_empty_avg",
-        "/sys/class/power_supply/battery/time_to_full_avg",
-        "/sys/class/power_supply/battery/time_to_full_now",
-        "/sys/class/power_supply/battery/charge_control_start_threshold",
-        "/sys/class/power_supply/battery/charge_control_end_threshold",
-        "/sys/class/power_supply/battery/charge_control_limit",
-        "/sys/class/power_supply/battery/charge_control_limit_max",
-        "/sys/class/power_supply/battery/technology",
-        "/sys/class/power_supply/battery/model_name",
-        "/sys/class/power_supply/battery/status",
-        "/sys/class/power_supply/battery/health",
-        "/sys/class/power_supply/battery/charge_type",
-        "/sys/class/power_supply/battery/present"
-    };
-    
-    usbFiles = {
-        "/sys/class/power_supply/usb/online",
-        "/sys/class/power_supply/usb/voltage_now",
-        "/sys/class/power_supply/usb/voltage_max",
-        "/sys/class/power_supply/usb/current_now",
-        "/sys/class/power_supply/usb/current_max",
-        "/sys/class/power_supply/usb/input_current_limit",
-        "/sys/class/power_supply/usb/temp",
-        "/sys/class/power_supply/usb/usb_type"
-    };
-    
-    wirelessFiles = {
-        "/sys/class/power_supply/wireless/online",
-        "/sys/class/power_supply/wireless/voltage_now",
-        "/sys/class/power_supply/wireless/voltage_max",
-        "/sys/class/power_supply/wireless/current_now",
-        "/sys/class/power_supply/wireless/current_max",
-        "/sys/class/power_supply/wireless/input_current_limit",
-        "/sys/class/power_supply/wireless/temp"
-    };
-}
+DataCollector::DataCollector() {}
 
 DataCollector::~DataCollector() {
     stop();
@@ -122,76 +75,59 @@ void DataCollector::collectLoop() {
 
 BatteryData DataCollector::readAllFiles() {
     BatteryData data;
-    
+
     // 读取电池文件
-    for (const auto& file : batteryFiles) {
-        std::string content = readFile(file);
-        if (!content.empty()) {
-            std::string fileName = getFileName(file);
-            if (fileName == "capacity") data.capacity = std::stoi(content);
-            else if (fileName == "temp") data.temp = std::stoi(content);
-            else if (fileName == "voltage_now") data.voltage_now = std::stoi(content);
-            else if (fileName == "current_now") data.current_now = std::stoi(content);
-            else if (fileName == "status") data.status = content;
-            else if (fileName == "health") data.health = content;
-            else if (fileName == "charge_counter") data.charge_counter = std::stoi(content);
-            else if (fileName == "charge_full") data.charge_full = std::stoi(content);
-            else if (fileName == "charge_full_design") data.charge_full_design = std::stoi(content);
-            else if (fileName == "cycle_count") data.cycle_count = std::stoi(content);
-            else if (fileName == "time_to_empty_avg") data.time_to_empty_avg = std::stoi(content);
-            else if (fileName == "time_to_full_avg") data.time_to_full_avg = std::stoi(content);
-            else if (fileName == "time_to_full_now") data.time_to_full_now = std::stoi(content);
-            else if (fileName == "charge_control_start_threshold") data.charge_control_start_threshold = std::stoi(content);
-            else if (fileName == "charge_control_end_threshold") data.charge_control_end_threshold = std::stoi(content);
-            else if (fileName == "charge_control_limit") data.charge_control_limit = std::stoi(content);
-            else if (fileName == "charge_control_limit_max") data.charge_control_limit_max = std::stoi(content);
-            else if (fileName == "technology") data.technology = content;
-            else if (fileName == "model_name") data.model_name = content;
-            else if (fileName == "charge_type") data.charge_type = content;
-            else if (fileName == "present") data.present = std::stoi(content);
-        }
-    }
+    readFile("/sys/class/power_supply/battery/capacity", data.capacity, DataType::INT);
+    readFile("/sys/class/power_supply/battery/temp", data.temp, DataType::INT);
+    readFile("/sys/class/power_supply/battery/voltage_now", data.voltage_now, DataType::INT);
+    readFile("/sys/class/power_supply/battery/current_now", data.current_now, DataType::INT);
+    readFile("/sys/class/power_supply/battery/status", data.status, DataType::STRING);
+    readFile("/sys/class/power_supply/battery/health", data.health, DataType::STRING);
+    readFile("/sys/class/power_supply/battery/charge_counter", data.charge_counter, DataType::INT);
+    readFile("/sys/class/power_supply/battery/charge_full", data.charge_full, DataType::INT);
+    readFile("/sys/class/power_supply/battery/charge_full_design", data.charge_full_design, DataType::INT);
+    readFile("/sys/class/power_supply/battery/cycle_count", data.cycle_count, DataType::INT);
+    readFile("/sys/class/power_supply/battery/time_to_empty_avg", data.time_to_empty_avg, DataType::INT);
+    readFile("/sys/class/power_supply/battery/time_to_full_avg", data.time_to_full_avg, DataType::INT);
+    readFile("/sys/class/power_supply/battery/time_to_full_now", data.time_to_full_now, DataType::INT);
+    readFile("/sys/class/power_supply/battery/charge_control_start_threshold", data.charge_control_start_threshold, DataType::INT);
+    readFile("/sys/class/power_supply/battery/charge_control_end_threshold", data.charge_control_end_threshold, DataType::INT);
+    readFile("/sys/class/power_supply/battery/charge_control_limit", data.charge_control_limit, DataType::INT);
+    readFile("/sys/class/power_supply/battery/charge_control_limit_max", data.charge_control_limit_max, DataType::INT);
+    readFile("/sys/class/power_supply/battery/technology", data.technology, DataType::STRING);
+    readFile("/sys/class/power_supply/battery/model_name", data.model_name, DataType::STRING);
+    readFile("/sys/class/power_supply/battery/charge_type", data.charge_type, DataType::STRING);
+    readFile("/sys/class/power_supply/battery/present", data.present, DataType::INT);
     
     // 读取USB文件
-    for (const auto& file : usbFiles) {
-        std::string content = readFile(file);
-        if (!content.empty()) {
-            std::string fileName = getFileName(file);
-            if (fileName == "online") data.usb_online = std::stoi(content);
-            else if (fileName == "voltage_now") data.usb_voltage_now = std::stoi(content);
-            else if (fileName == "voltage_max") data.usb_voltage_max = std::stoi(content);
-            else if (fileName == "current_now") data.usb_current_now = std::stoi(content);
-            else if (fileName == "current_max") data.usb_current_max = std::stoi(content);
-            else if (fileName == "input_current_limit") data.usb_input_current_limit = std::stoi(content);
-            else if (fileName == "temp") data.usb_temp = std::stoi(content);
-            else if (fileName == "usb_type") data.usb_type = content;
-        }
-    }
+    readFile("/sys/class/power_supply/usb/online", data.usb_online, DataType::INT);
+    readFile("/sys/class/power_supply/usb/voltage_now", data.usb_voltage_now, DataType::INT);
+    readFile("/sys/class/power_supply/usb/voltage_max", data.usb_voltage_max, DataType::INT);
+    readFile("/sys/class/power_supply/usb/current_now", data.usb_current_now, DataType::INT);
+    readFile("/sys/class/power_supply/usb/current_max", data.usb_current_max, DataType::INT);
+    readFile("/sys/class/power_supply/usb/input_current_limit", data.usb_input_current_limit, DataType::INT);
+    readFile("/sys/class/power_supply/usb/temp", data.usb_temp, DataType::INT);
+    readFile("/sys/class/power_supply/usb/usb_type", data.usb_type, DataType::STRING);
     
     // 读取无线充电文件
-    for (const auto& file : wirelessFiles) {
-        std::string content = readFile(file);
-        if (!content.empty()) {
-            std::string fileName = getFileName(file);
-            if (fileName == "online") data.wireless_online = std::stoi(content);
-            else if (fileName == "voltage_now") data.wireless_voltage_now = std::stoi(content);
-            else if (fileName == "voltage_max") data.wireless_voltage_max = std::stoi(content);
-            else if (fileName == "current_now") data.wireless_current_now = std::stoi(content);
-            else if (fileName == "current_max") data.wireless_current_max = std::stoi(content);
-            else if (fileName == "input_current_limit") data.wireless_input_current_limit = std::stoi(content);
-            else if (fileName == "temp") data.wireless_temp = std::stoi(content);
-        }
-    }
+    readFile("/sys/class/power_supply/wireless/online", data.wireless_online, DataType::INT);
+    readFile("/sys/class/power_supply/wireless/voltage_now", data.wireless_voltage_now, DataType::INT);
+    readFile("/sys/class/power_supply/wireless/voltage_max", data.wireless_voltage_max, DataType::INT);
+    readFile("/sys/class/power_supply/wireless/current_now", data.wireless_current_now, DataType::INT);
+    readFile("/sys/class/power_supply/wireless/current_max", data.wireless_current_max, DataType::INT);
+    readFile("/sys/class/power_supply/wireless/input_current_limit", data.wireless_input_current_limit, DataType::INT);
+    readFile("/sys/class/power_supply/wireless/temp", data.wireless_temp, DataType::INT);
     
     data.timestamp = getCurrentTimestamp();
     
     return data;
 }
 
-std::string DataCollector::readFile(const std::string& path) {
+template<typename T>
+void DataCollector::readFile(const std::string& path, T& target, DataType type) {
     std::ifstream file(path);
     if (!file.is_open()) {
-        return "";
+        return;
     }
     
     std::string content;
@@ -202,12 +138,20 @@ std::string DataCollector::readFile(const std::string& path) {
     content.erase(0, content.find_first_not_of(" \t\n\r"));
     content.erase(content.find_last_not_of(" \t\n\r") + 1);
     
-    return content;
-}
-
-std::string DataCollector::getFileName(const std::string& path) {
-    size_t pos = path.find_last_of('/');
-    return (pos != std::string::npos) ? path.substr(pos + 1) : path;
+    if (content.empty()) {
+        return;
+    }
+    
+    // 根据 DataType 执行不同的转换
+    if (type == DataType::INT) {
+        if constexpr (std::is_same_v<T, int>) {
+            target = std::stoi(content);
+        }
+    } else if (type == DataType::STRING) {
+        if constexpr (std::is_same_v<T, std::string>) {
+            target = content;
+        }
+    }
 }
 
 long DataCollector::getCurrentTimestamp() {

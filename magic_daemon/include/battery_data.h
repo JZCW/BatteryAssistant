@@ -61,98 +61,56 @@ struct BatteryData {
                     wireless_temp(-1) {}
     
     Json::Value toJson() const {
-        Json::Value root;
-        root["timestamp"] = Json::Value::Int64(timestamp);
+        Json::Value json;
+        json["timestamp"] = Json::Value::Int64(timestamp);
         
         // Battery data
-        Json::Value batteryObj(Json::objectValue);
-        if (capacity >= 0) batteryObj["capacity"] = capacity;
-        if (temp >= 0) batteryObj["temp"] = temp;
-        if (voltage_now >= 0) batteryObj["voltage_now"] = voltage_now;
-        if (current_now >= 0) batteryObj["current_now"] = current_now;
-        if (!status.empty()) batteryObj["status"] = status;
-        if (!health.empty()) batteryObj["health"] = health;
-        if (charge_counter >= 0) batteryObj["charge_counter"] = charge_counter;
-        if (charge_full >= 0) batteryObj["charge_full"] = charge_full;
-        if (charge_full_design >= 0) batteryObj["charge_full_design"] = charge_full_design;
-        if (cycle_count >= 0) batteryObj["cycle_count"] = cycle_count;
-        if (time_to_empty_avg >= 0) batteryObj["time_to_empty_avg"] = time_to_empty_avg;
-        if (time_to_full_avg >= 0) batteryObj["time_to_full_avg"] = time_to_full_avg;
-        if (time_to_full_now >= 0) batteryObj["time_to_full_now"] = time_to_full_now;
-        if (charge_control_start_threshold >= 0) batteryObj["charge_control_start_threshold"] = charge_control_start_threshold;
-        if (charge_control_end_threshold >= 0) batteryObj["charge_control_end_threshold"] = charge_control_end_threshold;
-        if (charge_control_limit >= 0) batteryObj["charge_control_limit"] = charge_control_limit;
-        if (charge_control_limit_max >= 0) batteryObj["charge_control_limit_max"] = charge_control_limit_max;
-        if (!technology.empty()) batteryObj["technology"] = technology;
-        if (!model_name.empty()) batteryObj["model_name"] = model_name;
-        if (!charge_type.empty()) batteryObj["charge_type"] = charge_type;
-        if (present >= 0) batteryObj["present"] = present;
-        root["battery"] = batteryObj;
+        json["capacity"] = Json::Value::Int(capacity);
+        json["temp"] = Json::Value::Int(temp);
+        json["voltage_now"] = Json::Value::Int(voltage_now);
+        json["current_now"] = Json::Value::Int(current_now);
+        json["status"] = status;
+        json["health"] = health;
+        json["charge_counter"] = Json::Value::Int(charge_counter);
+        json["charge_full"] = Json::Value::Int(charge_full);
+        json["charge_full_design"] = Json::Value::Int(charge_full_design);
+        json["cycle_count"] = Json::Value::Int(cycle_count);
+        json["time_to_empty_avg"] = Json::Value::Int(time_to_empty_avg);
+        json["time_to_full_avg"] = Json::Value::Int(time_to_full_avg);
+        json["time_to_full_now"] = Json::Value::Int(time_to_full_now);
+        json["charge_control_start_threshold"] = Json::Value::Int(charge_control_start_threshold);
+        json["charge_control_end_threshold"] = Json::Value::Int(charge_control_end_threshold);
+        json["charge_control_limit"] = Json::Value::Int(charge_control_limit);
+        json["charge_control_limit_max"] = Json::Value::Int(charge_control_limit_max);
+        json["technology"] = technology;
+        json["model_name"] = model_name;
+        json["charge_type"] = charge_type;
+        json["present"] = Json::Value::Int(present);
         
         // USB data
-        Json::Value usbObj(Json::objectValue);
-        if (usb_online >= 0) usbObj["online"] = usb_online;
-        if (usb_voltage_now >= 0) usbObj["voltage_now"] = usb_voltage_now;
-        if (usb_voltage_max >= 0) usbObj["voltage_max"] = usb_voltage_max;
-        if (usb_current_now >= 0) usbObj["current_now"] = usb_current_now;
-        if (usb_current_max >= 0) usbObj["current_max"] = usb_current_max;
-        if (usb_input_current_limit >= 0) usbObj["input_current_limit"] = usb_input_current_limit;
-        if (usb_temp >= 0) usbObj["temp"] = usb_temp;
-        if (!usb_type.empty()) usbObj["usb_type"] = usb_type;
-        root["usb"] = usbObj;
+        json["usb_online"] = Json::Value::Int(usb_online);
+        json["usb_voltage_now"] = Json::Value::Int(usb_voltage_now);
+        json["usb_voltage_max"] = Json::Value::Int(usb_voltage_max);
+        json["usb_current_now"] = Json::Value::Int(usb_current_now);
+        json["usb_current_max"] = Json::Value::Int(usb_current_max);
+        json["usb_input_current_limit"] = Json::Value::Int(usb_input_current_limit);
+        json["usb_temp"] = Json::Value::Int(usb_temp);
+        json["usb_type"] = usb_type;
         
         // Wireless data
-        Json::Value wirelessObj(Json::objectValue);
-        if (wireless_online >= 0) wirelessObj["online"] = wireless_online;
-        if (wireless_voltage_now >= 0) wirelessObj["voltage_now"] = wireless_voltage_now;
-        if (wireless_voltage_max >= 0) wirelessObj["voltage_max"] = wireless_voltage_max;
-        if (wireless_current_now >= 0) wirelessObj["current_now"] = wireless_current_now;
-        if (wireless_current_max >= 0) wirelessObj["current_max"] = wireless_current_max;
-        if (wireless_input_current_limit >= 0) wirelessObj["input_current_limit"] = wireless_input_current_limit;
-        if (wireless_temp >= 0) wirelessObj["temp"] = wireless_temp;
-        root["wireless"] = wirelessObj;
-        
-        return root;
+        json["wireless_online"] = Json::Value::Int(wireless_online);
+        json["wireless_voltage_now"] = Json::Value::Int(wireless_voltage_now);
+        json["wireless_voltage_max"] = Json::Value::Int(wireless_voltage_max);
+        json["wireless_current_now"] = Json::Value::Int(wireless_current_now);
+        json["wireless_current_max"] = Json::Value::Int(wireless_current_max);
+        json["wireless_input_current_limit"] = Json::Value::Int(wireless_input_current_limit);
+        json["wireless_temp"] = Json::Value::Int(wireless_temp);
+
+        return json;
     }
     
     bool operator==(const BatteryData& other) const {
-        return timestamp == other.timestamp &&
-               capacity == other.capacity &&
-               temp == other.temp &&
-               voltage_now == other.voltage_now &&
-               current_now == other.current_now &&
-               status == other.status &&
-               health == other.health &&
-               charge_counter == other.charge_counter &&
-               charge_full == other.charge_full &&
-               charge_full_design == other.charge_full_design &&
-               cycle_count == other.cycle_count &&
-               time_to_empty_avg == other.time_to_empty_avg &&
-               time_to_full_avg == other.time_to_full_avg &&
-               time_to_full_now == other.time_to_full_now &&
-               charge_control_start_threshold == other.charge_control_start_threshold &&
-               charge_control_end_threshold == other.charge_control_end_threshold &&
-               charge_control_limit == other.charge_control_limit &&
-               charge_control_limit_max == other.charge_control_limit_max &&
-               technology == other.technology &&
-               model_name == other.model_name &&
-               charge_type == other.charge_type &&
-               present == other.present &&
-               usb_online == other.usb_online &&
-               usb_voltage_now == other.usb_voltage_now &&
-               usb_voltage_max == other.usb_voltage_max &&
-               usb_current_now == other.usb_current_now &&
-               usb_current_max == other.usb_current_max &&
-               usb_input_current_limit == other.usb_input_current_limit &&
-               usb_temp == other.usb_temp &&
-               usb_type == other.usb_type &&
-               wireless_online == other.wireless_online &&
-               wireless_voltage_now == other.wireless_voltage_now &&
-               wireless_voltage_max == other.wireless_voltage_max &&
-               wireless_current_now == other.wireless_current_now &&
-               wireless_current_max == other.wireless_current_max &&
-               wireless_input_current_limit == other.wireless_input_current_limit &&
-               wireless_temp == other.wireless_temp;
+        return timestamp == other.timestamp;  // 只比较时间戳
     }
     
     bool operator!=(const BatteryData& other) const {
