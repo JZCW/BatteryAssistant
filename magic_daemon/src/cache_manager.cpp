@@ -7,10 +7,8 @@ void CacheManager::updateBatteryData(const BatteryData& newData) {
     std::lock_guard<std::mutex> lock(dataMutex);
     
     // 检查是否有变化
-    bool hasChanges = (currentData.timestamp == 0) || 
-                     (newData.battery != currentData.battery) ||
-                     (newData.usb != currentData.usb) ||
-                     (newData.wireless != currentData.wireless);
+    bool hasChanges = (currentData.timestamp == 0) ||
+                     (newData != currentData);
     
     if (hasChanges) {
         currentData = newData;

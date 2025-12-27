@@ -127,7 +127,28 @@ BatteryData DataCollector::readAllFiles() {
     for (const auto& file : batteryFiles) {
         std::string content = readFile(file);
         if (!content.empty()) {
-            data.battery[getFileName(file)] = content;
+            std::string fileName = getFileName(file);
+            if (fileName == "capacity") data.capacity = std::stoi(content);
+            else if (fileName == "temp") data.temp = std::stoi(content);
+            else if (fileName == "voltage_now") data.voltage_now = std::stoi(content);
+            else if (fileName == "current_now") data.current_now = std::stoi(content);
+            else if (fileName == "status") data.status = content;
+            else if (fileName == "health") data.health = content;
+            else if (fileName == "charge_counter") data.charge_counter = std::stoi(content);
+            else if (fileName == "charge_full") data.charge_full = std::stoi(content);
+            else if (fileName == "charge_full_design") data.charge_full_design = std::stoi(content);
+            else if (fileName == "cycle_count") data.cycle_count = std::stoi(content);
+            else if (fileName == "time_to_empty_avg") data.time_to_empty_avg = std::stoi(content);
+            else if (fileName == "time_to_full_avg") data.time_to_full_avg = std::stoi(content);
+            else if (fileName == "time_to_full_now") data.time_to_full_now = std::stoi(content);
+            else if (fileName == "charge_control_start_threshold") data.charge_control_start_threshold = std::stoi(content);
+            else if (fileName == "charge_control_end_threshold") data.charge_control_end_threshold = std::stoi(content);
+            else if (fileName == "charge_control_limit") data.charge_control_limit = std::stoi(content);
+            else if (fileName == "charge_control_limit_max") data.charge_control_limit_max = std::stoi(content);
+            else if (fileName == "technology") data.technology = content;
+            else if (fileName == "model_name") data.model_name = content;
+            else if (fileName == "charge_type") data.charge_type = content;
+            else if (fileName == "present") data.present = std::stoi(content);
         }
     }
     
@@ -135,7 +156,15 @@ BatteryData DataCollector::readAllFiles() {
     for (const auto& file : usbFiles) {
         std::string content = readFile(file);
         if (!content.empty()) {
-            data.usb[getFileName(file)] = content;
+            std::string fileName = getFileName(file);
+            if (fileName == "online") data.usb_online = std::stoi(content);
+            else if (fileName == "voltage_now") data.usb_voltage_now = std::stoi(content);
+            else if (fileName == "voltage_max") data.usb_voltage_max = std::stoi(content);
+            else if (fileName == "current_now") data.usb_current_now = std::stoi(content);
+            else if (fileName == "current_max") data.usb_current_max = std::stoi(content);
+            else if (fileName == "input_current_limit") data.usb_input_current_limit = std::stoi(content);
+            else if (fileName == "temp") data.usb_temp = std::stoi(content);
+            else if (fileName == "usb_type") data.usb_type = content;
         }
     }
     
@@ -143,7 +172,14 @@ BatteryData DataCollector::readAllFiles() {
     for (const auto& file : wirelessFiles) {
         std::string content = readFile(file);
         if (!content.empty()) {
-            data.wireless[getFileName(file)] = content;
+            std::string fileName = getFileName(file);
+            if (fileName == "online") data.wireless_online = std::stoi(content);
+            else if (fileName == "voltage_now") data.wireless_voltage_now = std::stoi(content);
+            else if (fileName == "voltage_max") data.wireless_voltage_max = std::stoi(content);
+            else if (fileName == "current_now") data.wireless_current_now = std::stoi(content);
+            else if (fileName == "current_max") data.wireless_current_max = std::stoi(content);
+            else if (fileName == "input_current_limit") data.wireless_input_current_limit = std::stoi(content);
+            else if (fileName == "temp") data.wireless_temp = std::stoi(content);
         }
     }
     
