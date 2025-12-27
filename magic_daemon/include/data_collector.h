@@ -16,7 +16,7 @@ enum class DataType {
 
 class DataCollector {
 private:
-    std::atomic<bool> running{true};
+    std::atomic<bool> running{false};
     std::atomic<bool> hasActiveClients{false};
     std::thread collectorThread;
     
