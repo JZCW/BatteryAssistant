@@ -1,6 +1,8 @@
 #include <iostream>
 #include <signal.h>
 #include <unistd.h>
+#include <sys/select.h>
+#include <cstring>
 #include "data_collector.h"
 #include "cache_manager.h"
 #include "socket_server.h"
@@ -30,7 +32,12 @@ int main() {
         
         // 初始化组件
         CacheManager::getInstance();
-        ChargeController::getInstance();
+        ChargeController& chargeController = ChargeController::getInstance();
+        
+        // 启动充电控制监控
+        if (!chargeController.startMonitoring()) {
+            LOG_WARN("Failed to start charge control monitoring, continuing without it");
+        }
         
         // 启动数据采集器
         DataCollector dataCollector;
@@ -70,8 +77,44 @@ int main() {
         // 主循环
         LOG_INFO("Entering main event loop...");
         int loopCount = 0;
+        int inotifyFd = chargeController.getInotifyFd();
+        
         while (running) {
-            sleep(1); // 等待信号
+            fd_set readfds;
+            FD_ZERO(&readfds);
+            
+            // 添加 inotify 文件描述符到 select 集合
+            if (inotifyFd >= 0) {
+                FD_SET(inotifyFd, &readfds);
+            }
+            
+            // 等待事件，超时 1 秒
+            struct timeval timeout;
+            timeout.tv_sec = 1;
+            timeout.tv_usec = 0;
+            
+            int maxFd = (inotifyFd >= 0) ? inotifyFd + 1 : 0;
+            int ready = select(maxFd, &readfds, nullptr, nullptr, &timeout);
+            
+            if (ready < 0) {
+                if (errno == EINTR) {
+                    continue; // 被信号中断
+                }
+                LOG_ERROR("select error: " + std::string(strerror(errno)));
+                break;
+            }
+            
+            // 处理 inotify 事件
+            if (inotifyFd >= 0 && FD_ISSET(inotifyFd, &readfds)) {
+                // 读取并清空 inotify 事件队列
+                char buffer[1024];
+                ssize_t len = read(inotifyFd, buffer, sizeof(buffer));
+                if (len > 0) {
+                    // 检查并恢复限制值
+                    chargeController.checkAndRestoreLimit();
+                }
+            }
+            
             loopCount++;
             
             // 每60秒记录一次状态

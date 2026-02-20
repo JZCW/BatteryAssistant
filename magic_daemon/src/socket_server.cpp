@@ -271,20 +271,11 @@ std::string SocketServer::processControlCommand(const Json::Value& request) {
     
     try {
         if (type == "set_charge_threshold") {
-            const Json::Value& config = request["config"];
-            int startThreshold = config["start_threshold"].asInt();
-            int endThreshold = config["end_threshold"].asInt();
-            
-            // 立即应用充电阈值
-            bool success = ChargeController::getInstance().setChargeThreshold(startThreshold, endThreshold);
-            response["success"] = success;
-            response["data"]["applied"] = success;
-            response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count());
-            
-            LOG_INFO("Charge threshold set: " + std::to_string(startThreshold) + 
-                      "-" + std::to_string(endThreshold) + " (success: " + 
-                      std::to_string(success) + ")");
+            // 已废弃：使用 set_charge_limit 代替
+            LOG_WARN("set_charge_threshold is deprecated, use set_charge_limit instead");
+            response["success"] = false;
+            response["data"]["applied"] = false;
+            response["data"]["error"] = "set_charge_threshold is deprecated, use set_charge_limit instead";
             
         } else if (type == "set_charge_limit") {
             int limit = request["limit"].asInt();

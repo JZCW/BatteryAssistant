@@ -1,10 +1,20 @@
 #include "charge_controller.h"
 #include "logger.h"
+#include "battery_data.h"
 #include <fstream>
 #include <filesystem>
 #include <vector>
+#include <unistd.h>
+
+const std::string ChargeController::SCENARIO_FCC_PATH = "/proc/charger/scenario_fcc";
 
 ChargeController ChargeController::instance;
+
+ChargeController::ChargeController() : inotifyFd(-1), watchFd(-1), monitoring(false) {}
+
+ChargeController::~ChargeController() {
+    stopMonitoring();
+}
 
 bool ChargeController::writeFile(const std::string& path, const std::string& content) {
     std::ofstream file(path);
@@ -37,84 +47,52 @@ std::string ChargeController::readFile(const std::string& path) {
     return content;
 }
 
-bool ChargeController::setChargeThreshold(int startThreshold, int endThreshold) {
-    std::lock_guard<std::mutex> lock(configMutex);
-    
-    if (!isChargeControlSupported()) {
-        LOG_WARN("Charge control not supported on this device");
-        return false;
+int ChargeController::readScenarioFcc() {
+    std::string content = readFile(SCENARIO_FCC_PATH);
+    if (content.empty()) {
+        return -1;
     }
-    
-    // 写入起始阈值
-    std::string startPath = "/sys/class/power_supply/battery/charge_control_start_threshold";
-    if (!writeFile(startPath, std::to_string(startThreshold))) {
-        LOG_ERROR("Failed to set charge start threshold");
-        return false;
+    try {
+        return std::stoi(content);
+    } catch (...) {
+        return -1;
     }
-    
-    // 写入结束阈值
-    std::string endPath = "/sys/class/power_supply/battery/charge_control_end_threshold";
-    if (!writeFile(endPath, std::to_string(endThreshold))) {
-        LOG_ERROR("Failed to set charge end threshold");
-        return false;
-    }
-    
-    currentConfig.startThreshold = startThreshold;
-    currentConfig.endThreshold = endThreshold;
-    
-    LOG_INFO("Charge threshold set: " + std::to_string(startThreshold) + 
-              "-" + std::to_string(endThreshold));
-    return true;
+}
+
+bool ChargeController::writeScenarioFcc(int value) {
+    return writeFile(SCENARIO_FCC_PATH, std::to_string(value));
 }
 
 bool ChargeController::setChargeLimit(int limit) {
     std::lock_guard<std::mutex> lock(configMutex);
     
-    if (!isChargeControlSupported()) {
-        LOG_WARN("Charge control not supported on this device");
+    // 检查文件是否存在
+    if (!std::filesystem::exists(SCENARIO_FCC_PATH)) {
+        LOG_ERROR("scenario_fcc file not found: " + SCENARIO_FCC_PATH);
         return false;
     }
     
-    std::string limitPath = "/sys/class/power_supply/battery/charge_control_limit";
-    if (!writeFile(limitPath, std::to_string(limit))) {
-        LOG_ERROR("Failed to set charge limit");
+    // 设置目标值
+    currentConfig.targetLimit = limit;
+    
+    // 写入实际值
+    if (!writeScenarioFcc(limit)) {
+        LOG_ERROR("Failed to set charge limit to " + std::to_string(limit));
         return false;
     }
     
-    currentConfig.limit = limit;
+    currentConfig.actualLimit = limit;
     
-    LOG_INFO("Charge limit set: " + std::to_string(limit));
+    LOG_INFO("Charge limit set: target=" + std::to_string(limit) + 
+              ", actual=" + std::to_string(limit));
     return true;
 }
 
 bool ChargeController::enableCharging(bool enable) {
     std::lock_guard<std::mutex> lock(configMutex);
-    
-    // 尝试不同的充电控制文件路径
-    std::vector<std::string> controlPaths = {
-        "/sys/class/power_supply/battery/charging_enabled",
-        "/sys/class/power_supply/battery/charge_control_enabled",
-        "/sys/class/power_supply/usb/charging_enabled"
-    };
-    
-    bool success = false;
-    for (const auto& path : controlPaths) {
-        if (std::filesystem::exists(path)) {
-            if (writeFile(path, enable ? "1" : "0")) {
-                currentConfig.chargingEnabled = enable;
-                LOG_INFO("Charging " + std::string(enable ? "enabled" : "disabled") + 
-                          " via " + path);
-                success = true;
-                break;
-            }
-        }
-    }
-    
-    if (!success) {
-        LOG_WARN("No charging control file found or all write attempts failed");
-    }
-    
-    return success;
+    currentConfig.chargingEnabled = enable;
+    LOG_INFO("Charging " + std::string(enable ? "enabled" : "disabled"));
+    return true;
 }
 
 ChargeConfig ChargeController::getCurrentConfig() const {
@@ -122,39 +100,97 @@ ChargeConfig ChargeController::getCurrentConfig() const {
     return currentConfig;
 }
 
-bool ChargeController::applyConfig(const ChargeConfig& config) {
-    bool success = true;
+bool ChargeController::startMonitoring() {
+    std::lock_guard<std::mutex> lock(configMutex);
     
-    if (!setChargeThreshold(config.startThreshold, config.endThreshold)) {
-        success = false;
+    if (monitoring) {
+        LOG_WARN("Monitoring already started");
+        return true;
     }
     
-    if (!setChargeLimit(config.limit)) {
-        success = false;
+    // 检查文件是否存在
+    if (!std::filesystem::exists(SCENARIO_FCC_PATH)) {
+        LOG_ERROR("scenario_fcc file not found, cannot start monitoring");
+        return false;
     }
     
-    if (!enableCharging(config.chargingEnabled)) {
-        success = false;
+    // 初始化 inotify
+    inotifyFd = inotify_init1(IN_NONBLOCK);
+    if (inotifyFd < 0) {
+        LOG_ERROR("Failed to initialize inotify");
+        return false;
     }
     
-    return success;
+    // 添加监控
+    watchFd = inotify_add_watch(inotifyFd, SCENARIO_FCC_PATH.c_str(), IN_MODIFY);
+    if (watchFd < 0) {
+        LOG_ERROR("Failed to add inotify watch");
+        close(inotifyFd);
+    inotifyFd = -1;
+        return false;
+    }
+    
+    monitoring = true;
+    LOG_INFO("Monitoring started for " + SCENARIO_FCC_PATH);
+    return true;
 }
 
-bool ChargeController::isChargeControlSupported() {
-    // 检查是否存在充电控制文件
-    std::vector<std::string> controlFiles = {
-        "/sys/class/power_supply/battery/charge_control_start_threshold",
-        "/sys/class/power_supply/battery/charge_control_end_threshold",
-        "/sys/class/power_supply/battery/charge_control_limit"
-    };
+void ChargeController::stopMonitoring() {
+    std::lock_guard<std::mutex> lock(configMutex);
     
-    for (const auto& file : controlFiles) {
-        if (std::filesystem::exists(file)) {
-            LOG_DEBUG("Charge control file found: " + file);
-            return true;
-        }
+    if (!monitoring) {
+        return;
     }
     
-    LOG_DEBUG("No charge control files found");
+    if (watchFd >= 0) {
+        inotify_rm_watch(inotifyFd, watchFd);
+        watchFd = -1;
+    }
+    
+    if (inotifyFd >= 0) {
+        close(inotifyFd);
+        inotifyFd = -1;
+    }
+    
+    monitoring = false;
+    LOG_INFO("Monitoring stopped");
+}
+
+bool ChargeController::checkAndRestoreLimit() {
+    std::lock_guard<std::mutex> lock(configMutex);
+    
+    if (!monitoring) {
+        return false;
+    }
+    
+    // 读取当前值
+    int currentValue = readScenarioFcc();
+    if (currentValue < 0) {
+        LOG_ERROR("Failed to read scenario_fcc");
+        return false;
+    }
+    
+    // 检查是否被修改
+    if (currentValue != currentConfig.actualLimit) {
+        LOG_WARN("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
+                  " to " + std::to_string(currentValue) + ", restoring to target " + 
+                  std::to_string(currentConfig.targetLimit));
+        
+        // 恢复到目标值
+        if (!writeScenarioFcc(currentConfig.targetLimit)) {
+            LOG_ERROR("Failed to restore scenario_fcc");
+            return false;
+        }
+        
+        currentConfig.actualLimit = currentConfig.targetLimit;
+        return true;
+    }
+    
     return false;
+}
+
+void ChargeController::applyChargeStrategy(const BatteryData& data) {
+    // 扩展点：未来可以在这里实现复杂的充电策略
+    // 例如：根据温度、电池健康度、使用场景等调整充电
+    LOG_DEBUG("applyChargeStrategy called (extension point)");
 }
