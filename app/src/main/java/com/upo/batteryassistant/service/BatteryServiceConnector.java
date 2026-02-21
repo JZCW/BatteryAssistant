@@ -97,12 +97,27 @@ public class BatteryServiceConnector {
             initialized.set(true);
         }
         
-        // 测试连接
-        boolean result = testConnection();
-        if (result) {
-            isConnected = true;
+        // 测试连接（带重试）
+        int maxRetries = 3;
+        for (int i = 0; i < maxRetries; i++) {
+            boolean result = testConnection();
+            if (result) {
+                isConnected = true;
+                return true;
+            }
+            
+            if (i < maxRetries - 1) {
+                Log.w(TAG, "Connection test failed, retrying... (" + (i + 1) + "/" + maxRetries + ")");
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return false;
+                }
+            }
         }
-        return result;
+        
+        return false;
     }
     
     /**
@@ -287,6 +302,20 @@ public class BatteryServiceConnector {
                     Log.e(TAG, "Error reading proxy error output", e);
                 }
             }).start();
+            
+            // 等待代理进程启动并检查是否存活
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+            
+            // 检查进程是否存活
+            if (!proxyProcess.isAlive()) {
+                Log.e(TAG, "Proxy process died immediately");
+                return false;
+            }
             
             Log.i(TAG, "Proxy client started successfully");
             return true;
