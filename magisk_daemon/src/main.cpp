@@ -14,13 +14,26 @@ void signalHandler(int signal) {
     running = 0;
 }
 
-int main() {
+int main(int argc, char* argv[]) {
     signal(SIGINT, signalHandler);
     signal(SIGTERM, signalHandler);
     
+    // 解析命令行参数
+    bool debugMode = false;
+    for (int i = 1; i < argc; i++) {
+        if (std::string(argv[i]) == "--debug") {
+            debugMode = true;
+            break;
+        }
+    }
+    
     // 初始化日志
     Logger::init("/data/local/tmp/battery_service.log");
+    Logger::setLevel(debugMode ? Logger::DEBUG : Logger::INFO);
     LOG_INFO("Battery Service Daemon starting...");
+    if (debugMode) {
+        LOG_INFO("Debug mode enabled");
+    }
     
     try {
         // 检查root权限
