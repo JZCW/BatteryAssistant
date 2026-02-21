@@ -78,7 +78,6 @@ void DataCollector::collectLoop() {
         }
 
         // 更新数据
-        LOG_DEBUG("Updating data -- loop");
         updateData();
 
         // 根据客户端状态、充电状态和缓存读取状态决定采集间隔
@@ -109,20 +108,16 @@ void DataCollector::updateData() {
     // 尝试获取锁，如果已被占用则直接返回（忽略重复调用）
     std::unique_lock<std::mutex> lock(updateMutex, std::defer_lock);
     if (!lock.try_lock()) {
-        LOG_DEBUG("updateData already in progress, skipping");
         return;
     }
-
     // 检查距离上次更新是否超过冷却时间（1秒）
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdateTime);
     if (elapsed < WRITE_COOLDOWN) { 
-        LOG_DEBUG("Skipping update due to cooldown");
         return; 
     }
 
     try {
-        LOG_DEBUG("Updating battery data");
         // 采集数据
         BatteryData data = readAllFiles();
         CacheManager::getInstance().updateBatteryData(data);
@@ -288,7 +283,6 @@ bool DataCollector::checkStatusChange(int fd) {
     ssize_t len = read(fd, buffer, sizeof(buffer));
     if (len > 0) {
         // 检测到变化，检查并恢复限制，同时重新采集完整数据
-        LOG_DEBUG("updateData called due to inotify change");
         updateData();
         return true;
     }
@@ -404,7 +398,7 @@ bool DataCollector::checkAndRestoreLimit(int currentValue) {
         needWrite = true;
         LOG_INFO("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
                   " to " + std::to_string(currentValue) + ", restoring to " + std::to_string(currentConfig.actualLimit));
-    } else if (isCharging) {
+    } else if (isCharging) { //TODO 当充电且电流大于预设值，强制写入
         needWrite = true;
     }
     

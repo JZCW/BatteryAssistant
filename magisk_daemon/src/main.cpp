@@ -111,14 +111,12 @@ int main() {
             // 处理场景监控 inotify 事件
             if (scenarioInotifyFd >= 0 && FD_ISSET(scenarioInotifyFd, &readfds)) {
                 // 检查场景变化并重新采集完整数据
-                LOG_DEBUG("Checking scenario change");
                 dataCollector.checkStatusChange(scenarioInotifyFd);
             }
             
             // 处理充电状态 inotify 事件
             if (statusInotifyFd >= 0 && FD_ISSET(statusInotifyFd, &readfds)) {
                 // 检查状态变化
-                LOG_DEBUG("Checking status change");
                 dataCollector.checkStatusChange(statusInotifyFd);
             }
             
