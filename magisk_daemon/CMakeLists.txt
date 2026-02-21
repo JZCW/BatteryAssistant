@@ -49,6 +49,8 @@ set(DEBUG_SOURCES
     src/main_debug.cpp
     src/data_collector.cpp
     src/cache_manager.cpp
+    src/socket_server.cpp
+    src/charge_controller.cpp
     src/logger.cpp
 )
 

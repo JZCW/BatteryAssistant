@@ -1,6 +1,7 @@
 #include "data_collector.h"
 #include "cache_manager.h"
 #include "logger.h"
+#include "charge_controller.h"
 #include <fstream>
 #include <filesystem>
 #include <thread>
@@ -65,6 +66,9 @@ void DataCollector::collectLoop() {
             
             // 更新充电状态
             updateChargingStatus();
+
+            // 检查并恢复充电限制（定期写入）
+            ChargeController::getInstance().checkAndRestoreLimit();
 
         } catch (const std::exception& e) {
             LOG_ERROR("Data collection error: " + std::string(e.what()));

@@ -7,10 +7,13 @@
 #include <unistd.h>
 
 const std::string ChargeController::SCENARIO_FCC_PATH = "/proc/charger/scenario_fcc";
+const std::chrono::milliseconds ChargeController::WRITE_COOLDOWN(1000);
 
 ChargeController ChargeController::instance;
 
-ChargeController::ChargeController() : inotifyFd(-1), watchFd(-1), monitoring(false) {}
+ChargeController::ChargeController() : inotifyFd(-1), watchFd(-1), monitoring(false), isSelfWrite(false) {
+    lastWriteTime = std::chrono::steady_clock::now();
+}
 
 ChargeController::~ChargeController() {
     stopMonitoring();
@@ -147,6 +150,20 @@ bool ChargeController::checkAndRestoreLimit() {
         return false;
     }
     
+    // 如果是自己写入导致的文件变化，清除标记并跳过
+    if (isSelfWrite) {
+        isSelfWrite = false;
+        return false;
+    }
+    
+    // 检查距离上次写入是否超过冷却时间（1秒）
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastWriteTime);
+    
+    if (elapsed < WRITE_COOLDOWN) {
+        return false;
+    }
+    
     // 读取当前值
     int currentValue = readScenarioFcc();
     if (currentValue < 0) {
@@ -154,19 +171,24 @@ bool ChargeController::checkAndRestoreLimit() {
         return false;
     }
     
-    // 检查是否被修改
+    // 强制写入目标值（即使当前值相同）
     if (currentValue != currentConfig.actualLimit) {
-        LOG_WARN("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
-                  " to " + std::to_string(currentValue) + ", restoring to target");
-        
-        // 恢复到目标值 //TODO 做一个标志，每次采集数据后都写
-        if (!writeScenarioFcc(currentConfig.actualLimit)) {
-            LOG_ERROR("Failed to restore scenario_fcc");
-            return false;
-        }
-
-        return true;
+        LOG_INFO("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
+                  " to " + std::to_string(currentValue) + ", restoring to " + std::to_string(currentConfig.actualLimit));
     }
     
-    return false;
+    // 设置自己写入标记
+    isSelfWrite = true;
+    
+    // 写入目标值
+    if (!writeScenarioFcc(currentConfig.actualLimit)) {
+        LOG_ERROR("Failed to write scenario_fcc");
+        isSelfWrite = false;
+        return false;
+    }
+    
+    // 更新写入时间
+    lastWriteTime = now;
+    
+    return true;
 }

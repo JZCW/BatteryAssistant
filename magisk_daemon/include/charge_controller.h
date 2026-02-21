@@ -4,6 +4,7 @@
 #include <string>
 #include <mutex>
 #include <sys/inotify.h>
+#include <chrono>
 #include "battery_data.h"
 
 struct ChargeConfig {
@@ -25,6 +26,11 @@ private:
     int watchFd;
     bool monitoring;
     static const std::string SCENARIO_FCC_PATH;
+    
+    // 写入控制
+    std::chrono::steady_clock::time_point lastWriteTime;
+    bool isSelfWrite;
+    static const std::chrono::milliseconds WRITE_COOLDOWN;
     
     ChargeController();
     ~ChargeController();
