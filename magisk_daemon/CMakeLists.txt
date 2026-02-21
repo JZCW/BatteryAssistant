@@ -40,19 +40,30 @@ set(SOURCES
     src/data_collector.cpp
     src/cache_manager.cpp
     src/socket_server.cpp
-    src/charge_controller.cpp
+    src/logger.cpp
+)
+
+# 调试版本源文件
+set(DEBUG_SOURCES
+    src/main_debug.cpp
+    src/data_collector.cpp
+    src/cache_manager.cpp
+    src/socket_server.cpp
     src/logger.cpp
 )
 
 # Socket代理源文件
 set(PROXY_SOURCES
-    src/socket_proxy_main.cpp
+    src/bridge.cpp
     src/socket_proxy.cpp
     src/logger.cpp
 )
 
 # 创建可执行文件
 add_executable(batteryAssistant ${SOURCES})
+
+# 创建调试版本可执行文件
+add_executable(batteryAssistant_debug ${DEBUG_SOURCES})
 
 # 创建socket代理可执行文件
 add_executable(batteryProxy ${PROXY_SOURCES})
@@ -65,12 +76,23 @@ target_link_libraries(batteryAssistant
 target_include_directories(batteryAssistant PRIVATE ${JSONCPP_INCLUDE_DIRS})
 target_compile_options(batteryAssistant PRIVATE ${JSONCPP_CFLAGS_OTHER})
 
+# 链接调试版本的库
+target_link_libraries(batteryAssistant_debug
+    dl
+    ${JSONCPP_LIBRARIES}
+)
+target_include_directories(batteryAssistant_debug PRIVATE ${JSONCPP_INCLUDE_DIRS})
+target_compile_options(batteryAssistant_debug PRIVATE ${JSONCPP_CFLAGS_OTHER})
+
 # 链接socket代理的库
 target_link_libraries(batteryProxy dl)
 target_include_directories(batteryProxy PRIVATE ${JSONCPP_INCLUDE_DIRS})
 
 # 安装规则
 install(TARGETS batteryAssistant
+    DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
+)
+install(TARGETS batteryAssistant_debug
     DESTINATION ${CMAKE_INSTALL_PREFIX}/bin
 )
 install(TARGETS batteryProxy
@@ -80,6 +102,7 @@ install(TARGETS batteryProxy
 # 设置编译器特定的选项
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     target_compile_options(batteryAssistant PRIVATE -Wno-unused-parameter)
+    target_compile_options(batteryAssistant_debug PRIVATE -Wno-unused-parameter)
 endif()
 
 # 添加自定义目标用于清理
@@ -89,4 +112,5 @@ add_custom_target(distclean
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/cmake_install.cmake
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/Makefile
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/batteryAssistant
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/batteryAssistant_debug
 )

@@ -1,6 +1,6 @@
 #include "socket_server.h"
 #include "cache_manager.h"
-#include "charge_controller.h"
+#include "data_collector.h"
 #include "logger.h"
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -270,25 +270,9 @@ std::string SocketServer::processControlCommand(const Json::Value& request) {
     response["data"] = Json::Value(Json::objectValue);
     
     try {
-        if (type == "set_charge_threshold") {
-            const Json::Value& config = request["config"];
-            int startThreshold = config["start_threshold"].asInt();
-            int endThreshold = config["end_threshold"].asInt();
-            
-            // 立即应用充电阈值
-            bool success = ChargeController::getInstance().setChargeThreshold(startThreshold, endThreshold);
-            response["success"] = success;
-            response["data"]["applied"] = success;
-            response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count());
-            
-            LOG_INFO("Charge threshold set: " + std::to_string(startThreshold) + 
-                      "-" + std::to_string(endThreshold) + " (success: " + 
-                      std::to_string(success) + ")");
-            
-        } else if (type == "set_charge_limit") {
+        if (type == "set_charge_limit") {
             int limit = request["limit"].asInt();
-            bool success = ChargeController::getInstance().setChargeLimit(limit);
+            bool success = DataCollector::getInstance().setChargeLimit(limit);
             response["success"] = success;
             response["data"]["applied"] = success;
             response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -296,17 +280,11 @@ std::string SocketServer::processControlCommand(const Json::Value& request) {
             
             LOG_INFO("Charge limit set: " + std::to_string(limit) + 
                       " (success: " + std::to_string(success) + ")");
-            
-        } else if (type == "enable_charging") {
-            bool enable = request["enable"].asBool();
-            bool success = ChargeController::getInstance().enableCharging(enable);
-            response["success"] = success;
-            response["data"]["applied"] = success;
-            response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count());
-            
-            LOG_INFO("Charging " + std::string(enable ? "enabled" : "disabled") + 
-                      " (success: " + std::to_string(success) + ")");
+        }
+        else {
+            response["success"] = false;
+            response["error"] = "Unknown command type";
+            LOG_ERROR("Unknown command type: " + type);
         }
         
     } catch (const std::exception& e) {

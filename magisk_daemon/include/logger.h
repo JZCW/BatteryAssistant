@@ -7,27 +7,34 @@
 #include <chrono>
 #include <iomanip>
 #include <sstream>
+#include <filesystem>
 
 class Logger {
+public:
+    enum Level { DEBUG, INFO, WARN, ERROR };
+
 private:
     static std::ofstream logFile;
     static std::mutex logMutex;
     static bool initialized;
-    
+    static Level currentLevel;
+    static const size_t MAX_LOG_SIZE = 10 * 1024 * 1024; // 10MB
+    static std::string logPath;
+
 public:
-    enum Level { DEBUG, INFO, WARN, ERROR };
-    
     static void init(const std::string& logPath);
+    static void setLevel(Level level);
     static void log(Level level, const std::string& message);
     static void debug(const std::string& message) { log(DEBUG, message); }
     static void info(const std::string& message) { log(INFO, message); }
     static void warn(const std::string& message) { log(WARN, message); }
     static void error(const std::string& message) { log(ERROR, message); }
-    
+
 private:
     static std::string getLevelString(Level level);
     static std::string getCurrentTimestamp();
     static void writeToFile(Level level, const std::string& message);
+    static void rotateLogFile();
 };
 
 // 便捷宏定义
