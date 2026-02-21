@@ -75,16 +75,16 @@ void DataCollector::collectLoop() {
         }
 
         // 根据客户端状态、充电状态和缓存读取状态决定采集间隔
-        static bool lastClientState = false;
+        static bool lastChargingState = false;
         static bool lastReadState = false;
         bool currentReadState = (hasActiveClients && consecutiveUnreadCount < MAX_UNREAD_COUNT);
 
         std::chrono::milliseconds interval = currentReadState ? ACTIVE_INTERVAL : (isCharging ? CHARGING_INTERVAL : DISCHARGING_INTERVAL);
-        if (lastClientState != hasActiveClients || lastReadState != currentReadState) {
+        if (lastChargingState != isCharging || lastReadState != currentReadState) {
             std::string intervalDesc = currentReadState ? "(active, data readed)" : (isCharging ? "(charging)" : "(discharging)");
             LOG_INFO("Collection interval changed to " + intervalDesc);
         }
-        lastClientState = hasActiveClients;
+        lastChargingState = isCharging;
         lastReadState = currentReadState;
 
         // 计算休眠时间
@@ -187,13 +187,14 @@ void DataCollector::updateChargingStatus() {
     std::string status;
     readFile(BATTERY_STATUS_PATH, status, DataType::STRING);
     if (status.empty()) {
+        isCharging = false;
         return;
     }
     
     bool newChargingState = status.length() < 11; // 这里用长度简单判断是不是 discharging
 
     if (newChargingState != isCharging) {
-        LOG_INFO("Charging status changed: " + std::string(isCharging ? "Charging" : "Discharging"));
+        LOG_INFO("Charging status changed: " + std::string(newChargingState ? "Charging" : "Discharging"));
     }
     isCharging = newChargingState;
 }
