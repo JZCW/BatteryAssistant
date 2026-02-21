@@ -51,6 +51,7 @@ struct BatteryData {
     
     Json::Value toJson() const {
         Json::Value json;
+        json["version"] = Json::Value::Int(1);
         json["timestamp"] = Json::Value::Int64(timestamp);
         json["capacity"] = Json::Value::Int(capacity);
         json["voltage_now"] = Json::Value::Int(voltage_now);
