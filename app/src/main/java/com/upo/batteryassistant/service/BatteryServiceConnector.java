@@ -231,7 +231,7 @@ public class BatteryServiceConnector {
         
         if (serverThread != null) {
             try {
-                serverThread.join(2000);
+                serverThread.join(CONNECT_TIMEOUT);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -321,7 +321,7 @@ public class BatteryServiceConnector {
         try {
             // 发送一个测试请求
             CompletableFuture<BatteryData> testResult = getBatteryStatus();
-            BatteryData result = testResult.get(5000, TimeUnit.MILLISECONDS);
+            BatteryData result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             
             if (result != null) {
                 isConnected = true;
@@ -362,7 +362,7 @@ public class BatteryServiceConnector {
         try {
             // 发送一个测试请求
             CompletableFuture<BatteryData> testResult = getBatteryStatus();
-            BatteryData result = testResult.get(5000, TimeUnit.MILLISECONDS);
+            BatteryData result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             
             if (result != null) {
                 diagnostics.append("Connection test PASSED\n");
@@ -490,36 +490,6 @@ public class BatteryServiceConnector {
     }
     
     /**
-     * 设置充电阈值
-     */
-    public CompletableFuture<Boolean> setChargeThreshold(int startThreshold, int endThreshold) {
-        try {
-            JSONObject request = new JSONObject();
-            request.put("type", "set_charge_threshold");
-            
-            JSONObject config = new JSONObject();
-            config.put("start_threshold", startThreshold);
-            config.put("end_threshold", endThreshold);
-            request.put("config", config);
-            
-            return sendRequestToProxy(request)
-                .thenApply(response -> {
-                    if (response != null && response.optBoolean("success")) {
-                        Log.i(TAG, "Charge threshold set successfully: " + startThreshold + "-" + endThreshold);
-                        return true;
-                    } else {
-                        Log.e(TAG, "Failed to set charge threshold: " +
-                            (response != null ? response.optString("error", "unknown") : "null response"));
-                        return false;
-                    }
-                });
-        } catch (JSONException e) {
-            Log.e(TAG, "Failed to create request", e);
-            return CompletableFuture.completedFuture(false);
-        }
-    }
-    
-    /**
      * 设置充电限制
      */
     public CompletableFuture<Boolean> setChargeLimit(int limit) {
@@ -546,39 +516,13 @@ public class BatteryServiceConnector {
     }
     
     /**
-     * 启用/禁用充电
-     */
-    public CompletableFuture<Boolean> enableCharging(boolean enable) {
-        try {
-            JSONObject request = new JSONObject();
-            request.put("type", "enable_charging");
-            request.put("enable", enable);
-            
-            return sendRequestToProxy(request)
-                .thenApply(response -> {
-                    if (response != null && response.optBoolean("success")) {
-                        Log.i(TAG, "Charging " + (enable ? "enabled" : "disabled") + " successfully");
-                        return true;
-                    } else {
-                        Log.e(TAG, "Failed to " + (enable ? "enable" : "disable") + " charging: " +
-                            (response != null ? response.optString("error", "unknown") : "null response"));
-                        return false;
-                    }
-                });
-        } catch (JSONException e) {
-            Log.e(TAG, "Failed to create request", e);
-            return CompletableFuture.completedFuture(false);
-        }
-    }
-    
-    /**
      * 清理资源
      */
     public void cleanup() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdown();
             try {
-                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                if (!executorService.awaitTermination(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS)) {
                     executorService.shutdownNow();
                 }
             } catch (InterruptedException e) {

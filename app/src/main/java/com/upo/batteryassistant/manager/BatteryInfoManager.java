@@ -208,7 +208,7 @@ public class BatteryInfoManager {
             if (serviceConnector.connect()) {
                 android.util.Log.d("BatteryInfoManager", "Connected to Magic Service successfully, requesting battery status...");
                 
-                BatteryData data = serviceConnector.getBatteryStatus().get(5, TimeUnit.SECONDS);
+                BatteryData data = serviceConnector.getBatteryStatus().get(2, TimeUnit.SECONDS);
                 if (data != null) {
                     android.util.Log.d("BatteryInfoManager", "Received battery data from Magic Service");
                     // 填充高级电池信息
@@ -261,24 +261,10 @@ public class BatteryInfoManager {
     }
     
     /**
-     * 设置充电阈值
-     */
-    public CompletableFuture<Boolean> setChargeThreshold(int startThreshold, int endThreshold) {
-        return serviceConnector.setChargeThreshold(startThreshold, endThreshold);
-    }
-    
-    /**
      * 设置充电限制
      */
     public CompletableFuture<Boolean> setChargeLimit(int limit) {
         return serviceConnector.setChargeLimit(limit);
-    }
-    
-    /**
-     * 启用/禁用充电
-     */
-    public CompletableFuture<Boolean> enableCharging(boolean enable) {
-        return serviceConnector.enableCharging(enable);
     }
     
     /**
