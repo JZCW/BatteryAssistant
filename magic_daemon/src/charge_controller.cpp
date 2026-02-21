@@ -65,39 +65,23 @@ bool ChargeController::writeScenarioFcc(int value) {
 
 bool ChargeController::setChargeLimit(int limit) {
     std::lock_guard<std::mutex> lock(configMutex);
-    
-    // 检查文件是否存在
-    if (!std::filesystem::exists(SCENARIO_FCC_PATH)) {
-        LOG_ERROR("scenario_fcc file not found: " + SCENARIO_FCC_PATH);
-        return false;
-    }
-    
+
     // 设置目标值
     currentConfig.targetLimit = limit;
-    
+
+    // 设置实际值 //TODO 增加计算逻辑
+    currentConfig.actualLimit = limit;
+
+    LOG_INFO("Charge limit set: target=" + std::to_string(currentConfig.targetLimit) + 
+              ", actual=" + std::to_string(currentConfig.actualLimit));
+
     // 写入实际值
-    if (!writeScenarioFcc(limit)) {
-        LOG_ERROR("Failed to set charge limit to " + std::to_string(limit));
+    if (!writeScenarioFcc(currentConfig.actualLimit)) {
+        LOG_ERROR("Failed to set charge limit to " + std::to_string(currentConfig.actualLimit));
         return false;
     }
-    
-    currentConfig.actualLimit = limit;
-    
-    LOG_INFO("Charge limit set: target=" + std::to_string(limit) + 
-              ", actual=" + std::to_string(limit));
-    return true;
-}
 
-bool ChargeController::enableCharging(bool enable) {
-    std::lock_guard<std::mutex> lock(configMutex);
-    currentConfig.chargingEnabled = enable;
-    LOG_INFO("Charging " + std::string(enable ? "enabled" : "disabled"));
     return true;
-}
-
-ChargeConfig ChargeController::getCurrentConfig() const {
-    std::lock_guard<std::mutex> lock(configMutex);
-    return currentConfig;
 }
 
 bool ChargeController::startMonitoring() {
@@ -126,7 +110,7 @@ bool ChargeController::startMonitoring() {
     if (watchFd < 0) {
         LOG_ERROR("Failed to add inotify watch");
         close(inotifyFd);
-    inotifyFd = -1;
+        inotifyFd = -1;
         return false;
     }
     
@@ -173,24 +157,16 @@ bool ChargeController::checkAndRestoreLimit() {
     // 检查是否被修改
     if (currentValue != currentConfig.actualLimit) {
         LOG_WARN("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
-                  " to " + std::to_string(currentValue) + ", restoring to target " + 
-                  std::to_string(currentConfig.targetLimit));
+                  " to " + std::to_string(currentValue) + ", restoring to target");
         
-        // 恢复到目标值
-        if (!writeScenarioFcc(currentConfig.targetLimit)) {
+        // 恢复到目标值 //TODO 做一个标志，每次采集数据后都写
+        if (!writeScenarioFcc(currentConfig.actualLimit)) {
             LOG_ERROR("Failed to restore scenario_fcc");
             return false;
         }
-        
-        currentConfig.actualLimit = currentConfig.targetLimit;
+
         return true;
     }
     
     return false;
-}
-
-void ChargeController::applyChargeStrategy(const BatteryData& data) {
-    // 扩展点：未来可以在这里实现复杂的充电策略
-    // 例如：根据温度、电池健康度、使用场景等调整充电
-    LOG_DEBUG("applyChargeStrategy called (extension point)");
 }

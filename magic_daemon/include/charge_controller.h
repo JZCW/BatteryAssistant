@@ -40,18 +40,12 @@ public:
     }
     
     bool setChargeLimit(int limit);
-    bool enableCharging(bool enable);
-    
-    ChargeConfig getCurrentConfig() const;
-    
+   
     // 监控相关
     bool startMonitoring();
     void stopMonitoring();
     bool checkAndRestoreLimit();
     int getInotifyFd() const { return inotifyFd; }
-    
-    // 扩展点：应用充电策略
-    virtual void applyChargeStrategy(const BatteryData& data);
 };
 
 #endif // CHARGE_CONTROLLER_H

@@ -20,11 +20,7 @@ public:
     }
     
     void updateBatteryData(const BatteryData& newData);
-    BatteryData getBatteryData() const;
-    long getTimestamp() const;
-    bool isEmpty() const;
-    
-    void markDataRead();
+    BatteryData getBatteryData(bool markRead = true) const;
     bool wasDataRead() const;
 };
 

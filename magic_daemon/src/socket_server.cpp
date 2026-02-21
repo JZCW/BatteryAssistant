@@ -270,14 +270,7 @@ std::string SocketServer::processControlCommand(const Json::Value& request) {
     response["data"] = Json::Value(Json::objectValue);
     
     try {
-        if (type == "set_charge_threshold") {
-            // 已废弃：使用 set_charge_limit 代替
-            LOG_WARN("set_charge_threshold is deprecated, use set_charge_limit instead");
-            response["success"] = false;
-            response["data"]["applied"] = false;
-            response["data"]["error"] = "set_charge_threshold is deprecated, use set_charge_limit instead";
-            
-        } else if (type == "set_charge_limit") {
+        if (type == "set_charge_limit") {
             int limit = request["limit"].asInt();
             bool success = ChargeController::getInstance().setChargeLimit(limit);
             response["success"] = success;
@@ -287,17 +280,11 @@ std::string SocketServer::processControlCommand(const Json::Value& request) {
             
             LOG_INFO("Charge limit set: " + std::to_string(limit) + 
                       " (success: " + std::to_string(success) + ")");
-            
-        } else if (type == "enable_charging") {
-            bool enable = request["enable"].asBool();
-            bool success = ChargeController::getInstance().enableCharging(enable);
-            response["success"] = success;
-            response["data"]["applied"] = success;
-            response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count());
-            
-            LOG_INFO("Charging " + std::string(enable ? "enabled" : "disabled") + 
-                      " (success: " + std::to_string(success) + ")");
+        }
+        else {
+            response["success"] = false;
+            response["error"] = "Unknown command type";
+            LOG_ERROR("Unknown command type: " + type);
         }
         
     } catch (const std::exception& e) {

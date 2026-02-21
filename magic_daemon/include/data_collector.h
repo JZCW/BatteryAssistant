@@ -47,7 +47,6 @@ private:
     template<typename T>
     void readFile(const std::string& path, T& target, DataType type);
     long getCurrentTimestamp();
-    std::string readBatteryStatus();
     void updateChargingStatus();
     
 public:

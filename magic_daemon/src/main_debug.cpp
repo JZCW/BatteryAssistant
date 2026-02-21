@@ -84,7 +84,7 @@ int main() {
             sleep(2);
             
             // 从缓存获取最新数据
-            BatteryData data = CacheManager::getInstance().getBatteryData();
+            BatteryData data = CacheManager::getInstance().getBatteryData(false); // 不标记为已读
             
             printBatteryData(data);
         }

@@ -28,7 +28,7 @@ void DataCollector::stop() {
     if (!running) return;
     
     running = false;
-    if (collectorThread.joinable()) {
+    if (collectorThread.joinable()) {  //TODO sleep期间可退出
         collectorThread.join();
     }
     LOG_INFO("DataCollector stopped");
@@ -56,7 +56,7 @@ void DataCollector::collectLoop() {
             // 更新充电状态
             updateChargingStatus();
             
-            // 检查缓存是否被读取
+            // 检查缓存是否被读取 //FIXME 刚更新完就查？
             bool wasRead = CacheManager::getInstance().wasDataRead();
             if (wasRead) {
                 consecutiveUnreadCount = 0;
@@ -199,35 +199,19 @@ long DataCollector::getCurrentTimestamp() {
         std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-std::string DataCollector::readBatteryStatus() {
-    std::ifstream file(BATTERY_STATUS_PATH);
-    if (!file.is_open()) {
-        return "";
-    }
-    
-    std::string content;
-    std::getline(file, content);
-    file.close();
-    
-    // 去除空白字符
-    content.erase(0, content.find_first_not_of(" \t\n\r"));
-    content.erase(content.find_last_not_of(" \t\n\r") + 1);
-    
-    return content;
-}
-
 void DataCollector::updateChargingStatus() {
-    std::string status = readBatteryStatus();
+    std::string status;
+    readFile(BATTERY_STATUS_PATH, status, DataType::STRING);
     if (status.empty()) {
         return;
     }
     
-    bool newChargingState = (status == "Charging" || status == "Full");
-    
+    bool newChargingState = status.length() < 11; // 这里用长度简单判断是不是 discharging
+
     if (newChargingState != isCharging) {
-        isCharging = newChargingState;
         LOG_INFO("Charging status changed: " + std::string(isCharging ? "Charging" : "Discharging"));
     }
+    isCharging = newChargingState;
 }
 
 bool DataCollector::startStatusMonitoring() {

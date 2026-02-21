@@ -36,7 +36,8 @@ int main() {
         
         // 启动充电控制监控
         if (!chargeController.startMonitoring()) {
-            LOG_WARN("Failed to start charge control monitoring, continuing without it");
+            LOG_ERROR("Failed to start charge control monitoring");
+            return 1;
         }
         
         // 启动数据采集器
@@ -45,7 +46,8 @@ int main() {
         
         // 启动充电状态监控
         if (!dataCollector.startStatusMonitoring()) {
-            LOG_WARN("Failed to start status monitoring, continuing without it");
+            LOG_ERROR("Failed to start status monitoring");
+            return 1;
         }
         
         // 启动Socket服务器
