@@ -22,8 +22,9 @@ private:
     std::thread collectorThread;
     
     // 采集间隔
-    const std::chrono::milliseconds ACTIVE_INTERVAL{1000};   // 有客户端时1秒
-    const std::chrono::milliseconds CHARGING_INTERVAL{1000}; // 充电时1秒
+    const std::chrono::milliseconds ACTIVE_INTERVAL{1000};     // 有客户端且数据被读取时1秒
+    const std::chrono::milliseconds ACTIVE_IDLE_INTERVAL{5000}; // 有客户端但数据未读取时5秒
+    const std::chrono::milliseconds CHARGING_INTERVAL{1000};  // 充电时1秒
     const std::chrono::milliseconds DISCHARGING_INTERVAL{5000}; // 放电时5秒
     
     // 充电状态监控
@@ -31,6 +32,10 @@ private:
     int statusWatchFd{-1};
     bool isCharging{true};
     static const std::string BATTERY_STATUS_PATH;
+    
+    // 缓存读取状态
+    int consecutiveUnreadCount{0};
+    static const int MAX_UNREAD_COUNT{3}; // 连续3次未读取后降低频率
     
     // 文件路径列表
     std::vector<std::string> batteryFiles;

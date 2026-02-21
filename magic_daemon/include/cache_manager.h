@@ -10,6 +10,7 @@ private:
     static CacheManager instance;
     BatteryData currentData;
     mutable std::mutex dataMutex;
+    mutable std::atomic<bool> dataReadSinceLastUpdate{false};
     
     CacheManager() = default;
     
@@ -22,6 +23,9 @@ public:
     BatteryData getBatteryData() const;
     long getTimestamp() const;
     bool isEmpty() const;
+    
+    void markDataRead();
+    bool wasDataRead() const;
 };
 
 #endif // CACHE_MANAGER_H

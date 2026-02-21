@@ -56,20 +56,55 @@ void DataCollector::collectLoop() {
             // 更新充电状态
             updateChargingStatus();
             
+            // 检查缓存是否被读取
+            bool wasRead = CacheManager::getInstance().wasDataRead();
+            if (wasRead) {
+                consecutiveUnreadCount = 0;
+            } else {
+                consecutiveUnreadCount++;
+            }
+            
             // 记录采集间隔变化
             static bool lastClientState = false;
-            if (lastClientState != hasActiveClients) {
-                LOG_INFO("Collection interval changed to " + 
-                         std::string(hasActiveClients ? "1s" : (isCharging ? "1s (charging)" : "5s (discharging)")));
+            static bool lastReadState = false;
+            bool currentReadState = (hasActiveClients && consecutiveUnreadCount < MAX_UNREAD_COUNT);
+            
+            if (lastClientState != hasActiveClients || lastReadState != currentReadState) {
+                std::string intervalDesc;
+                if (hasActiveClients) {
+                    if (consecutiveUnreadCount < MAX_UNREAD_COUNT) {
+                        intervalDesc = "1s (active, data read)";
+                    } else {
+                        intervalDesc = "5s (active, data unread)";
+                    }
+                } else {
+                    intervalDesc = isCharging ? "1s (charging)" : "5s (discharging)";
+                }
+                LOG_INFO("Collection interval changed to " + intervalDesc);
                 lastClientState = hasActiveClients;
+                lastReadState = currentReadState;
             }
             
         } catch (const std::exception& e) {
             LOG_ERROR("Data collection error: " + std::string(e.what()));
         }
         
-        // 根据客户端状态和充电状态决定采集间隔
-        auto interval = hasActiveClients ? ACTIVE_INTERVAL : (isCharging ? CHARGING_INTERVAL : DISCHARGING_INTERVAL);
+        // 根据客户端状态、充电状态和缓存读取状态决定采集间隔
+        std::chrono::milliseconds interval;
+        if (hasActiveClients) {
+            // 有客户端连接
+            if (consecutiveUnreadCount < MAX_UNREAD_COUNT) {
+                // 数据被读取过，保持高频率
+                interval = ACTIVE_INTERVAL;
+            } else {
+                // 连续多次未读取，降低频率
+                interval = ACTIVE_IDLE_INTERVAL;
+            }
+        } else {
+            // 无客户端连接
+            interval = isCharging ? CHARGING_INTERVAL : DISCHARGING_INTERVAL;
+        }
+        
         auto elapsed = std::chrono::steady_clock::now() - startTime;
         auto sleepTime = interval - elapsed;
         
