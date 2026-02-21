@@ -22,10 +22,9 @@ private:
     std::thread collectorThread;
     
     // 采集间隔
-    const std::chrono::milliseconds ACTIVE_INTERVAL{1000};     // 有客户端且数据被读取时1秒
-    const std::chrono::milliseconds ACTIVE_IDLE_INTERVAL{5000}; // 有客户端但数据未读取时5秒
-    const std::chrono::milliseconds CHARGING_INTERVAL{1000};  // 充电时1秒
-    const std::chrono::milliseconds DISCHARGING_INTERVAL{5000}; // 放电时5秒
+    const std::chrono::milliseconds ACTIVE_INTERVAL{2000};     // 有客户端且数据被读取时2秒
+    const std::chrono::milliseconds CHARGING_INTERVAL{5000};  // 充电时5秒
+    const std::chrono::milliseconds DISCHARGING_INTERVAL{20000}; // 放电时20秒
     
     // 充电状态监控
     int statusInotifyFd{-1};
