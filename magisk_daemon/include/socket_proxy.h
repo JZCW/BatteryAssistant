@@ -4,6 +4,7 @@
 #include <string>
 #include <thread>
 #include <atomic>
+#include <vector>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -30,6 +31,8 @@ private:
     void runProxy();
     bool connectToDaemon();          // 连接到Daemon
     bool connectToApp();              // 连接到App
+    bool readMessage(int fd, std::vector<char>& buffer);  // 读取完整消息（4字节长度+数据）
+    bool writeMessage(int fd, const std::vector<char>& buffer);  // 写入完整消息（4字节长度+数据）
     
 public:
     SocketProxy(const std::string& appSocketName, const std::string& daemonSocketName);
