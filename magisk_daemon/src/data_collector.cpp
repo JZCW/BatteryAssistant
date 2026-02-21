@@ -8,32 +8,45 @@
 #include <type_traits>
 #include <unistd.h>
 
-const std::string DataCollector::BATTERY_STATUS_PATH = "/sys/class/power_supply/battery/status";
-const std::string DataCollector::SCENARIO_FCC_PATH = "/proc/charger/scenario_fcc";
-const std::chrono::milliseconds DataCollector::WRITE_COOLDOWN(1000);
-
 DataCollector DataCollector::instance;
 
-DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), scenarioInotifyFd(-1), scenarioWatchFd(-1), isCharging(true), scenarioMonitoring(false), isSelfWrite(false) {
-    lastWriteTime = std::chrono::steady_clock::now();
+DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true), scenarioInotifyFd(-1), scenarioWatchFd(-1), scenarioMonitoring(false), isSelfWrite(false) {
+    lastUpdateTime = std::chrono::steady_clock::now();
 }
 
 DataCollector::~DataCollector() {
     stop();
 }
 
-void DataCollector::start() {
-    if (running) return;
-    
+bool DataCollector::start() {
+    if (running) return true;
     running = true;
+
+    // 启动充电控制监控
+    if (!startScenarioMonitoring()) {
+        LOG_ERROR("Failed to start scenario monitoring");
+        return false;
+    }
+    
+    // 启动充电状态监控
+    if (!startStatusMonitoring()) {
+        LOG_ERROR("Failed to start status monitoring");
+        return false;
+    }
+
     collectorThread = std::thread(&DataCollector::collectLoop, this);
+
     LOG_INFO("DataCollector started");
+    return true;
 }
 
 void DataCollector::stop() {
     if (!running) return;
-    
     running = false;
+
+    stopStatusMonitoring();
+    stopScenarioMonitoring();
+
     cv.notify_one();
     
     if (collectorThread.joinable()) {
@@ -56,28 +69,20 @@ void DataCollector::collectLoop() {
     while (running) {
         auto startTime = std::chrono::steady_clock::now();
         
-        try {
-            // 检查缓存是否被读取
-            bool wasRead = CacheManager::getInstance().wasDataRead();
-            if (wasRead) {
-                consecutiveUnreadCount = 0;
-            } else {
-                consecutiveUnreadCount++;
-            }
-
-            // 采集数据
-            BatteryData data = readAllFiles();
-            CacheManager::getInstance().updateBatteryData(data);
-            
-            // 更新充电状态
-            updateChargingStatus();
-
-            // 检查并恢复充电限制（定期写入）
-            checkAndRestoreLimit();
-
-        } catch (const std::exception& e) {
-            LOG_ERROR("Data collection error: " + std::string(e.what()));
+        // 检查缓存是否被读取
+        bool wasRead = CacheManager::getInstance().wasDataRead();
+        if (wasRead) {
+            consecutiveUnreadCount = 0;
+        } else {
+            consecutiveUnreadCount++;
         }
+
+        // 更新数据
+        if (!isInotifyChange) {
+            LOG_DEBUG("Updating data -- loop");
+            updateData();
+        }
+        isInotifyChange = false;
 
         // 根据客户端状态、充电状态和缓存读取状态决定采集间隔
         static bool lastChargingState = false;
@@ -101,6 +106,36 @@ void DataCollector::collectLoop() {
             cv.wait_for(lock, sleepTime, [this] { return !running; });
         }
     }
+}
+
+void DataCollector::updateData() {
+    // 如果是自己写入导致的文件变化，清除标记并跳过
+    if (isSelfWrite) {
+        isSelfWrite = false;
+        return;
+    }
+
+    // 检查距离上次更新是否超过冷却时间（1秒）
+    auto now = std::chrono::steady_clock::now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdateTime);
+    if (elapsed < WRITE_COOLDOWN) { return; }
+
+    try {
+        LOG_DEBUG("Updating battery data");
+        // 采集数据
+        BatteryData data = readAllFiles();
+        CacheManager::getInstance().updateBatteryData(data);
+        // 更新充电状态
+        updateChargingStatus(data.status_str);
+        //TODO 计算新的目标值
+        // 检查并恢复充电限制（定期写入）
+        checkAndRestoreLimit(data.scenario_fcc);
+    } catch (const std::exception& e) {
+        LOG_ERROR("Data collection error: " + std::string(e.what()));
+    }
+
+    // 更新时间
+    lastUpdateTime = now;
 }
 
 BatteryData DataCollector::readAllFiles() {
@@ -188,9 +223,7 @@ long DataCollector::getCurrentTimestamp() {
         std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
-void DataCollector::updateChargingStatus() {
-    std::string status;
-    readFile(BATTERY_STATUS_PATH, status, DataType::STRING);
+void DataCollector::updateChargingStatus(const std::string& status) {
     if (status.empty()) {
         isCharging = false;
         return;
@@ -210,12 +243,6 @@ bool DataCollector::startStatusMonitoring() {
         return true;
     }
     
-    // 检查文件是否存在
-    if (!std::filesystem::exists(BATTERY_STATUS_PATH)) {
-        LOG_ERROR("Battery status file not found: " + BATTERY_STATUS_PATH);
-        return false;
-    }
-    
     // 初始化 inotify
     statusInotifyFd = inotify_init1(IN_NONBLOCK);
     if (statusInotifyFd < 0) {
@@ -231,9 +258,6 @@ bool DataCollector::startStatusMonitoring() {
         statusInotifyFd = -1;
         return false;
     }
-    
-    // 初始读取状态
-    updateChargingStatus();
     
     LOG_INFO("Status monitoring started for " + BATTERY_STATUS_PATH);
     return true;
@@ -253,17 +277,19 @@ void DataCollector::stopStatusMonitoring() {
     LOG_INFO("Status monitoring stopped");
 }
 
-bool DataCollector::checkStatusChange() {
-    if (statusInotifyFd < 0) {
+bool DataCollector::checkStatusChange(int fd) {
+    if (fd < 0) {
         return false;
     }
     
     // 读取并清空 inotify 事件队列
     char buffer[1024];
-    ssize_t len = read(statusInotifyFd, buffer, sizeof(buffer));
+    ssize_t len = read(fd, buffer, sizeof(buffer));
     if (len > 0) {
-        // 检测到变化，更新充电状态
-        updateChargingStatus();
+        isInotifyChange = true;
+        // 检测到变化，检查并恢复限制，同时重新采集完整数据
+        LOG_DEBUG("updateData called due to inotify change");
+        updateData();
         return true;
     }
     
@@ -282,35 +308,6 @@ bool DataCollector::writeFile(const std::string& path, const std::string& conten
     
     LOG_DEBUG("Written to " + path + ": " + content);
     return true;
-}
-
-std::string DataCollector::readFile(const std::string& path) {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        return "";
-    }
-    
-    std::string content;
-    std::getline(file, content);
-    file.close();
-    
-    // 去除空白字符
-    content.erase(0, content.find_first_not_of(" \t\n\r"));
-    content.erase(content.find_last_not_of(" \t\n\r") + 1);
-    
-    return content;
-}
-
-int DataCollector::readScenarioFcc() {
-    std::string content = readFile(SCENARIO_FCC_PATH);
-    if (content.empty()) {
-        return -1;
-    }
-    try {
-        return std::stoi(content);
-    } catch (...) {
-        return -1;
-    }
 }
 
 bool DataCollector::writeScenarioFcc(int value) {
@@ -344,12 +341,6 @@ bool DataCollector::startScenarioMonitoring() {
     if (scenarioMonitoring) {
         LOG_WARN("Scenario monitoring already started");
         return true;
-    }
-    
-    // 检查文件是否存在
-    if (!std::filesystem::exists(SCENARIO_FCC_PATH)) {
-        LOG_ERROR("scenario_fcc file not found, cannot start monitoring");
-        return false;
     }
     
     // 初始化 inotify
@@ -394,29 +385,14 @@ void DataCollector::stopScenarioMonitoring() {
     LOG_INFO("Scenario monitoring stopped");
 }
 
-bool DataCollector::checkAndRestoreLimit() {
+bool DataCollector::checkAndRestoreLimit(int currentValue) {
     std::lock_guard<std::mutex> lock(configMutex);
     
     if (!scenarioMonitoring) {
         return false;
     }
     
-    // 如果是自己写入导致的文件变化，清除标记并跳过
-    if (isSelfWrite) {
-        isSelfWrite = false;
-        return false;
-    }
-    
-    // 检查距离上次写入是否超过冷却时间（1秒）
-    auto now = std::chrono::steady_clock::now();
-    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastWriteTime);
-    
-    if (elapsed < WRITE_COOLDOWN) {
-        return false;
-    }
-    
     // 读取当前值
-    int currentValue = readScenarioFcc();
     if (currentValue < 0) {
         LOG_ERROR("Failed to read scenario_fcc");
         return false;
@@ -442,32 +418,7 @@ bool DataCollector::checkAndRestoreLimit() {
             isSelfWrite = false;
             return false;
         }
-        
-        // 更新写入时间
-        lastWriteTime = now;
     }
     
     return true;
-}
-
-bool DataCollector::checkScenarioChange() {
-    if (scenarioInotifyFd < 0) {
-        return false;
-    }
-    
-    // 读取并清空 inotify 事件队列
-    char buffer[1024];
-    ssize_t len = read(scenarioInotifyFd, buffer, sizeof(buffer));
-    if (len > 0) {
-        // 检测到变化，检查并恢复限制，同时重新采集完整数据
-        checkAndRestoreLimit();
-        
-        // 重新采集完整数据并更新缓存
-        BatteryData data = readAllFiles();
-        CacheManager::getInstance().updateBatteryData(data);
-        
-        return true;
-    }
-    
-    return false;
 }

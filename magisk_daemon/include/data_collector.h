@@ -46,11 +46,11 @@ private:
     int statusInotifyFd{-1};
     int statusWatchFd{-1};
     bool isCharging{true};
-    static const std::string BATTERY_STATUS_PATH;
+    const std::string BATTERY_STATUS_PATH = "/sys/class/power_supply/battery/status";
     
     // 缓存读取状态
     int consecutiveUnreadCount{0};
-    static const int MAX_UNREAD_COUNT{3};
+    const int MAX_UNREAD_COUNT{3};
     
     // 充电控制相关
     ChargeConfig currentConfig;
@@ -58,10 +58,11 @@ private:
     int scenarioInotifyFd{-1};
     int scenarioWatchFd{-1};
     bool scenarioMonitoring{false};
-    static const std::string SCENARIO_FCC_PATH;
-    static const std::chrono::milliseconds WRITE_COOLDOWN;
-    std::chrono::steady_clock::time_point lastWriteTime;
+    const std::string SCENARIO_FCC_PATH = "/proc/charger/scenario_fcc";
+    const std::chrono::milliseconds WRITE_COOLDOWN{1000};
+    std::chrono::steady_clock::time_point lastUpdateTime;
     bool isSelfWrite{false};
+    bool isInotifyChange{false};
     
     // 文件路径列表
     std::vector<std::string> batteryFiles;
@@ -70,24 +71,28 @@ private:
     
     void collectLoop();
     BatteryData readAllFiles();
+    void updateData();
     template<typename T>
     void readFile(const std::string& path, T& target, DataType type);
     long getCurrentTimestamp();
-    void updateChargingStatus();
+    void updateChargingStatus(const std::string& status);
     
     // 充电控制私有方法
     bool writeFile(const std::string& path, const std::string& content);
-    std::string readFile(const std::string& path);
-    int readScenarioFcc();
     bool writeScenarioFcc(int value);
-    bool checkAndRestoreLimit();
+    bool checkAndRestoreLimit(int currentValue);
+
+    bool startStatusMonitoring();
+    bool startScenarioMonitoring();
+    void stopStatusMonitoring();
+    void stopScenarioMonitoring();
     
 public:
     static DataCollector& getInstance() {
         return instance;
     }
     
-    void start();
+    bool start();
     void stop();
     
     void onClientConnected();
@@ -97,16 +102,11 @@ public:
     bool hasClients() const { return hasActiveClients; }
     
     // 充电状态监控
-    bool startStatusMonitoring();
-    void stopStatusMonitoring();
-    bool checkStatusChange();
+    bool checkStatusChange(int fd);
     int getStatusInotifyFd() const { return statusInotifyFd; }
     
     // 充电控制公共方法
     bool setChargeLimit(int limit);
-    bool startScenarioMonitoring();
-    void stopScenarioMonitoring();
-    bool checkScenarioChange();
     int getScenarioInotifyFd() const { return scenarioInotifyFd; }
 };
 

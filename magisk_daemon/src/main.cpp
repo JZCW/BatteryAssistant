@@ -34,17 +34,8 @@ int main() {
         
         // 启动数据采集器
         DataCollector& dataCollector = DataCollector::getInstance();
-        dataCollector.start();
-        
-        // 启动充电控制监控
-        if (!dataCollector.startScenarioMonitoring()) {
-            LOG_ERROR("Failed to start scenario monitoring");
-            return 1;
-        }
-        
-        // 启动充电状态监控
-        if (!dataCollector.startStatusMonitoring()) {
-            LOG_ERROR("Failed to start status monitoring");
+        if (!dataCollector.start()) {
+            LOG_ERROR("Failed to start data collector");
             return 1;
         }
         
@@ -120,13 +111,15 @@ int main() {
             // 处理场景监控 inotify 事件
             if (scenarioInotifyFd >= 0 && FD_ISSET(scenarioInotifyFd, &readfds)) {
                 // 检查场景变化并重新采集完整数据
-                dataCollector.checkScenarioChange();
+                LOG_DEBUG("Checking scenario change");
+                dataCollector.checkStatusChange(scenarioInotifyFd);
             }
             
             // 处理充电状态 inotify 事件
             if (statusInotifyFd >= 0 && FD_ISSET(statusInotifyFd, &readfds)) {
                 // 检查状态变化
-                dataCollector.checkStatusChange();
+                LOG_DEBUG("Checking status change");
+                dataCollector.checkStatusChange(statusInotifyFd);
             }
             
             loopCount++;
