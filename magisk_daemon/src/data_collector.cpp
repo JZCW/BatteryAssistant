@@ -10,7 +10,7 @@
 
 DataCollector DataCollector::instance;
 
-DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true), scenarioInotifyFd(-1), scenarioWatchFd(-1), scenarioMonitoring(false), isSelfWrite(false) {
+DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true), scenarioInotifyFd(-1), scenarioWatchFd(-1), scenarioMonitoring(false) {
     lastUpdateTime = std::chrono::steady_clock::now();
 }
 
@@ -78,11 +78,8 @@ void DataCollector::collectLoop() {
         }
 
         // 更新数据
-        if (!isInotifyChange) {
-            LOG_DEBUG("Updating data -- loop");
-            updateData();
-        }
-        isInotifyChange = false;
+        LOG_DEBUG("Updating data -- loop");
+        updateData();
 
         // 根据客户端状态、充电状态和缓存读取状态决定采集间隔
         static bool lastChargingState = false;
@@ -109,16 +106,20 @@ void DataCollector::collectLoop() {
 }
 
 void DataCollector::updateData() {
-    // 如果是自己写入导致的文件变化，清除标记并跳过
-    if (isSelfWrite) {
-        isSelfWrite = false;
+    // 尝试获取锁，如果已被占用则直接返回（忽略重复调用）
+    std::unique_lock<std::mutex> lock(updateMutex, std::defer_lock);
+    if (!lock.try_lock()) {
+        LOG_DEBUG("updateData already in progress, skipping");
         return;
     }
 
     // 检查距离上次更新是否超过冷却时间（1秒）
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdateTime);
-    if (elapsed < WRITE_COOLDOWN) { return; }
+    if (elapsed < WRITE_COOLDOWN) { 
+        LOG_DEBUG("Skipping update due to cooldown");
+        return; 
+    }
 
     try {
         LOG_DEBUG("Updating battery data");
@@ -286,7 +287,6 @@ bool DataCollector::checkStatusChange(int fd) {
     char buffer[1024];
     ssize_t len = read(fd, buffer, sizeof(buffer));
     if (len > 0) {
-        isInotifyChange = true;
         // 检测到变化，检查并恢复限制，同时重新采集完整数据
         LOG_DEBUG("updateData called due to inotify change");
         updateData();
@@ -409,13 +409,9 @@ bool DataCollector::checkAndRestoreLimit(int currentValue) {
     }
     
     if (needWrite) {
-        // 设置自己写入标记
-        isSelfWrite = true;
-        
         // 写入目标值
         if (!writeScenarioFcc(currentConfig.actualLimit)) {
             LOG_ERROR("Failed to write scenario_fcc");
-            isSelfWrite = false;
             return false;
         }
     }

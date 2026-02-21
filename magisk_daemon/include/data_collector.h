@@ -59,10 +59,9 @@ private:
     int scenarioWatchFd{-1};
     bool scenarioMonitoring{false};
     const std::string SCENARIO_FCC_PATH = "/proc/charger/scenario_fcc";
+    std::mutex updateMutex;
     const std::chrono::milliseconds WRITE_COOLDOWN{1000};
     std::chrono::steady_clock::time_point lastUpdateTime;
-    bool isSelfWrite{false};
-    bool isInotifyChange{false};
     
     // 文件路径列表
     std::vector<std::string> batteryFiles;
