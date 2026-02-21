@@ -6,8 +6,11 @@
 #include <thread>
 #include <chrono>
 #include <type_traits>
+#include <unistd.h>
 
-DataCollector::DataCollector() {}
+const std::string DataCollector::BATTERY_STATUS_PATH = "/sys/class/power_supply/battery/status";
+
+DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true) {}
 
 DataCollector::~DataCollector() {
     stop();
@@ -50,11 +53,14 @@ void DataCollector::collectLoop() {
             BatteryData data = readAllFiles();
             CacheManager::getInstance().updateBatteryData(data);
             
+            // 更新充电状态
+            updateChargingStatus();
+            
             // 记录采集间隔变化
             static bool lastClientState = false;
             if (lastClientState != hasActiveClients) {
                 LOG_INFO("Collection interval changed to " + 
-                         std::string(hasActiveClients ? "1s" : "5s"));
+                         std::string(hasActiveClients ? "1s" : (isCharging ? "1s (charging)" : "5s (discharging)")));
                 lastClientState = hasActiveClients;
             }
             
@@ -62,8 +68,8 @@ void DataCollector::collectLoop() {
             LOG_ERROR("Data collection error: " + std::string(e.what()));
         }
         
-        // 根据客户端状态决定采集间隔
-        auto interval = hasActiveClients ? ACTIVE_INTERVAL : IDLE_INTERVAL;
+        // 根据客户端状态和充电状态决定采集间隔
+        auto interval = hasActiveClients ? ACTIVE_INTERVAL : (isCharging ? CHARGING_INTERVAL : DISCHARGING_INTERVAL);
         auto elapsed = std::chrono::steady_clock::now() - startTime;
         auto sleepTime = interval - elapsed;
         
@@ -156,4 +162,101 @@ void DataCollector::readFile(const std::string& path, T& target, DataType type) 
 long DataCollector::getCurrentTimestamp() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::system_clock::now().time_since_epoch()).count();
+}
+
+std::string DataCollector::readBatteryStatus() {
+    std::ifstream file(BATTERY_STATUS_PATH);
+    if (!file.is_open()) {
+        return "";
+    }
+    
+    std::string content;
+    std::getline(file, content);
+    file.close();
+    
+    // 去除空白字符
+    content.erase(0, content.find_first_not_of(" \t\n\r"));
+    content.erase(content.find_last_not_of(" \t\n\r") + 1);
+    
+    return content;
+}
+
+void DataCollector::updateChargingStatus() {
+    std::string status = readBatteryStatus();
+    if (status.empty()) {
+        return;
+    }
+    
+    bool newChargingState = (status == "Charging" || status == "Full");
+    
+    if (newChargingState != isCharging) {
+        isCharging = newChargingState;
+        LOG_INFO("Charging status changed: " + std::string(isCharging ? "Charging" : "Discharging"));
+    }
+}
+
+bool DataCollector::startStatusMonitoring() {
+    if (statusInotifyFd >= 0) {
+        LOG_WARN("Status monitoring already started");
+        return true;
+    }
+    
+    // 检查文件是否存在
+    if (!std::filesystem::exists(BATTERY_STATUS_PATH)) {
+        LOG_ERROR("Battery status file not found: " + BATTERY_STATUS_PATH);
+        return false;
+    }
+    
+    // 初始化 inotify
+    statusInotifyFd = inotify_init1(IN_NONBLOCK);
+    if (statusInotifyFd < 0) {
+        LOG_ERROR("Failed to initialize inotify for status monitoring");
+        return false;
+    }
+    
+    // 添加监控
+    statusWatchFd = inotify_add_watch(statusInotifyFd, BATTERY_STATUS_PATH.c_str(), IN_MODIFY);
+    if (statusWatchFd < 0) {
+        LOG_ERROR("Failed to add inotify watch for status monitoring");
+        close(statusInotifyFd);
+        statusInotifyFd = -1;
+        return false;
+    }
+    
+    // 初始读取状态
+    updateChargingStatus();
+    
+    LOG_INFO("Status monitoring started for " + BATTERY_STATUS_PATH);
+    return true;
+}
+
+void DataCollector::stopStatusMonitoring() {
+    if (statusWatchFd >= 0) {
+        inotify_rm_watch(statusInotifyFd, statusWatchFd);
+        statusWatchFd = -1;
+    }
+    
+    if (statusInotifyFd >= 0) {
+        close(statusInotifyFd);
+        statusInotifyFd = -1;
+    }
+    
+    LOG_INFO("Status monitoring stopped");
+}
+
+bool DataCollector::checkStatusChange() {
+    if (statusInotifyFd < 0) {
+        return false;
+    }
+    
+    // 读取并清空 inotify 事件队列
+    char buffer[1024];
+    ssize_t len = read(statusInotifyFd, buffer, sizeof(buffer));
+    if (len > 0) {
+        // 检测到变化，更新充电状态
+        updateChargingStatus();
+        return true;
+    }
+    
+    return false;
 }

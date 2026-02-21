@@ -43,6 +43,11 @@ int main() {
         DataCollector dataCollector;
         dataCollector.start();
         
+        // 启动充电状态监控
+        if (!dataCollector.startStatusMonitoring()) {
+            LOG_WARN("Failed to start status monitoring, continuing without it");
+        }
+        
         // 启动Socket服务器
         LOG_INFO("Initializing SocketServer with abstract namespace...");
         SocketServer server("battery_service");
@@ -77,15 +82,19 @@ int main() {
         // 主循环
         LOG_INFO("Entering main event loop...");
         int loopCount = 0;
-        int inotifyFd = chargeController.getInotifyFd();
+        int chargeInotifyFd = chargeController.getInotifyFd();
+        int statusInotifyFd = dataCollector.getStatusInotifyFd();
         
         while (running) {
             fd_set readfds;
             FD_ZERO(&readfds);
             
             // 添加 inotify 文件描述符到 select 集合
-            if (inotifyFd >= 0) {
-                FD_SET(inotifyFd, &readfds);
+            if (chargeInotifyFd >= 0) {
+                FD_SET(chargeInotifyFd, &readfds);
+            }
+            if (statusInotifyFd >= 0) {
+                FD_SET(statusInotifyFd, &readfds);
             }
             
             // 等待事件，超时 1 秒
@@ -93,7 +102,11 @@ int main() {
             timeout.tv_sec = 1;
             timeout.tv_usec = 0;
             
-            int maxFd = (inotifyFd >= 0) ? inotifyFd + 1 : 0;
+            int maxFd = 0;
+            if (chargeInotifyFd >= 0 && chargeInotifyFd > maxFd) maxFd = chargeInotifyFd;
+            if (statusInotifyFd >= 0 && statusInotifyFd > maxFd) maxFd = statusInotifyFd;
+            maxFd++;
+            
             int ready = select(maxFd, &readfds, nullptr, nullptr, &timeout);
             
             if (ready < 0) {
@@ -104,15 +117,21 @@ int main() {
                 break;
             }
             
-            // 处理 inotify 事件
-            if (inotifyFd >= 0 && FD_ISSET(inotifyFd, &readfds)) {
+            // 处理充电控制 inotify 事件
+            if (chargeInotifyFd >= 0 && FD_ISSET(chargeInotifyFd, &readfds)) {
                 // 读取并清空 inotify 事件队列
                 char buffer[1024];
-                ssize_t len = read(inotifyFd, buffer, sizeof(buffer));
+                ssize_t len = read(chargeInotifyFd, buffer, sizeof(buffer));
                 if (len > 0) {
                     // 检查并恢复限制值
                     chargeController.checkAndRestoreLimit();
                 }
+            }
+            
+            // 处理充电状态 inotify 事件
+            if (statusInotifyFd >= 0 && FD_ISSET(statusInotifyFd, &readfds)) {
+                // 检查状态变化
+                dataCollector.checkStatusChange();
             }
             
             loopCount++;

@@ -8,6 +8,7 @@
 #include <vector>
 #include <string>
 #include <variant>
+#include <sys/inotify.h>
 
 enum class DataType {
     INT,
@@ -21,8 +22,15 @@ private:
     std::thread collectorThread;
     
     // 采集间隔
-    const std::chrono::milliseconds ACTIVE_INTERVAL{1000};  // 有客户端时1秒
-    const std::chrono::milliseconds IDLE_INTERVAL{5000};   // 无客户端时5秒
+    const std::chrono::milliseconds ACTIVE_INTERVAL{1000};   // 有客户端时1秒
+    const std::chrono::milliseconds CHARGING_INTERVAL{1000}; // 充电时1秒
+    const std::chrono::milliseconds DISCHARGING_INTERVAL{5000}; // 放电时5秒
+    
+    // 充电状态监控
+    int statusInotifyFd{-1};
+    int statusWatchFd{-1};
+    bool isCharging{true};
+    static const std::string BATTERY_STATUS_PATH;
     
     // 文件路径列表
     std::vector<std::string> batteryFiles;
@@ -34,6 +42,8 @@ private:
     template<typename T>
     void readFile(const std::string& path, T& target, DataType type);
     long getCurrentTimestamp();
+    std::string readBatteryStatus();
+    void updateChargingStatus();
     
 public:
     DataCollector();
@@ -47,6 +57,12 @@ public:
     
     bool isRunning() const { return running; }
     bool hasClients() const { return hasActiveClients; }
+    
+    // 充电状态监控
+    bool startStatusMonitoring();
+    void stopStatusMonitoring();
+    bool checkStatusChange();
+    int getStatusInotifyFd() const { return statusInotifyFd; }
 };
 
 #endif // DATA_COLLECTOR_H
