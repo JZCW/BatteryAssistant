@@ -54,7 +54,7 @@ set(DEBUG_SOURCES
 
 # Socket代理源文件
 set(PROXY_SOURCES
-    src/socket_proxy_main.cpp
+    src/bridge.cpp
     src/socket_proxy.cpp
     src/logger.cpp
 )
