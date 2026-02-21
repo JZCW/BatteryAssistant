@@ -1,6 +1,6 @@
 #include "socket_server.h"
 #include "cache_manager.h"
-#include "charge_controller.h"
+#include "data_collector.h"
 #include "logger.h"
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -272,7 +272,7 @@ std::string SocketServer::processControlCommand(const Json::Value& request) {
     try {
         if (type == "set_charge_limit") {
             int limit = request["limit"].asInt();
-            bool success = ChargeController::getInstance().setChargeLimit(limit);
+            bool success = DataCollector::getInstance().setChargeLimit(limit);
             response["success"] = success;
             response["data"]["applied"] = success;
             response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(

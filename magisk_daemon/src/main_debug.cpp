@@ -70,7 +70,7 @@ int main() {
         CacheManager::getInstance();
         
         // 启动数据采集器
-        DataCollector dataCollector;
+        DataCollector& dataCollector = DataCollector::getInstance();
         dataCollector.start();
         
         // 模拟客户端连接，使采集器以1秒间隔采集数据

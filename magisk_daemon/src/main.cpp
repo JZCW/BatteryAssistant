@@ -6,7 +6,6 @@
 #include "data_collector.h"
 #include "cache_manager.h"
 #include "socket_server.h"
-#include "charge_controller.h"
 #include "logger.h"
 
 volatile sig_atomic_t running = 1;
@@ -32,17 +31,16 @@ int main() {
         
         // 初始化组件
         CacheManager::getInstance();
-        ChargeController& chargeController = ChargeController::getInstance();
-        
-        // 启动充电控制监控
-        if (!chargeController.startMonitoring()) {
-            LOG_ERROR("Failed to start charge control monitoring");
-            return 1;
-        }
         
         // 启动数据采集器
-        DataCollector dataCollector;
+        DataCollector& dataCollector = DataCollector::getInstance();
         dataCollector.start();
+        
+        // 启动充电控制监控
+        if (!dataCollector.startScenarioMonitoring()) {
+            LOG_ERROR("Failed to start scenario monitoring");
+            return 1;
+        }
         
         // 启动充电状态监控
         if (!dataCollector.startStatusMonitoring()) {
@@ -84,7 +82,7 @@ int main() {
         // 主循环
         LOG_INFO("Entering main event loop...");
         int loopCount = 0;
-        int chargeInotifyFd = chargeController.getInotifyFd();
+        int scenarioInotifyFd = dataCollector.getScenarioInotifyFd();
         int statusInotifyFd = dataCollector.getStatusInotifyFd();
         
         while (running) {
@@ -92,8 +90,8 @@ int main() {
             FD_ZERO(&readfds);
             
             // 添加 inotify 文件描述符到 select 集合
-            if (chargeInotifyFd >= 0) {
-                FD_SET(chargeInotifyFd, &readfds);
+            if (scenarioInotifyFd >= 0) {
+                FD_SET(scenarioInotifyFd, &readfds);
             }
             if (statusInotifyFd >= 0) {
                 FD_SET(statusInotifyFd, &readfds);
@@ -105,7 +103,7 @@ int main() {
             timeout.tv_usec = 0;
             
             int maxFd = 0;
-            if (chargeInotifyFd >= 0 && chargeInotifyFd > maxFd) maxFd = chargeInotifyFd;
+            if (scenarioInotifyFd >= 0 && scenarioInotifyFd > maxFd) maxFd = scenarioInotifyFd;
             if (statusInotifyFd >= 0 && statusInotifyFd > maxFd) maxFd = statusInotifyFd;
             maxFd++;
             
@@ -119,15 +117,10 @@ int main() {
                 break;
             }
             
-            // 处理充电控制 inotify 事件
-            if (chargeInotifyFd >= 0 && FD_ISSET(chargeInotifyFd, &readfds)) {
-                // 读取并清空 inotify 事件队列
-                char buffer[1024];
-                ssize_t len = read(chargeInotifyFd, buffer, sizeof(buffer));
-                if (len > 0) {
-                    // 检查并恢复限制值
-                    chargeController.checkAndRestoreLimit();
-                }
+            // 处理场景监控 inotify 事件
+            if (scenarioInotifyFd >= 0 && FD_ISSET(scenarioInotifyFd, &readfds)) {
+                // 检查场景变化并重新采集完整数据
+                dataCollector.checkScenarioChange();
             }
             
             // 处理充电状态 inotify 事件

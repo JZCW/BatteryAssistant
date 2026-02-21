@@ -40,7 +40,6 @@ set(SOURCES
     src/data_collector.cpp
     src/cache_manager.cpp
     src/socket_server.cpp
-    src/charge_controller.cpp
     src/logger.cpp
 )
 
@@ -50,7 +49,6 @@ set(DEBUG_SOURCES
     src/data_collector.cpp
     src/cache_manager.cpp
     src/socket_server.cpp
-    src/charge_controller.cpp
     src/logger.cpp
 )
 
