@@ -33,12 +33,10 @@ public class BatteryServiceConnector {
     private static final int CONNECT_TIMEOUT = 2000; // 2秒连接超时
     
     private final ExecutorService executorService;
-    private boolean isConnected = false;
     private Process proxyProcess = null;
     private LocalServerSocket serverSocket = null;
     private final AtomicBoolean serverRunning = new AtomicBoolean(false);
     private Thread serverThread = null;
-    private final AtomicBoolean initialized = new AtomicBoolean(false); // 确保只初始化一次
     private LocalSocket proxySocket = null; // 保存Proxy的连接
     private DataInputStream proxyInput = null; // Proxy连接的输入流
     private DataOutputStream proxyOutput = null; // Proxy连接的输出流
@@ -63,58 +61,32 @@ public class BatteryServiceConnector {
      * socket服务器和proxy只启动一次
      */
     public synchronized boolean connect() {
-        // 如果已经连接，直接返回
-        if (isConnected && serverRunning.get()) {
+        // 首先启动本地socket服务器
+        int serverStatus = startSocketServer();
+        if (serverStatus == 1) {
+            Log.e(TAG, "Failed to start local socket server");
+            stopSocketServer();
+            return false;
+        }
+        
+        // 启动代理客户端
+        int proxyStatus = startProxy();
+        if (proxyStatus == 1) {
+            Log.e(TAG, "Failed to start proxy client");
+            stopProxy();
+            return false;
+        }
+
+        //TODO 如果有重启，应重新建立连接
+
+        if (serverStatus == 2 && proxyStatus == 2) {
             Log.d(TAG, "Already connected");
             return true;
         }
-        
-        // 首次初始化：启动本地socket服务器和proxy
-        if (!initialized.get()) {
-            // 首先启动本地socket服务器
-            if (!startSocketServer()) {
-                Log.e(TAG, "Failed to start local socket server");
-                return false;
-            }
-            
-            // 启动代理客户端
-            if (!startProxy()) {
-                Log.e(TAG, "Failed to start proxy client");
-                stopSocketServer();
-                return false;
-            }
-            
-            // 等待代理启动并连接
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                stopProxy();
-                stopSocketServer();
-                return false;
-            }
-            
-            initialized.set(true);
-        }
-        
-        // 测试连接（带重试）
-        int maxRetries = 3;
-        for (int i = 0; i < maxRetries; i++) {
-            boolean result = testConnection();
-            if (result) {
-                isConnected = true;
-                return true;
-            }
-            
-            if (i < maxRetries - 1) {
-                Log.w(TAG, "Connection test failed, retrying... (" + (i + 1) + "/" + maxRetries + ")");
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    return false;
-                }
-            }
+
+        // 测试连接
+        if (testConnection()) { //TODO remove
+            return true;
         }
         
         return false;
@@ -122,8 +94,16 @@ public class BatteryServiceConnector {
     
     /**
      * 启动本地abstract namespace socket服务器
+     * @return 0: 成功, 1: 失败, 2: 已经运行
      */
-    private boolean startSocketServer() {
+    private int startSocketServer() {
+        if (!serverRunning.get()) {
+            Log.d(TAG, "Socket server is not running, starting it...");
+        } else {
+            Log.d(TAG, "Socket server is already running, skipping start");
+            return 2;
+        }
+        
         Log.d(TAG, "Starting local abstract namespace socket server: " + APP_SOCKET_NAME);
         
         try {
@@ -137,11 +117,11 @@ public class BatteryServiceConnector {
             serverThread.start();
             
             Log.i(TAG, "Local socket server started successfully");
-            return true;
+            return 0;
             
         } catch (IOException e) {
             Log.e(TAG, "Failed to start local socket server", e);
-            return false;
+            return 1;
         }
     }
     
@@ -257,10 +237,24 @@ public class BatteryServiceConnector {
     }
     
     /**
-     * 启动代理客户端
+     * 检查代理是否正在运行
+     * @return true如果代理正在运行，false否则
      */
-    private boolean startProxy() {
-        Log.d(TAG, "Starting proxy client...");
+    public boolean isProxyRunning() {
+        return proxyProcess != null && proxyProcess.isAlive();
+    }
+
+    /**
+     * 启动代理客户端
+     * @return 0: 成功, 1: 失败, 2: 已经运行
+     */
+    private int startProxy() {
+        if (!isProxyRunning()) {
+            Log.d(TAG, "Proxy is not running, starting it...");
+        } else {
+            Log.d(TAG, "Proxy is already running, skipping start");
+            return 2;
+        }
         
         try {
             // 使用root权限启动代理客户端
@@ -282,7 +276,7 @@ public class BatteryServiceConnector {
                         new java.io.InputStreamReader(proxyProcess.getInputStream()));
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        Log.d(TAG, "Proxy: " + line);
+                        Log.i(TAG, "Proxy: " + line);
                     }
                 } catch (IOException e) {
                     Log.e(TAG, "Error reading proxy output", e);
@@ -304,25 +298,25 @@ public class BatteryServiceConnector {
             }).start();
             
             // 等待代理进程启动并检查是否存活
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return false;
-            }
+            // try {
+            //     Thread.sleep(500);
+            // } catch (InterruptedException e) {
+            //     Thread.currentThread().interrupt();
+            //     return false;
+            // }
             
             // 检查进程是否存活
             if (!proxyProcess.isAlive()) {
                 Log.e(TAG, "Proxy process died immediately");
-                return false;
+                return 1;
             }
             
             Log.i(TAG, "Proxy client started successfully");
-            return true;
+            return 0;
             
         } catch (Exception e) {
             Log.e(TAG, "Failed to start proxy client", e);
-            return false;
+            return 1;
         }
     }
     
@@ -353,7 +347,6 @@ public class BatteryServiceConnector {
             BatteryData result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             
             if (result != null) {
-                isConnected = true;
                 Log.i(TAG, "Connection test passed");
                 return true;
             } else {
@@ -417,17 +410,9 @@ public class BatteryServiceConnector {
      * 断开连接
      */
     public void disconnect() {
-        isConnected = false;
         stopProxy(); // 停止代理客户端
         stopSocketServer(); // 停止本地socket服务器
         Log.i(TAG, "Disconnected from battery service daemon");
-    }
-    
-    /**
-     * 检查连接状态
-     */
-    public boolean isConnected() {
-        return isConnected && serverRunning.get();
     }
     
     /**
