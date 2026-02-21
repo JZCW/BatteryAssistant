@@ -9,6 +9,7 @@
 #include <string>
 #include <variant>
 #include <sys/inotify.h>
+#include <condition_variable>
 
 enum class DataType {
     INT,
@@ -20,6 +21,8 @@ private:
     std::atomic<bool> running{false};
     std::atomic<bool> hasActiveClients{false};
     std::thread collectorThread;
+    std::condition_variable cv;
+    std::mutex cvMutex;
     
     // 采集间隔
     const std::chrono::milliseconds ACTIVE_INTERVAL{2000};     // 有客户端且数据被读取时2秒

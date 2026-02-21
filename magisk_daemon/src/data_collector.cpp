@@ -28,7 +28,9 @@ void DataCollector::stop() {
     if (!running) return;
     
     running = false;
-    if (collectorThread.joinable()) {  //TODO sleep期间可退出
+    cv.notify_one();
+    
+    if (collectorThread.joinable()) {
         collectorThread.join();
     }
     LOG_INFO("DataCollector stopped");
@@ -86,7 +88,8 @@ void DataCollector::collectLoop() {
         auto sleepTime = interval - elapsed;
         
         if (sleepTime.count() > 0) {
-            std::this_thread::sleep_for(sleepTime);
+            std::unique_lock<std::mutex> lock(cvMutex);
+            cv.wait_for(lock, sleepTime, [this] { return !running; });
         }
     }
 }
