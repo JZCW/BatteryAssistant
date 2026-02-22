@@ -66,7 +66,8 @@ public class BatteryServiceConnector {
         if (!isConnectionHealthy()) {
             Log.d(TAG, "Connection is not healthy, cleaning up before reconnect");
             cleanupProxyConnection();
-            resetSocketServer();
+            // 强制重启socket服务器来重新创建accept线程
+            stopSocketServer();
         }
         
         // 启动本地socket服务器
@@ -551,7 +552,11 @@ public class BatteryServiceConnector {
                 while (bytesRead < length) {
                     int n = input.read(responseData, bytesRead, length - bytesRead);
                     if (n <= 0) {
-                        throw new IOException("Connection closed while reading response");
+                        String errorMsg = "Connection closed while reading response";
+                        if (n == 0) {
+                            errorMsg = "Connection closed by peer while reading response";
+                        }
+                        throw new IOException(errorMsg);
                     }
                     bytesRead += n;
                 }
@@ -563,11 +568,19 @@ public class BatteryServiceConnector {
                 return response;
                 
             } catch (IOException e) {
-                Log.e(TAG, "Connection error while sending request to proxy", e);
-                // 连接断开，清理连接状态
-                connectionHealthy = false;
-                // 异步清理连接，避免在同步块中执行耗时操作
-                CompletableFuture.runAsync(this::cleanupProxyConnection, executorService);
+                String errorMessage = e.getMessage();
+                if (errorMessage != null && errorMessage.contains("Broken pipe")) {
+                    Log.e(TAG, "Proxy connection broken (proxy likely died), marking connection as unhealthy", e);
+                    // Broken pipe表示连接断开，清理连接状态
+                    connectionHealthy = false;
+                    // 异步清理连接，避免在同步块中执行耗时操作
+                    CompletableFuture.runAsync(this::cleanupProxyConnection, executorService);
+                } else {
+                    Log.e(TAG, "Connection error while sending request to proxy", e);
+                    // 其他IO错误也可能表示连接问题，也清理连接状态
+                    connectionHealthy = false;
+                    CompletableFuture.runAsync(this::cleanupProxyConnection, executorService);
+                }
                 return null;
             } catch (Exception e) {
                 Log.e(TAG, "Error sending request to proxy", e);
