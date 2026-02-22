@@ -414,19 +414,43 @@ public class BatteryServiceConnector {
     }
     
     /**
+     * 轻量级连接测试
+     */
+    private CompletableFuture<Boolean> ping() {
+        try {
+            JSONObject request = new JSONObject();
+            request.put("type", "ping");
+            return sendRequestToProxy(request)
+                .thenApply(response -> {
+                    if (response != null && response.optBoolean("success")) {
+                        Log.d(TAG, "Ping test passed");
+                        return true;
+                    } else {
+                        Log.w(TAG, "Ping test failed: " +
+                            (response != null ? response.optString("error", "unknown") : "null response"));
+                        return false;
+                    }
+                });
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to create ping request", e);
+            return CompletableFuture.completedFuture(false);
+        }
+    }
+    
+    /**
      * 测试连接
      */
     private boolean testConnection() {
         try {
-            // 发送一个测试请求
-            CompletableFuture<BatteryData> testResult = getBatteryStatus();
-            BatteryData result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
+            // 发送轻量级测试请求
+            CompletableFuture<Boolean> testResult = ping();
+            Boolean result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             
-            if (result != null) {
+            if (result != null && result) {
                 Log.i(TAG, "Connection test passed");
                 return true;
             } else {
-                Log.w(TAG, "Connection test failed: null result");
+                Log.w(TAG, "Connection test failed: ping failed");
                 return false;
             }
         } catch (Exception e) {
