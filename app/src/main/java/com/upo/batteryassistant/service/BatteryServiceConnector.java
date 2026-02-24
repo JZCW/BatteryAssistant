@@ -41,7 +41,6 @@ public class BatteryServiceConnector {
     private DataInputStream proxyInput = null; // Proxy连接的输入流
     private DataOutputStream proxyOutput = null; // Proxy连接的输出流
     private final Object proxyLock = new Object(); // 用于同步Proxy连接访问
-    private volatile boolean connectionHealthy = false; // 连接健康状态标记
     
     public interface BatteryDataListener {
         void onBatteryDataChanged(BatteryData data);
@@ -65,7 +64,6 @@ public class BatteryServiceConnector {
         // 首先检查当前连接状态，如果不健康则清理
         if (!isConnectionHealthy()) {
             Log.d(TAG, "Connection is not healthy, cleaning up before reconnect");
-            cleanupProxyConnection();
             // 强制重启socket服务器来重新创建accept线程
             stopSocketServer();
         }
@@ -86,18 +84,13 @@ public class BatteryServiceConnector {
             return false;
         }
 
-        if (serverStatus == 2 && proxyStatus == 2 && isConnectionHealthy()) {
-            Log.d(TAG, "Already connected and healthy");
+        if (serverStatus == 2 && proxyStatus == 2) {
+            Log.d(TAG, "Already connected");
             return true;
         }
 
         // 测试连接
-        if (testConnection()) {
-            connectionHealthy = true;
-            return true;
-        }
-        
-        return false;
+        return testConnection();
     }
     
     /**
@@ -117,24 +110,8 @@ public class BatteryServiceConnector {
                 Log.d(TAG, "Proxy socket or streams are null");
                 return false;
             }
-            
-            // 简单的socket状态检查
-            try {
-                // 尝试检查socket是否已关闭，处理UnsupportedOperationException
-                try {
-                    if (proxySocket.isClosed()) {
-                        Log.d(TAG, "Proxy socket is closed");
-                        return false;
-                    }
-                } catch (UnsupportedOperationException e) {
-                    // 某些Android版本不支持isClosed()方法，跳过此检查
-                    Log.d(TAG, "isClosed() not supported, skipping socket closed check");
-                }
-                return connectionHealthy;
-            } catch (Exception e) {
-                Log.d(TAG, "Error checking connection health", e);
-                return false;
-            }
+
+            return true;
         }
     }
     
@@ -143,7 +120,6 @@ public class BatteryServiceConnector {
      */
     private void cleanupProxyConnection() {
         Log.d(TAG, "Cleaning up proxy connection...");
-        connectionHealthy = false;
         
         synchronized (proxyLock) {
             if (proxyOutput != null) {
@@ -173,21 +149,6 @@ public class BatteryServiceConnector {
         }
         
         Log.i(TAG, "Proxy connection cleaned up");
-    }
-    
-    /**
-     * 重置socket服务器状态
-     */
-    private void resetSocketServer() {
-        Log.d(TAG, "Resetting socket server state...");
-        
-        // 如果服务器正在运行但状态不一致，先停止
-        if (serverRunning.get() && (serverSocket == null || serverThread == null)) {
-            Log.w(TAG, "Server running but components are null, stopping server");
-            stopSocketServer();
-        }
-        
-        Log.i(TAG, "Socket server state reset");
     }
     
     /**
@@ -264,14 +225,10 @@ public class BatteryServiceConnector {
                 proxySocket = clientSocket;
                 proxyInput = new DataInputStream(clientSocket.getInputStream());
                 proxyOutput = new DataOutputStream(clientSocket.getOutputStream());
-                
-                // 连接建立后设置为健康状态
-                connectionHealthy = true;
                 Log.i(TAG, "Proxy connection established and saved, connection marked as healthy");
                 
             } catch (IOException e) {
                 Log.e(TAG, "Error setting up proxy connection", e);
-                connectionHealthy = false;
                 try {
                     clientSocket.close();
                 } catch (IOException ex) {
@@ -373,14 +330,6 @@ public class BatteryServiceConnector {
                 }
             }).start();
             
-            // 等待代理进程启动并检查是否存活
-            // try {
-            //     Thread.sleep(500);
-            // } catch (InterruptedException e) {
-            //     Thread.currentThread().interrupt();
-            //     return false;
-            // }
-            
             // 检查进程是否存活
             if (!proxyProcess.isAlive()) {
                 Log.e(TAG, "Proxy process died immediately");
@@ -404,7 +353,7 @@ public class BatteryServiceConnector {
             Log.d(TAG, "Stopping proxy client...");
             proxyProcess.destroy();
             try {
-                proxyProcess.waitFor(2000, TimeUnit.MILLISECONDS);
+                proxyProcess.waitFor(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -471,7 +420,6 @@ public class BatteryServiceConnector {
         diagnostics.append("Server running: ").append(serverRunning.get()).append("\n");
         diagnostics.append("Server socket: ").append(serverSocket != null ? "created" : "null").append("\n");
         diagnostics.append("Proxy process: ").append(proxyProcess != null ? "running" : "null").append("\n");
-        diagnostics.append("Connection healthy: ").append(connectionHealthy).append("\n");
         
         // 2. 检查Proxy连接状态
         synchronized (proxyLock) {
@@ -493,12 +441,10 @@ public class BatteryServiceConnector {
         diagnostics.append("\n=== Connection Test ===\n");
         try {
             // 发送一个测试请求
-            CompletableFuture<BatteryData> testResult = getBatteryStatus();
-            BatteryData result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
-            
+            CompletableFuture<Boolean> testResult = ping();
+            Boolean result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             if (result != null) {
                 diagnostics.append("Connection test PASSED\n");
-                diagnostics.append("Battery data received: ").append(result.toString()).append("\n");
             } else {
                 diagnostics.append("Connection test FAILED: null result\n");
             }
@@ -519,16 +465,13 @@ public class BatteryServiceConnector {
     /**
      * 断开连接
      */
-    public void disconnect() {
+    private void disconnect() {
         Log.d(TAG, "Disconnecting from battery service daemon...");
         
         // 停止代理客户端
         stopProxy();
         // 停止本地socket服务器
         stopSocketServer();
-        
-        // 确保连接状态被重置
-        connectionHealthy = false;
         
         Log.i(TAG, "Disconnected from battery service daemon");
     }
@@ -546,7 +489,6 @@ public class BatteryServiceConnector {
                 // 使用已保存的Proxy连接
                 if (proxyInput == null || proxyOutput == null) {
                     Log.e(TAG, "Proxy connection not available");
-                    connectionHealthy = false;
                     return null;
                 }
                 input = proxyInput;
@@ -596,13 +538,11 @@ public class BatteryServiceConnector {
                 if (errorMessage != null && errorMessage.contains("Broken pipe")) {
                     Log.e(TAG, "Proxy connection broken (proxy likely died), marking connection as unhealthy", e);
                     // Broken pipe表示连接断开，清理连接状态
-                    connectionHealthy = false;
                     // 异步清理连接，避免在同步块中执行耗时操作
                     CompletableFuture.runAsync(this::cleanupProxyConnection, executorService);
                 } else {
                     Log.e(TAG, "Connection error while sending request to proxy", e);
                     // 其他IO错误也可能表示连接问题，也清理连接状态
-                    connectionHealthy = false;
                     CompletableFuture.runAsync(this::cleanupProxyConnection, executorService);
                 }
                 return null;
