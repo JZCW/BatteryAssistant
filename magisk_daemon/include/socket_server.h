@@ -23,9 +23,10 @@ private:
     std::string readRequest(int clientFd);
     void sendResponse(int clientFd, const std::string& response);
     std::string processRequest(const std::string& requestData);
-    std::string processControlCommand(const Json::Value& request);
+    std::string processSetChargeLimit(const Json::Value& request);
     std::string processStatusQuery(const Json::Value& request);
     std::string processOtherRequest(const Json::Value& request);
+    std::string processPingRequest(const Json::Value& request);
     
 public:
     SocketServer(const std::string& socketName); // socketName: abstract namespace socket name (not a file path)

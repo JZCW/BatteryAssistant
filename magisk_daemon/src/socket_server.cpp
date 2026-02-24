@@ -239,16 +239,18 @@ std::string SocketServer::processRequest(const std::string& requestData) {
         std::string type = request["type"].asString();
         
         // 控制命令：立即处理
-        if (type == "set_charge_threshold" || 
-            type == "set_charge_limit" || 
-            type == "enable_charging") {
-            
-            return processControlCommand(request);
+        if (type == "set_charge_limit") {
+            return processSetChargeLimit(request);
         }
         
         // 状态查询：从缓存获取
         if (type == "get_battery_status") {
             return processStatusQuery(request);
+        }
+        
+        // 轻量级测试指令
+        if (type == "ping") {
+            return processPingRequest(request);
         }
         
         // 其他请求
@@ -263,34 +265,20 @@ std::string SocketServer::processRequest(const std::string& requestData) {
     }
 }
 
-std::string SocketServer::processControlCommand(const Json::Value& request) {
-    std::string type = request["type"].asString();
+std::string SocketServer::processSetChargeLimit(const Json::Value& request) {
     Json::Value response;
     response["success"] = true;
     response["data"] = Json::Value(Json::objectValue);
     
-    try {
-        if (type == "set_charge_limit") {
-            int limit = request["limit"].asInt();
-            bool success = DataCollector::getInstance().setChargeLimit(limit);
-            response["success"] = success;
-            response["data"]["applied"] = success;
-            response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count());
-            
-            LOG_INFO("Charge limit set: " + std::to_string(limit) + 
-                      " (success: " + std::to_string(success) + ")");
-        }
-        else {
-            response["success"] = false;
-            response["error"] = "Unknown command type";
-            LOG_ERROR("Unknown command type: " + type);
-        }
-        
-    } catch (const std::exception& e) {
-        response["success"] = false;
-        response["error"] = e.what();
-    }
+    int limit = request["limit"].asInt();
+    bool success = DataCollector::getInstance().setChargeLimit(limit);
+    response["success"] = success;
+    response["data"]["applied"] = success;
+    response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    
+    LOG_INFO("Charge limit set: " + std::to_string(limit) + 
+                " (success: " + std::to_string(success) + ")");
     
     Json::StreamWriterBuilder builder;
     return Json::writeString(builder, response);
@@ -317,6 +305,20 @@ std::string SocketServer::processOtherRequest(const Json::Value& request) {
     Json::Value response;
     response["success"] = false;
     response["error"] = "Unknown request type: " + request["type"].asString();
+    
+    Json::StreamWriterBuilder builder;
+    return Json::writeString(builder, response);
+}
+
+std::string SocketServer::processPingRequest(const Json::Value& request) {
+    Json::Value response;
+    response["success"] = true;
+    response["data"] = Json::Value(Json::objectValue);
+    response["data"]["message"] = "pong";
+    response["data"]["timestamp"] = Json::Value::Int64(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
+    
+    LOG_DEBUG("Ping request processed successfully");
     
     Json::StreamWriterBuilder builder;
     return Json::writeString(builder, response);

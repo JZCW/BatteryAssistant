@@ -5,6 +5,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <arpa/inet.h>
 
 SocketProxy::SocketProxy(const std::string& appSocketName, const std::string& daemonSocketName)
     : appSocketName(appSocketName), daemonSocketName(daemonSocketName),
@@ -75,6 +76,138 @@ bool SocketProxy::connectToApp() {
     return true;
 }
 
+// 读取完整消息（4字节长度 + 数据）
+bool SocketProxy::readMessage(int fd, std::vector<char>& buffer) {
+    // 读取消息长度（网络字节序）
+    int32_t length;
+    size_t totalRead = 0;
+    while (totalRead < sizeof(length)) {
+        ssize_t n = read(fd, reinterpret_cast<char*>(&length) + totalRead, sizeof(length) - totalRead);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // 等待socket可读
+                fd_set readFds;
+                FD_ZERO(&readFds);
+                FD_SET(fd, &readFds);
+                if (select(fd + 1, &readFds, nullptr, nullptr, nullptr) < 0) {
+                    LOG_ERROR("Select error while reading message length: " + std::string(strerror(errno)));
+                    return false;
+                }
+                continue;
+            }
+            if (n == 0) {
+                LOG_DEBUG("Connection closed while reading message length");
+            } else {
+                LOG_ERROR("Failed to read message length: " + std::string(strerror(errno)));
+            }
+            return false;
+        }
+        if (n == 0) {
+            LOG_DEBUG("Connection closed while reading message length");
+            return false;
+        }
+        totalRead += n;
+    }
+    
+    // 转换为主机字节序
+    length = ntohl(length);
+    
+    // 验证长度
+    if (length <= 0 || length > 1024 * 1024) {
+        LOG_ERROR("Invalid message length: " + std::to_string(length));
+        return false;
+    }
+    
+    // 读取消息数据
+    buffer.resize(length);
+    totalRead = 0;
+    while (totalRead < static_cast<size_t>(length)) {
+        ssize_t n = read(fd, buffer.data() + totalRead, length - totalRead);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // 等待socket可读
+                fd_set readFds;
+                FD_ZERO(&readFds);
+                FD_SET(fd, &readFds);
+                if (select(fd + 1, &readFds, nullptr, nullptr, nullptr) < 0) {
+                    LOG_ERROR("Select error while reading message data: " + std::string(strerror(errno)));
+                    return false;
+                }
+                continue;
+            }
+            LOG_ERROR("Failed to read message data: " + std::string(strerror(errno)));
+            return false;
+        }
+        if (n == 0) {
+            LOG_ERROR("Connection closed while reading message data");
+            return false;
+        }
+        totalRead += n;
+    }
+    
+    return true;
+}
+
+// 写入完整消息（4字节长度 + 数据）
+bool SocketProxy::writeMessage(int fd, const std::vector<char>& buffer) {
+    int32_t length = static_cast<int32_t>(buffer.size());
+    int32_t networkLength = htonl(length);
+    
+    // 写入消息长度
+    size_t totalWritten = 0;
+    while (totalWritten < sizeof(networkLength)) {
+        ssize_t n = write(fd, reinterpret_cast<char*>(&networkLength) + totalWritten, sizeof(networkLength) - totalWritten);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // 等待socket可写
+                fd_set writeFds;
+                FD_ZERO(&writeFds);
+                FD_SET(fd, &writeFds);
+                if (select(fd + 1, nullptr, &writeFds, nullptr, nullptr) < 0) {
+                    LOG_ERROR("Select error while writing message length: " + std::string(strerror(errno)));
+                    return false;
+                }
+                continue;
+            }
+            LOG_ERROR("Failed to write message length: " + std::string(strerror(errno)));
+            return false;
+        }
+        if (n == 0) {
+            LOG_ERROR("Connection closed while writing message length");
+            return false;
+        }
+        totalWritten += n;
+    }
+    
+    // 写入消息数据
+    totalWritten = 0;
+    while (totalWritten < buffer.size()) {
+        ssize_t n = write(fd, buffer.data() + totalWritten, buffer.size() - totalWritten);
+        if (n < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                // 等待socket可写
+                fd_set writeFds;
+                FD_ZERO(&writeFds);
+                FD_SET(fd, &writeFds);
+                if (select(fd + 1, nullptr, &writeFds, nullptr, nullptr) < 0) {
+                    LOG_ERROR("Select error while writing message data: " + std::string(strerror(errno)));
+                    return false;
+                }
+                continue;
+            }
+            LOG_ERROR("Failed to write message data: " + std::string(strerror(errno)));
+            return false;
+        }
+        if (n == 0) {
+            LOG_ERROR("Connection closed while writing message data");
+            return false;
+        }
+        totalWritten += n;
+    }
+    
+    return true;
+}
+
 void SocketProxy::runProxy() {
     LOG_INFO("Proxy thread started");
     
@@ -113,11 +246,10 @@ void SocketProxy::runProxy() {
         
         // 检查哪个socket有数据
         if (FD_ISSET(appSocketFd, &readFds)) {
-            char buffer[8192];
-            ssize_t bytesRead = read(appSocketFd, buffer, sizeof(buffer));
+            std::vector<char> buffer;
             
-            if (bytesRead <= 0) {
-                LOG_INFO("App disconnected, proxy will exit");
+            if (!readMessage(appSocketFd, buffer)) {
+                LOG_INFO("App disconnected or error reading message, proxy will exit");
                 running = false;
                 break;
             }
@@ -134,61 +266,30 @@ void SocketProxy::runProxy() {
                 fcntl(daemonSocketFd, F_SETFL, flags | O_NONBLOCK);
             }
             
-            // 转发到守护进程 - 确保写入完整
-            ssize_t totalWritten = 0;
-            while (totalWritten < bytesRead) {
-                ssize_t bytesWritten = write(daemonSocketFd, buffer + totalWritten, bytesRead - totalWritten);
-                if (bytesWritten < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        // 等待socket可写
-                        fd_set writeFds;
-                        FD_ZERO(&writeFds);
-                        FD_SET(daemonSocketFd, &writeFds);
-                        select(daemonSocketFd + 1, nullptr, &writeFds, nullptr, nullptr);
-                        continue;
-                    }
-                    LOG_ERROR("Failed to write to daemon: " + std::string(strerror(errno)));
-                    // Daemon写入失败，关闭连接并稍后重连
-                    close(daemonSocketFd);
-                    daemonSocketFd = -1;
-                    break;
-                }
-                totalWritten += bytesWritten;
+            // 转发到守护进程
+            if (!writeMessage(daemonSocketFd, buffer)) {
+                LOG_ERROR("Failed to write message to daemon");
+                close(daemonSocketFd);
+                daemonSocketFd = -1;
             }
         }
         
         if (daemonSocketFd >= 0 && FD_ISSET(daemonSocketFd, &readFds)) {
-            char buffer[8192];
-            ssize_t bytesRead = read(daemonSocketFd, buffer, sizeof(buffer));
+            std::vector<char> buffer;
             
-            if (bytesRead <= 0) {
-                LOG_WARN("Daemon disconnected, will attempt to reconnect on next request");
-                // 关闭daemon socket，但不退出
+            if (!readMessage(daemonSocketFd, buffer)) {
+                LOG_WARN("Daemon disconnected or error reading message, will attempt to reconnect on next request");
                 close(daemonSocketFd);
                 daemonSocketFd = -1;
                 continue;
             }
             
-            // 转发到应用 - 确保写入完整
-            ssize_t totalWritten = 0;
-            while (totalWritten < bytesRead) {
-                ssize_t bytesWritten = write(appSocketFd, buffer + totalWritten, bytesRead - totalWritten);
-                if (bytesWritten < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                        // 等待socket可写
-                        fd_set writeFds;
-                        FD_ZERO(&writeFds);
-                        FD_SET(appSocketFd, &writeFds);
-                        select(appSocketFd + 1, nullptr, &writeFds, nullptr, nullptr);
-                        continue;
-                    }
-                    LOG_ERROR("Failed to write to app: " + std::string(strerror(errno)));
-                    running = false;
-                    break;
-                }
-                totalWritten += bytesWritten;
+            // 转发到应用
+            if (!writeMessage(appSocketFd, buffer)) {
+                LOG_ERROR("Failed to write message to app");
+                running = false;
+                break;
             }
-            if (!running) break;
         }
     }
     

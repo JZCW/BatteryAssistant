@@ -38,7 +38,7 @@ int main(int argc, char* argv[]) {
     std::cout << std::endl;
     
     // 初始化日志（可选，用于调试）
-    // Logger::init("/data/local/tmp/socket_proxy.log");
+    Logger::init("/data/local/tmp/socket_proxy.log");
     
     try {
         // 创建代理

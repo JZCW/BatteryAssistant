@@ -33,12 +33,10 @@ public class BatteryServiceConnector {
     private static final int CONNECT_TIMEOUT = 2000; // 2秒连接超时
     
     private final ExecutorService executorService;
-    private boolean isConnected = false;
     private Process proxyProcess = null;
     private LocalServerSocket serverSocket = null;
     private final AtomicBoolean serverRunning = new AtomicBoolean(false);
     private Thread serverThread = null;
-    private final AtomicBoolean initialized = new AtomicBoolean(false); // 确保只初始化一次
     private LocalSocket proxySocket = null; // 保存Proxy的连接
     private DataInputStream proxyInput = null; // Proxy连接的输入流
     private DataOutputStream proxyOutput = null; // Proxy连接的输出流
@@ -63,52 +61,108 @@ public class BatteryServiceConnector {
      * socket服务器和proxy只启动一次
      */
     public synchronized boolean connect() {
-        // 如果已经连接，直接返回
-        if (isConnected && serverRunning.get()) {
+        // 首先检查当前连接状态，如果不健康则清理
+        if (!isConnectionHealthy()) {
+            Log.d(TAG, "Connection is not healthy, cleaning up before reconnect");
+            // 强制重启socket服务器来重新创建accept线程
+            stopSocketServer();
+        }
+        
+        // 启动本地socket服务器
+        int serverStatus = startSocketServer();
+        if (serverStatus == 1) {
+            Log.e(TAG, "Failed to start local socket server");
+            stopSocketServer();
+            return false;
+        }
+        
+        // 启动代理客户端
+        int proxyStatus = startProxy();
+        if (proxyStatus == 1) {
+            Log.e(TAG, "Failed to start proxy client");
+            stopProxy();
+            return false;
+        }
+
+        if (serverStatus == 2 && proxyStatus == 2) {
             Log.d(TAG, "Already connected");
             return true;
         }
-        
-        // 首次初始化：启动本地socket服务器和proxy
-        if (!initialized.get()) {
-            // 首先启动本地socket服务器
-            if (!startSocketServer()) {
-                Log.e(TAG, "Failed to start local socket server");
-                return false;
-            }
-            
-            // 启动代理客户端
-            if (!startProxy()) {
-                Log.e(TAG, "Failed to start proxy client");
-                stopSocketServer();
-                return false;
-            }
-            
-            // 等待代理启动并连接
-            try {
-                Thread.sleep(1000);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                stopProxy();
-                stopSocketServer();
-                return false;
-            }
-            
-            initialized.set(true);
-        }
-        
+
         // 测试连接
-        boolean result = testConnection();
-        if (result) {
-            isConnected = true;
+        return testConnection();
+    }
+    
+    /**
+     * 检查连接是否健康
+     * @return true如果连接健康，false否则
+     */
+    private boolean isConnectionHealthy() {
+        // 检查proxy进程是否存活
+        if (!isProxyRunning()) {
+            Log.d(TAG, "Proxy process is not running");
+            return false;
         }
-        return result;
+        
+        // 检查socket连接是否可用
+        synchronized (proxyLock) {
+            if (proxySocket == null || proxyInput == null || proxyOutput == null) {
+                Log.d(TAG, "Proxy socket or streams are null");
+                return false;
+            }
+
+            return true;
+        }
+    }
+    
+    /**
+     * 清理proxy连接
+     */
+    private void cleanupProxyConnection() {
+        Log.d(TAG, "Cleaning up proxy connection...");
+        
+        synchronized (proxyLock) {
+            if (proxyOutput != null) {
+                try {
+                    proxyOutput.close();
+                } catch (IOException e) {
+                    Log.w(TAG, "Error closing proxy output stream during cleanup", e);
+                }
+                proxyOutput = null;
+            }
+            if (proxyInput != null) {
+                try {
+                    proxyInput.close();
+                } catch (IOException e) {
+                    Log.w(TAG, "Error closing proxy input stream during cleanup", e);
+                }
+                proxyInput = null;
+            }
+            if (proxySocket != null) {
+                try {
+                    proxySocket.close();
+                } catch (IOException e) {
+                    Log.w(TAG, "Error closing proxy socket during cleanup", e);
+                }
+                proxySocket = null;
+            }
+        }
+        
+        Log.i(TAG, "Proxy connection cleaned up");
     }
     
     /**
      * 启动本地abstract namespace socket服务器
+     * @return 0: 成功, 1: 失败, 2: 已经运行
      */
-    private boolean startSocketServer() {
+    private int startSocketServer() {
+        if (!serverRunning.get()) {
+            Log.d(TAG, "Socket server is not running, starting it...");
+        } else {
+            Log.d(TAG, "Socket server is already running, skipping start");
+            return 2;
+        }
+        
         Log.d(TAG, "Starting local abstract namespace socket server: " + APP_SOCKET_NAME);
         
         try {
@@ -122,11 +176,11 @@ public class BatteryServiceConnector {
             serverThread.start();
             
             Log.i(TAG, "Local socket server started successfully");
-            return true;
+            return 0;
             
         } catch (IOException e) {
             Log.e(TAG, "Failed to start local socket server", e);
-            return false;
+            return 1;
         }
     }
     
@@ -171,8 +225,7 @@ public class BatteryServiceConnector {
                 proxySocket = clientSocket;
                 proxyInput = new DataInputStream(clientSocket.getInputStream());
                 proxyOutput = new DataOutputStream(clientSocket.getOutputStream());
-                
-                Log.i(TAG, "Proxy connection established and saved");
+                Log.i(TAG, "Proxy connection established and saved, connection marked as healthy");
                 
             } catch (IOException e) {
                 Log.e(TAG, "Error setting up proxy connection", e);
@@ -192,33 +245,8 @@ public class BatteryServiceConnector {
         Log.d(TAG, "Stopping local socket server...");
         serverRunning.set(false);
         
-        // 关闭Proxy连接
-        synchronized (proxyLock) {
-            if (proxyOutput != null) {
-                try {
-                    proxyOutput.close();
-                } catch (IOException e) {
-                    Log.w(TAG, "Error closing proxy output stream", e);
-                }
-                proxyOutput = null;
-            }
-            if (proxyInput != null) {
-                try {
-                    proxyInput.close();
-                } catch (IOException e) {
-                    Log.w(TAG, "Error closing proxy input stream", e);
-                }
-                proxyInput = null;
-            }
-            if (proxySocket != null) {
-                try {
-                    proxySocket.close();
-                } catch (IOException e) {
-                    Log.w(TAG, "Error closing proxy socket", e);
-                }
-                proxySocket = null;
-            }
-        }
+        // 使用专门的清理方法清理Proxy连接
+        cleanupProxyConnection();
         
         if (serverSocket != null) {
             try {
@@ -242,10 +270,24 @@ public class BatteryServiceConnector {
     }
     
     /**
-     * 启动代理客户端
+     * 检查代理是否正在运行
+     * @return true如果代理正在运行，false否则
      */
-    private boolean startProxy() {
-        Log.d(TAG, "Starting proxy client...");
+    public boolean isProxyRunning() {
+        return proxyProcess != null && proxyProcess.isAlive();
+    }
+
+    /**
+     * 启动代理客户端
+     * @return 0: 成功, 1: 失败, 2: 已经运行
+     */
+    private int startProxy() {
+        if (!isProxyRunning()) {
+            Log.d(TAG, "Proxy is not running, starting it...");
+        } else {
+            Log.d(TAG, "Proxy is already running, skipping start");
+            return 2;
+        }
         
         try {
             // 使用root权限启动代理客户端
@@ -267,7 +309,7 @@ public class BatteryServiceConnector {
                         new java.io.InputStreamReader(proxyProcess.getInputStream()));
                     String line;
                     while ((line = reader.readLine()) != null) {
-                        Log.d(TAG, "Proxy: " + line);
+                        Log.i(TAG, "Proxy: " + line);
                     }
                 } catch (IOException e) {
                     Log.e(TAG, "Error reading proxy output", e);
@@ -288,12 +330,18 @@ public class BatteryServiceConnector {
                 }
             }).start();
             
+            // 检查进程是否存活
+            if (!proxyProcess.isAlive()) {
+                Log.e(TAG, "Proxy process died immediately");
+                return 1;
+            }
+            
             Log.i(TAG, "Proxy client started successfully");
-            return true;
+            return 0;
             
         } catch (Exception e) {
             Log.e(TAG, "Failed to start proxy client", e);
-            return false;
+            return 1;
         }
     }
     
@@ -305,7 +353,7 @@ public class BatteryServiceConnector {
             Log.d(TAG, "Stopping proxy client...");
             proxyProcess.destroy();
             try {
-                proxyProcess.waitFor(2000, TimeUnit.MILLISECONDS);
+                proxyProcess.waitFor(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -315,20 +363,43 @@ public class BatteryServiceConnector {
     }
     
     /**
+     * 轻量级连接测试
+     */
+    private CompletableFuture<Boolean> ping() {
+        try {
+            JSONObject request = new JSONObject();
+            request.put("type", "ping");
+            return sendRequestToProxy(request)
+                .thenApply(response -> {
+                    if (response != null && response.optBoolean("success")) {
+                        Log.d(TAG, "Ping test passed");
+                        return true;
+                    } else {
+                        Log.w(TAG, "Ping test failed: " +
+                            (response != null ? response.optString("error", "unknown") : "null response"));
+                        return false;
+                    }
+                });
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to create ping request", e);
+            return CompletableFuture.completedFuture(false);
+        }
+    }
+    
+    /**
      * 测试连接
      */
     private boolean testConnection() {
         try {
-            // 发送一个测试请求
-            CompletableFuture<BatteryData> testResult = getBatteryStatus();
-            BatteryData result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
+            // 发送轻量级测试请求
+            CompletableFuture<Boolean> testResult = ping();
+            Boolean result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             
-            if (result != null) {
-                isConnected = true;
+            if (result != null && result) {
                 Log.i(TAG, "Connection test passed");
                 return true;
             } else {
-                Log.w(TAG, "Connection test failed: null result");
+                Log.w(TAG, "Connection test failed: ping failed");
                 return false;
             }
         } catch (Exception e) {
@@ -353,6 +424,15 @@ public class BatteryServiceConnector {
         // 2. 检查Proxy连接状态
         synchronized (proxyLock) {
             diagnostics.append("Proxy socket: ").append(proxySocket != null ? "connected" : "null").append("\n");
+            if (proxySocket != null) {
+                try {
+                    diagnostics.append("Proxy socket closed: ").append(proxySocket.isClosed()).append("\n");
+                } catch (UnsupportedOperationException e) {
+                    diagnostics.append("Proxy socket closed: unknown (UnsupportedOperationException)\n");
+                } catch (Exception e) {
+                    diagnostics.append("Proxy socket closed: error (").append(e.getClass().getSimpleName()).append(")\n");
+                }
+            }
             diagnostics.append("Proxy input stream: ").append(proxyInput != null ? "available" : "null").append("\n");
             diagnostics.append("Proxy output stream: ").append(proxyOutput != null ? "available" : "null").append("\n");
         }
@@ -361,12 +441,10 @@ public class BatteryServiceConnector {
         diagnostics.append("\n=== Connection Test ===\n");
         try {
             // 发送一个测试请求
-            CompletableFuture<BatteryData> testResult = getBatteryStatus();
-            BatteryData result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
-            
+            CompletableFuture<Boolean> testResult = ping();
+            Boolean result = testResult.get(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
             if (result != null) {
                 diagnostics.append("Connection test PASSED\n");
-                diagnostics.append("Battery data received: ").append(result.toString()).append("\n");
             } else {
                 diagnostics.append("Connection test FAILED: null result\n");
             }
@@ -387,18 +465,15 @@ public class BatteryServiceConnector {
     /**
      * 断开连接
      */
-    public void disconnect() {
-        isConnected = false;
-        stopProxy(); // 停止代理客户端
-        stopSocketServer(); // 停止本地socket服务器
+    private void disconnect() {
+        Log.d(TAG, "Disconnecting from battery service daemon...");
+        
+        // 停止代理客户端
+        stopProxy();
+        // 停止本地socket服务器
+        stopSocketServer();
+        
         Log.i(TAG, "Disconnected from battery service daemon");
-    }
-    
-    /**
-     * 检查连接状态
-     */
-    public boolean isConnected() {
-        return isConnected && serverRunning.get();
     }
     
     /**
@@ -443,7 +518,11 @@ public class BatteryServiceConnector {
                 while (bytesRead < length) {
                     int n = input.read(responseData, bytesRead, length - bytesRead);
                     if (n <= 0) {
-                        throw new IOException("Connection closed while reading response");
+                        String errorMsg = "Connection closed while reading response";
+                        if (n == 0) {
+                            errorMsg = "Connection closed by peer while reading response";
+                        }
+                        throw new IOException(errorMsg);
                     }
                     bytesRead += n;
                 }
@@ -454,6 +533,19 @@ public class BatteryServiceConnector {
                 Log.d(TAG, "Received response: " + responseStr);
                 return response;
                 
+            } catch (IOException e) {
+                String errorMessage = e.getMessage();
+                if (errorMessage != null && errorMessage.contains("Broken pipe")) {
+                    Log.e(TAG, "Proxy connection broken (proxy likely died), marking connection as unhealthy", e);
+                    // Broken pipe表示连接断开，清理连接状态
+                    // 异步清理连接，避免在同步块中执行耗时操作
+                    CompletableFuture.runAsync(this::cleanupProxyConnection, executorService);
+                } else {
+                    Log.e(TAG, "Connection error while sending request to proxy", e);
+                    // 其他IO错误也可能表示连接问题，也清理连接状态
+                    CompletableFuture.runAsync(this::cleanupProxyConnection, executorService);
+                }
+                return null;
             } catch (Exception e) {
                 Log.e(TAG, "Error sending request to proxy", e);
                 return null;
