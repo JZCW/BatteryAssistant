@@ -7,7 +7,7 @@
 struct BatteryData {
     long timestamp = 0;
     
-    int capacity = -1;              // 0-10000, 电池电量百分比*100
+    int capacity = -1;              // 0-100, 电池电量百分比
     int voltage_now = -1;           // 当前电池电压(μV)  // 和adc读数不一致？
     int voltage_max = -1;           // 最大电池电压(μV)
     int voltage_ocv = -1;           // 电池开路电压(μV) //最低电压？

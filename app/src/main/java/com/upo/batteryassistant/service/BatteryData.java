@@ -11,10 +11,35 @@ import java.util.Map;
  * 从Magic Daemon获取的电池状态数据
  */
 public class BatteryData {
-    public long timestamp;
-    public Map<String, String> battery = new HashMap<>();
-    public Map<String, String> usb = new HashMap<>();
-    public Map<String, String> wireless = new HashMap<>();
+    private int version;
+    private long timestamp; // 时间戳
+    private int capacity;   // 0-100, 电池电量百分比
+    private int voltage_now;           // 当前电池电压(μV)  // 和adc读数不一致？
+    private int voltage_max;           // 最大电池电压(μV)
+    private int voltage_ocv;           // 电池开路电压(μV) //最低电压？
+    private int current_now;           // 当前电池电流(μA) // 同max？
+    private int current_avg;           // 平均电池电流(μA)
+    private int temp_battery;          // 电池温度(0.1°C)
+    private int health;                // 电池健康状态 0-100
+    private String status_str;    // 电池状态文本 "Charging", "Discharging", "Full"
+    private String charge_type_str; // 充电类型文本 "Fast", "Standard", "N/A"
+    private int charge_counter;        // charge counter in μAh  // 剩余电量
+    private int cycle_count;           // 电池循环次数
+    private int charge_full;           // 实际充满容量 in μAh
+    private int charge_design;         // 设计充满容量 in μAh
+    private int usb_online;             // 0 or 1
+    private int usb_voltage_now;        // voltage in μV
+    private int usb_voltage_max;        // max voltage in μV
+    private int in_current_now;        // current in μA // usb与wls相同数据
+    private int usb_current_max;        // max current in μA
+    private String usb_type;       // [Unknown] SDP DCP CDP ACA C PD PD_DRP PD_PPS BrickID
+    private int wireless_online;         // 0 or 1
+    private int wireless_voltage_now;    // voltage in μV
+    private int wireless_voltage_max;    // max voltage in μV
+    private int wireless_current_max;    // max current in μA
+    private String wireless_type;       // [Unknown] BPP
+    private int scenario_fcc;           // 场景快速充电电流(μA)
+    private int nt_abnormal_status;     // 异常状态
     
     public BatteryData() {
         // 默认构造函数
@@ -22,215 +47,118 @@ public class BatteryData {
     
     public static BatteryData fromJson(JSONObject json) throws JSONException {
         BatteryData data = new BatteryData();
+
+        data.version = json.getInt("version");
         
         data.timestamp = json.getLong("timestamp");
-        
-        // 解析电池数据
-        if (json.has("battery")) {
-            JSONObject battery = json.getJSONObject("battery");
-            Iterator<String> keys = battery.keys();
-            while (keys.hasNext()) {
-                String key = keys.next();
-                data.battery.put(key, battery.getString(key));
-            }
-        }
-        
-        // 解析USB数据
-        if (json.has("usb")) {
-            JSONObject usb = json.getJSONObject("usb");
-            Iterator<String> keys = usb.keys();
-            while (keys.hasNext()) {
-                String key = keys.next();
-                data.usb.put(key, usb.getString(key));
-            }
-        }
-        
-        // 解析无线充电数据
-        if (json.has("wireless")) {
-            JSONObject wireless = json.getJSONObject("wireless");
-            Iterator<String> keys = wireless.keys();
-            while (keys.hasNext()) {
-                String key = keys.next();
-                data.wireless.put(key, wireless.getString(key));
-            }
-        }
+        data.capacity = json.getInt("capacity");
+        data.voltage_now = json.getInt("voltage_now");
+        data.voltage_max = json.getInt("voltage_max");
+        data.voltage_ocv = json.getInt("voltage_ocv");
+        data.current_now = json.getInt("current_now");
+        data.current_avg = json.getInt("current_avg");
+        data.temp_battery = json.getInt("temp_battery");
+        data.health = json.getInt("health");
+        data.status_str = json.getString("status_str");
+        data.charge_type_str = json.getString("charge_type_str");
+        data.charge_counter = json.getInt("charge_counter");
+        data.cycle_count = json.getInt("cycle_count");
+        data.charge_full = json.getInt("charge_full");
+        data.charge_design = json.getInt("charge_design");
+        data.usb_online = json.getInt("usb_online");
+        data.usb_voltage_now = json.getInt("usb_voltage_now");
+        data.usb_voltage_max = json.getInt("usb_voltage_max");
+        data.in_current_now = json.getInt("in_current_now");
+        data.usb_current_max = json.getInt("usb_current_max");
+        data.usb_type = json.getString("usb_type");
+        data.wireless_online = json.getInt("wireless_online");
+        data.wireless_voltage_now = json.getInt("wireless_voltage_now");
+        data.wireless_voltage_max = json.getInt("wireless_voltage_max");
+        data.wireless_current_max = json.getInt("wireless_current_max");
+        data.wireless_type = json.getString("wireless_type");
+        data.scenario_fcc = json.getInt("scenario_fcc");
+        data.nt_abnormal_status = json.getInt("nt_abnormal_status");
         
         return data;
     }
     
     // 电池相关getter方法
-    public String getBatteryValue(String key) {
-        return battery.get(key);
-    }
-    
     public int getCapacity() {
-        String value = battery.get("capacity");
-        return value != null ? Integer.parseInt(value) : -1;
+        return capacity;
+    }
+
+    public int getVoltageNow() {
+        return voltage_now/1000;
+    }
+
+        // data.voltage_max = json.getInt("voltage_max");
+        // data.voltage_ocv = json.getInt("voltage_ocv");
+
+    public int getCurrentNow() {
+        return current_now/1000.0f;
     }
     
-    public int getTemperature() {
-        String value = battery.get("temp");
-        return value != null ? Integer.parseInt(value) : -1;
+    public int getCurrentAverage() {
+        return current_avg/1000.0f;
     }
-    
-    public long getVoltageNow() {
-        String value = battery.get("voltage_now");
-        return value != null ? Long.parseLong(value) : -1;
+
+    public int getTempBattery() {
+        return temp_battery;
     }
-    
-    public long getCurrentNow() {
-        String value = battery.get("current_now");
-        return value != null ? Long.parseLong(value) : -1;
+
+    public int getHealth() {
+        return health;
     }
-    
-    public long getPowerNow() {
-        String value = battery.get("power_now");
-        return value != null ? Long.parseLong(value) : -1;
+
+    public int getStatus() {
+        switch (status_str) {
+            case "Charging":
+                return android.os.BatteryManager.BATTERY_STATUS_CHARGING;
+            case "Discharging":
+                return android.os.BatteryManager.BATTERY_STATUS_DISCHARGING;
+            case "Full":
+                return android.os.BatteryManager.BATTERY_STATUS_FULL;
+            default:
+                return android.os.BatteryManager.BATTERY_STATUS_UNKNOWN;
+        }
     }
-    
-    public String getStatus() {
-        return battery.get("status");
+
+    // data.charge_type_str = json.getString("charge_type_str");
+
+    public int getChargeCounter() {
+        return charge_counter/1000.0f;
     }
-    
-    public String getHealth() {
-        return battery.get("health");
-    }
-    
-    public String getTechnology() {
-        return battery.get("technology");
-    }
-    
-    public long getChargeCounter() {
-        String value = battery.get("charge_counter");
-        return value != null ? Long.parseLong(value) : -1;
-    }
-    
-    public long getChargeFull() {
-        String value = battery.get("charge_full");
-        return value != null ? Long.parseLong(value) : -1;
-    }
-    
+
     public int getCycleCount() {
-        String value = battery.get("cycle_count");
-        return value != null ? Integer.parseInt(value) : -1;
+        return cycle_count;
     }
-    
-    public int getChargeStartThreshold() {
-        String value = battery.get("charge_control_start_threshold");
-        return value != null ? Integer.parseInt(value) : -1;
+
+    public int getChargeFull() {
+        return charge_full/1000.0f;
     }
-    
-    public int getChargeEndThreshold() {
-        String value = battery.get("charge_control_end_threshold");
-        return value != null ? Integer.parseInt(value) : -1;
+
+    public int getChargeDesign() {
+        return charge_design/1000.0f;
     }
-    
-    public int getChargeLimit() {
-        String value = battery.get("charge_control_limit");
-        return value != null ? Integer.parseInt(value) : -1;
-    }
-    
-    // USB相关getter方法
-    public String getUsbValue(String key) {
-        return usb.get(key);
-    }
-    
-    public boolean isUsbOnline() {
-        String value = usb.get("online");
-        return value != null && "1".equals(value);
-    }
-    
-    public long getUsbVoltageNow() {
-        String value = usb.get("voltage_now");
-        return value != null ? Long.parseLong(value) : -1;
-    }
-    
-    public long getUsbCurrentNow() {
-        String value = usb.get("current_now");
-        return value != null ? Long.parseLong(value) : -1;
-    }
-    
-    public String getUsbType() {
-        return usb.get("usb_type");
-    }
-    
-    // 无线充电相关getter方法
-    public String getWirelessValue(String key) {
-        return wireless.get(key);
-    }
-    
-    public boolean isWirelessOnline() {
-        String value = wireless.get("online");
-        return value != null && "1".equals(value);
-    }
-    
-    public long getWirelessVoltageNow() {
-        String value = wireless.get("voltage_now");
-        return value != null ? Long.parseLong(value) : -1;
-    }
-    
-    public long getWirelessCurrentNow() {
-        String value = wireless.get("current_now");
-        return value != null ? Long.parseLong(value) : -1;
-    }
-    
-    /**
-     * 检查是否正在充电
-     */
-    public boolean isCharging() {
-        String status = getStatus();
-        return status != null && (status.equals("Charging") || status.equals("Full"));
-    }
-    
-    /**
-     * 检查是否为低电量
-     */
-    public boolean isLowBattery() {
-        int capacity = getCapacity();
-        return capacity > 0 && capacity <= 20;
-    }
-    
-    /**
-     * 获取温度（摄氏度）
-     */
-    public float getTemperatureCelsius() {
-        int temp = getTemperature();
-        return temp > 0 ? temp / 10.0f : -1;
-    }
-    
-    /**
-     * 获取电压（伏特）
-     */
-    public float getVoltageVolts() {
-        long voltage = getVoltageNow();
-        return voltage > 0 ? voltage / 1000000.0f : -1;
-    }
-    
-    /**
-     * 获取电流（毫安）
-     */
-    public float getCurrentMilliamps() {
-        long current = getCurrentNow();
-        return current != -1 ? current / 1000.0f : -1;
-    }
-    
-    /**
-     * 获取功率（毫瓦）
-     */
-    public float getPowerMilliwatts() {
-        long power = getPowerNow();
-        return power != -1 ? power / 1000.0f : -1;
-    }
+
+        // data.usb_online = json.getInt("usb_online");
+        // data.usb_voltage_now = json.getInt("usb_voltage_now");
+        // data.usb_voltage_max = json.getInt("usb_voltage_max");
+        // data.in_current_now = json.getInt("in_current_now");
+        // data.usb_current_max = json.getInt("usb_current_max");
+        // data.usb_type = json.getString("usb_type");
+        // data.wireless_online = json.getInt("wireless_online");
+        // data.wireless_voltage_now = json.getInt("wireless_voltage_now");
+        // data.wireless_voltage_max = json.getInt("wireless_voltage_max");
+        // data.wireless_current_max = json.getInt("wireless_current_max");
+        // data.wireless_type = json.getString("wireless_type");
+        // data.scenario_fcc = json.getInt("scenario_fcc");
+        // data.nt_abnormal_status = json.getInt("nt_abnormal_status");
     
     @Override
     public String toString() {
         return "BatteryData{" +
                 "timestamp=" + timestamp +
-                ", capacity=" + getCapacity() + "%" +
-                ", status='" + getStatus() + '\'' +
-                ", temperature=" + getTemperatureCelsius() + "°C" +
-                ", voltage=" + getVoltageVolts() + "V" +
-                ", current=" + getCurrentMilliamps() + "mA" +
                 '}';
     }
 }
