@@ -2,6 +2,8 @@ package com.upo.batteryassistant.ui;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +23,9 @@ import com.upo.batteryassistant.manager.BatteryInfoManager;
  */
 public class BatteryInfoFragment extends Fragment {
     private BatteryInfoManager batteryInfoManager;
+    private Handler handler;
+    private Runnable updateRunnable;
+    private static final int UPDATE_INTERVAL = 2000;
 
     // UI组件 - 基础信息
     private TextView tvLevel;
@@ -43,6 +48,7 @@ public class BatteryInfoFragment extends Fragment {
         super.onCreate(savedInstanceState);
         if (getActivity() != null) {
             batteryInfoManager = BatteryInfoManager.getInstance(getActivity());
+            handler = new Handler(Looper.getMainLooper());
         }
     }
 
@@ -60,19 +66,18 @@ public class BatteryInfoFragment extends Fragment {
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        // 设置监听器
-        batteryInfoManager.setListener(new BatteryInfoManager.BatteryInfoListener() {
+        
+        // 创建定时任务
+        updateRunnable = new Runnable() {
             @Override
-            public void onBatteryInfoChanged(BatteryInfo batteryInfo) {
-                updateBatteryInfo(batteryInfo);
+            public void run() {
+                updateBatteryInfo();
+                // 循环执行
+                if (handler != null) {
+                    handler.postDelayed(this, UPDATE_INTERVAL);
+                }
             }
-        });
-
-        // 立即获取一次电池信息
-        BatteryInfo info = batteryInfoManager.getCurrentBatteryInfo();
-        if (info != null) {
-            updateBatteryInfo(info);
-        }
+        };
     }
 
     private void initViews(View view) {
@@ -92,7 +97,9 @@ public class BatteryInfoFragment extends Fragment {
         tvDesignCapacity = view.findViewById(R.id.tv_design_capacity);
     }
 
-    private void updateBatteryInfo(BatteryInfo info) {
+    private void updateBatteryInfo() {
+        // 获取电池信息
+        BatteryInfo info = batteryInfoManager.getCurrentBatteryInfo();
         if (getActivity() == null || info == null) {
             return;
         }
@@ -184,6 +191,47 @@ public class BatteryInfoFragment extends Fragment {
                 }
             }
         });
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        // 立即获取一次电池信息
+        updateBatteryInfo();
+        // Fragment可见时启动定时器
+        startPeriodicUpdate();
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        // Fragment不可见时停止定时器
+        stopPeriodicUpdate();
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        // 清理资源
+        stopPeriodicUpdate();
+    }
+
+    /**
+     * 开始定时更新
+     */
+    private void startPeriodicUpdate() {
+        if (handler != null && updateRunnable != null) {
+            handler.post(updateRunnable);
+        }
+    }
+
+    /**
+     * 停止定时更新
+     */
+    private void stopPeriodicUpdate() {
+        if (handler != null && updateRunnable != null) {
+            handler.removeCallbacks(updateRunnable);
+        }
     }
 }
 

@@ -118,24 +118,6 @@ public class MainActivity extends AppCompatActivity {
         transaction.commit();
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        // 设置应用可见状态为true
-        batteryInfoManager.setAppVisible(true);
-        // 注册电池状态监听（用于UI更新）
-        batteryInfoManager.registerBatteryReceiver();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // 设置应用可见状态为false
-        batteryInfoManager.setAppVisible(false);
-        // 注销电池状态监听
-        batteryInfoManager.unregisterBatteryReceiver();
-    }
-
     /**
      * 启动电池监控服务
      */
