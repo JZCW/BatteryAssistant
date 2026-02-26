@@ -95,11 +95,11 @@ public class BatteryData {
         // data.voltage_ocv = json.getInt("voltage_ocv");
 
     public int getCurrentNow() {
-        return current_now/1000.0f;
+        return (int) (current_now/1000.0f);
     }
     
     public int getCurrentAverage() {
-        return current_avg/1000.0f;
+        return (int) (current_avg/1000.0f);
     }
 
     public int getTempBattery() {
@@ -126,7 +126,7 @@ public class BatteryData {
     // data.charge_type_str = json.getString("charge_type_str");
 
     public int getChargeCounter() {
-        return charge_counter/1000.0f;
+        return (int) (charge_counter/1000.0f);
     }
 
     public int getCycleCount() {
@@ -134,11 +134,11 @@ public class BatteryData {
     }
 
     public int getChargeFull() {
-        return charge_full/1000.0f;
+        return (int) (charge_full/1000.0f);
     }
 
     public int getChargeDesign() {
-        return charge_design/1000.0f;
+        return (int) (charge_design/1000.0f);
     }
 
         // data.usb_online = json.getInt("usb_online");

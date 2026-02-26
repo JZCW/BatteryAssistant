@@ -1,5 +1,7 @@
 package com.upo.batteryassistant.data;
 
+import android.util.Log;
+
 /**
  * 电池信息数据类
  */
@@ -10,7 +12,7 @@ public class BatteryInfo {
     private int voltage;              // 电压，单位：mV
     private int current;              // 电流，单位：mA（负值表示放电）
     private int currentAverage;       // 平均电流，单位：mA
-    private int health;               // 健康状态
+    private int health;               // 健康状态 //FIXME API读到的是枚举值
     private int status;               // 充电状态
     private int chargeCounter;        // 充电计数器，单位：毫安时（mAh）
     private long chargeTimeRemaining; // 剩余充电时间，单位：毫秒（-1表示无法计算）
@@ -145,41 +147,27 @@ public class BatteryInfo {
         return voltage / 1000.0f;
     }
 
-    /**
-     * 获取电流（毫安）
-     */
-    public float getCurrentMilliAmps() {
-        return current / 1000.0f;
-    }
-
-    /**
-     * 获取平均电流（毫安）
-     */
-    public float getCurrentAverageMilliAmps() {
-        return currentAverage / 1000.0f;
-    }
-
-    /**
-     * 获取健康状态文本
-     */
-    public String getHealthText() {
-        switch (health) {
-            case android.os.BatteryManager.BATTERY_HEALTH_GOOD:
-                return "良好";
-            case android.os.BatteryManager.BATTERY_HEALTH_OVERHEAT:
-                return "过热";
-            case android.os.BatteryManager.BATTERY_HEALTH_DEAD:
-                return "已损坏";
-            case android.os.BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE:
-                return "过压";
-            case android.os.BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE:
-                return "未知故障";
-            case android.os.BatteryManager.BATTERY_HEALTH_COLD:
-                return "过冷";
-            default:
-                return "未知";
-        }
-    }
+    // /**
+    //  * 获取健康状态文本
+    //  */
+    // public String getHealthText() {
+    //     switch (health) {
+    //         case android.os.BatteryManager.BATTERY_HEALTH_GOOD:
+    //             return "良好";
+    //         case android.os.BatteryManager.BATTERY_HEALTH_OVERHEAT:
+    //             return "过热";
+    //         case android.os.BatteryManager.BATTERY_HEALTH_DEAD:
+    //             return "已损坏";
+    //         case android.os.BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE:
+    //             return "过压";
+    //         case android.os.BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE:
+    //             return "未知故障";
+    //         case android.os.BatteryManager.BATTERY_HEALTH_COLD:
+    //             return "过冷";
+    //         default:
+    //             return "未知";
+    //     }
+    // }
 
     /**
      * 获取是否正在充电
