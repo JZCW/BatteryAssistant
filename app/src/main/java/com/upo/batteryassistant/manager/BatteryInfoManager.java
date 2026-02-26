@@ -128,8 +128,6 @@ public class BatteryInfoManager {
         } else if (level >= 0) {
             // 如果scale无效，直接使用level值
             info.setLevel(level);
-        } else {
-            info.setLevel(-1);
         }
 
         // 温度（0.1°C）
@@ -139,7 +137,7 @@ public class BatteryInfoManager {
         info.setVoltage(batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1));
 
         // 健康状态
-        info.setHealth(batteryStatus.getIntExtra(BatteryManager.EXTRA_HEALTH, -1));
+        info.setHealthApi(batteryStatus.getIntExtra(BatteryManager.EXTRA_HEALTH, -1));
 
         // 充电状态
         info.setStatus(batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1));

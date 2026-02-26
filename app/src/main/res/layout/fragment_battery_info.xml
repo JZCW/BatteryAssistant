@@ -223,6 +223,35 @@
                     android:background="?attr/colorControlNormal"
                     android:alpha="0.12" />
 
+                <!-- 健康度 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:paddingVertical="8dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="健康度"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tv_health"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="--"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="?attr/colorControlNormal"
+                    android:alpha="0.12" />
+
                 <!-- 健康状态 -->
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -238,7 +267,7 @@
                         android:textSize="14sp" />
 
                     <TextView
-                        android:id="@+id/tv_health"
+                        android:id="@+id/tv_health_api"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"

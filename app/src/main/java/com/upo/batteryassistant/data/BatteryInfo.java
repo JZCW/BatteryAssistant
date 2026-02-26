@@ -7,18 +7,19 @@ import android.util.Log;
  */
 public class BatteryInfo {
     // 基础信息
-    private int level;                // 电量百分比 (0-100)
-    private int temperature;          // 温度，单位：0.1°C
-    private int voltage;              // 电压，单位：mV
-    private int current;              // 电流，单位：mA（负值表示放电）
-    private int currentAverage;       // 平均电流，单位：mA
-    private int health;               // 健康状态 //FIXME API读到的是枚举值
-    private int status;               // 充电状态
-    private int chargeCounter;        // 充电计数器，单位：毫安时（mAh）
-    private long chargeTimeRemaining; // 剩余充电时间，单位：毫秒（-1表示无法计算）
-    private int cycleCount;           // 循环次数
-    private int fullCapacity;         // 满电容量，单位：mAh
-    private int designCapacity;       // 设计容量，单位：mAh
+    private int level = -1;                // 电量百分比 (0-100)
+    private int temperature = -1;          // 温度，单位：0.1°C
+    private int voltage = -1;              // 电压，单位：mV
+    private int current = Integer.MIN_VALUE;              // 电流，单位：mA（负值表示放电）
+    private int currentAverage = Integer.MIN_VALUE;       // 平均电流，单位：mA
+    private int health = -1;               // 健康度
+    private int health_api = -1;           // API健康状态
+    private int status = -1;               // 充电状态
+    private int chargeCounter = -1;        // 充电计数器，单位：毫安时（mAh）
+    private long chargeTimeRemaining = -1; // 剩余充电时间，单位：毫秒（-1表示无法计算）
+    private int cycleCount = -1;           // 循环次数
+    private int fullCapacity = -1;         // 满电容量，单位：mAh
+    private int designCapacity = -1;       // 设计容量，单位：mAh
 
     public BatteryInfo() {
     }
@@ -61,6 +62,29 @@ public class BatteryInfo {
 
     public void setHealth(int health) {
         this.health = health;
+    }
+
+    public void setHealthApi(int health) {
+        this.health_api = health;
+    }
+
+    public String getHealthText() {
+        switch (health_api) {
+            case android.os.BatteryManager.BATTERY_HEALTH_GOOD:
+                return "良好";
+            case android.os.BatteryManager.BATTERY_HEALTH_OVERHEAT:
+                return "过热";
+            case android.os.BatteryManager.BATTERY_HEALTH_DEAD:
+                return "已损坏";
+            case android.os.BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE:
+                return "过压";
+            case android.os.BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE:
+                return "未知故障";
+            case android.os.BatteryManager.BATTERY_HEALTH_COLD:
+                return "过冷";
+            default:
+                return "未知";
+        }
     }
 
     public String getStatusText() {
@@ -146,28 +170,6 @@ public class BatteryInfo {
     public float getVoltageVolts() {
         return voltage / 1000.0f;
     }
-
-    // /**
-    //  * 获取健康状态文本
-    //  */
-    // public String getHealthText() {
-    //     switch (health) {
-    //         case android.os.BatteryManager.BATTERY_HEALTH_GOOD:
-    //             return "良好";
-    //         case android.os.BatteryManager.BATTERY_HEALTH_OVERHEAT:
-    //             return "过热";
-    //         case android.os.BatteryManager.BATTERY_HEALTH_DEAD:
-    //             return "已损坏";
-    //         case android.os.BatteryManager.BATTERY_HEALTH_OVER_VOLTAGE:
-    //             return "过压";
-    //         case android.os.BatteryManager.BATTERY_HEALTH_UNSPECIFIED_FAILURE:
-    //             return "未知故障";
-    //         case android.os.BatteryManager.BATTERY_HEALTH_COLD:
-    //             return "过冷";
-    //         default:
-    //             return "未知";
-    //     }
-    // }
 
     /**
      * 获取是否正在充电

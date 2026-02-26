@@ -29,6 +29,7 @@ public class BatteryInfoFragment extends Fragment {
     private TextView tvTemperature;
     private TextView tvCurrent;
     private TextView tvHealth;
+    private TextView tvHealthApi;
     // private TextView tvPlugged;
     private TextView tvCurrentAverage;
     private TextView tvChargeTime;
@@ -81,12 +82,14 @@ public class BatteryInfoFragment extends Fragment {
         tvTemperature = view.findViewById(R.id.tv_temperature);
         tvCurrent = view.findViewById(R.id.tv_current);
         tvHealth = view.findViewById(R.id.tv_health);
+        tvHealthApi = view.findViewById(R.id.tv_health_api);
         // tvPlugged = view.findViewById(R.id.tv_plugged);
         tvCurrentAverage = view.findViewById(R.id.tv_current_average);
         tvChargeTime = view.findViewById(R.id.tv_charge_time);
         tvChargeCounter = view.findViewById(R.id.tv_charge_counter);
         tvCycleCount = view.findViewById(R.id.tv_cycle_count);
         tvFullCapacity = view.findViewById(R.id.tv_full_capacity);
+        tvDesignCapacity = view.findViewById(R.id.tv_design_capacity);
     }
 
     private void updateBatteryInfo(BatteryInfo info) {
@@ -99,65 +102,85 @@ public class BatteryInfoFragment extends Fragment {
             @Override
             public void run() {
                 // 电量百分比
-                tvLevel.setText(String.format("%d%%", info.getLevel()));
+                if (info.getLevel() != -1) {
+                    tvLevel.setText(String.format("%d%%", info.getLevel()));
+                } else {
+                    tvLevel.setText("不可用");
+                }
 
                 // 充电状态
                 tvStatus.setText(info.getStatusText());
 
                 // 电压
-                tvVoltage.setText(String.format("%.2f V", info.getVoltageVolts()));
+                if (info.getVoltage() != -1) {
+                    tvVoltage.setText(String.format("%.2f V", info.getVoltageVolts()));
+                } else {
+                    tvVoltage.setText("不可用");
+                }
 
                 // 温度
-                tvTemperature.setText(String.format("%.1f °C", info.getTemperatureCelsius()));
+                if (info.getTemperature() != -1) {
+                    tvTemperature.setText(String.format("%.1f °C", info.getTemperatureCelsius()));
+                } else {
+                    tvTemperature.setText("不可用");
+                }
 
                 // 电流（微安转毫安）
-                if (info.getCurrent() != 0 && info.getCurrent() != Integer.MIN_VALUE) {
+                if (info.getCurrent() != Integer.MIN_VALUE) {
                     tvCurrent.setText(String.format("%d mA", info.getCurrent()));
                 } else {
                     tvCurrent.setText("不可用");
                 }
 
+                // 健康度
+                if (info.getHealth() != -1) {
+                    tvHealth.setText(String.format("%d", info.getHealth()));
+                } else {
+                    tvHealth.setText("不可用");
+                }
+
                 // 健康状态
-                // tvHealth.setText(String.format("%d", info.getHealth()));
+                tvHealthApi.setText(info.getHealthText());
 
                 // // 插电方式
                 // tvPlugged.setText(info.getPluggedText());
 
                 // 平均电流
-                if (info.getCurrentAverage() != 0 && info.getCurrentAverage() != Integer.MIN_VALUE) {
+                if (info.getCurrentAverage() != Integer.MIN_VALUE) {
                     tvCurrentAverage.setText(String.format("%d mA", info.getCurrentAverage()));
                 } else {
                     tvCurrentAverage.setText("不可用");
                 }
 
                 // 剩余充电时间
-                if (info.getChargeTimeRemaining() >= 0) {
-                    tvChargeTime.setText(info.getChargeTimeRemainingText());
-                } else {
-                    tvChargeTime.setText("无法计算");
-                }
+                tvChargeTime.setText(info.getChargeTimeRemainingText());
 
                 // 充电计数器
-                if (info.getChargeCounter() != 0 && info.getChargeCounter() != Long.MIN_VALUE) {
+                if (info.getChargeCounter() != -1) {
                     tvChargeCounter.setText(String.format("%d mAh", info.getChargeCounter()));
                 } else {
                     tvChargeCounter.setText("不可用");
                 }
 
                 // 循环次数
-                if (info.getCycleCount() >= 0) {
+                if (info.getCycleCount() != -1) {
                     tvCycleCount.setText(String.format("%d 次", info.getCycleCount()));
                 } else {
                     tvCycleCount.setText("不可用");
                 }
 
-                // ========== 高级信息 ==========
-                // 满电容量（来自 root 或其他途径）
-                int fullCap = info.getFullCapacity();
-                if (fullCap > 0) {
-                    tvFullCapacity.setText(String.format("%d mAh", fullCap));
+                // 满电容量
+                if (info.getFullCapacity() != -1) {
+                    tvFullCapacity.setText(String.format("%d mAh", info.getFullCapacity()));
                 } else {
-                    tvFullCapacity.setText("--");
+                    tvFullCapacity.setText("不可用");
+                }
+
+                // 设计容量
+                if (info.getDesignCapacity() != -1) {
+                    tvDesignCapacity.setText(String.format("%d mAh", info.getDesignCapacity()));
+                } else {
+                    tvDesignCapacity.setText("不可用");
                 }
             }
         });
