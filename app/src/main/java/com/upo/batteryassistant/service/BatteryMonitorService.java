@@ -10,7 +10,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import androidx.core.app.NotificationCompat;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
@@ -30,8 +32,18 @@ public class BatteryMonitorService extends Service {
     private ChargeHistoryManager chargeHistoryManager;
     private BroadcastReceiver batteryReceiver;
     private BroadcastReceiver powerReceiver;
+    private BroadcastReceiver screenStateReceiver;
     private NotificationManager notificationManager;
     private BatteryInfo currentBatteryInfo;
+    private Handler updateHandler;
+    private Runnable updateRunnable;
+    private boolean isScreenOn = true;
+    private long lastNotificationUpdateTime = 0;
+    private BatteryInfo lastNotificationInfo;
+    
+    // 更新间隔配置
+    private static final long NOTIFICATION_UPDATE_INTERVAL_HIGH = 1000; // 屏幕亮起时 1秒
+    private static final long NOTIFICATION_UPDATE_INTERVAL_LOW = 60000; // 息屏时 60秒
 
     @Override
     public void onCreate() {
@@ -40,6 +52,7 @@ public class BatteryMonitorService extends Service {
         batteryInfoManager = BatteryInfoManager.getInstance(this);
         chargeHistoryManager = ChargeHistoryManager.getInstance(this);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        updateHandler = new Handler(Looper.getMainLooper());
         
         // 创建通知渠道（Android 8.0+）
         createNotificationChannel();
@@ -52,6 +65,9 @@ public class BatteryMonitorService extends Service {
         
         // 注册充电器事件监听
         registerPowerReceiver();
+        
+        // 注册屏幕状态监听
+        registerScreenStateReceiver();
         
         // 立即获取一次电池信息
         updateBatteryInfo();
@@ -69,6 +85,8 @@ public class BatteryMonitorService extends Service {
         super.onDestroy();
         unregisterBatteryReceiver();
         unregisterPowerReceiver();
+        unregisterScreenStateReceiver();
+        stopNotificationUpdate();
     }
 
     @Override
@@ -170,14 +188,93 @@ public class BatteryMonitorService extends Service {
     }
 
     /**
+     * 注册屏幕状态监听
+     */
+    private void registerScreenStateReceiver() {
+        if (screenStateReceiver != null) {
+            return;
+        }
+
+        screenStateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if (Intent.ACTION_SCREEN_ON.equals(action)) {
+                    isScreenOn = true;
+                } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                    isScreenOn = false;
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        registerReceiver(screenStateReceiver, filter);
+    }
+
+    /**
+     * 注销屏幕状态监听
+     */
+    private void unregisterScreenStateReceiver() {
+        if (screenStateReceiver != null) {
+            try {
+                unregisterReceiver(screenStateReceiver);
+                screenStateReceiver = null;
+            } catch (IllegalArgumentException e) {
+                // 接收器未注册，忽略
+            }
+        }
+    }
+
+    /**
+     * 停止通知更新
+     */
+    private void stopNotificationUpdate() {
+        if (updateRunnable != null) {
+            updateHandler.removeCallbacks(updateRunnable);
+            updateRunnable = null;
+        }
+    }
+
+    /**
      * 更新电池信息并刷新通知
      */
     private void updateBatteryInfo() {
         currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
         if (currentBatteryInfo != null) {
-            // 更新通知
-            notificationManager.notify(NOTIFICATION_ID, createNotification());
+            updateNotificationIfNeeded();
         }
+    }
+
+    /**
+     * 根据屏幕状态和更新间隔决定是否更新通知
+     */
+    private void updateNotificationIfNeeded() {
+        long currentTime = System.currentTimeMillis();
+        long updateInterval = isScreenOn ? NOTIFICATION_UPDATE_INTERVAL_HIGH : NOTIFICATION_UPDATE_INTERVAL_LOW;
+
+        // 检查是否需要更新通知
+        if (currentTime - lastNotificationUpdateTime >= updateInterval) {
+            // 检查数据是否有显著变化
+            if (hasSignificantChangeForNotification(lastNotificationInfo, currentBatteryInfo)) {
+                lastNotificationInfo = currentBatteryInfo;
+                lastNotificationUpdateTime = currentTime;
+                notificationManager.notify(NOTIFICATION_ID, createNotification());
+            }
+        }
+    }
+
+    /**
+     * 检测电池信息是否有显著变化（用于通知更新）
+     */
+    private boolean hasSignificantChangeForNotification(BatteryInfo oldInfo, BatteryInfo newInfo) {
+        if (oldInfo == null) {
+            return true;
+        }
+
+        // 检查关键指标是否变化
+        return oldInfo.getLevel() != newInfo.getLevel();
     }
 
     /**

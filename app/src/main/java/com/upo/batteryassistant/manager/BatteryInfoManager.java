@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.BatteryManager;
+import android.os.Handler;
+import android.os.Looper;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.service.BatteryServiceConnector;
 import com.upo.batteryassistant.service.BatteryData;
@@ -20,7 +22,18 @@ public class BatteryInfoManager {
     private Context context;
     private BatteryInfoListener listener;
     private BroadcastReceiver batteryReceiver;
+    private BroadcastReceiver screenStateReceiver;
     private BatteryServiceConnector serviceConnector;
+    private Handler updateHandler;
+    private Runnable updateRunnable;
+    private boolean isScreenOn = true;
+    private boolean isAppVisible = false;
+    private long lastUpdateTime = 0;
+    private BatteryInfo lastBatteryInfo;
+    
+    // 更新间隔配置
+    private static final long MIN_UPDATE_INTERVAL = 1000; // 高频模式最小更新间隔 1秒
+    private static final long LOW_FREQUENCY_UPDATE_INTERVAL = 30000; // 低频模式更新间隔 30秒
 
     /**
      * 电池信息更新监听器
@@ -32,6 +45,7 @@ public class BatteryInfoManager {
     private BatteryInfoManager(Context context) {
         this.context = context.getApplicationContext();
         this.serviceConnector = new BatteryServiceConnector();
+        this.updateHandler = new Handler(Looper.getMainLooper());
     }
 
     /**
@@ -53,6 +67,15 @@ public class BatteryInfoManager {
      */
     public void setListener(BatteryInfoListener listener) {
         this.listener = listener;
+    }
+
+    /**
+     * 设置应用可见性状态
+     * @param visible true表示应用在前台可见，false表示在后台
+     */
+    public void setAppVisible(boolean visible) {
+        this.isAppVisible = visible;
+        updateUpdateMode();
     }
 
     /**
@@ -83,16 +106,19 @@ public class BatteryInfoManager {
             @Override
             public void onReceive(Context context, Intent intent) {
                 if (Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
-                    BatteryInfo info = getCurrentBatteryInfo();
-                    if (listener != null && info != null) {
-                        listener.onBatteryInfoChanged(info);
-                    }
+                    handleBatteryUpdate();
                 }
             }
         };
 
         IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         context.registerReceiver(batteryReceiver, filter);
+
+        // 注册屏幕状态监听
+        registerScreenStateReceiver();
+
+        // 初始化更新模式
+        updateUpdateMode();
     }
 
     /**
@@ -107,6 +133,12 @@ public class BatteryInfoManager {
                 // 接收器未注册，忽略
             }
         }
+
+        // 注销屏幕状态监听
+        unregisterScreenStateReceiver();
+
+        // 停止低频更新
+        stopLowFrequencyUpdate();
     }
 
     /**
@@ -246,7 +278,140 @@ public class BatteryInfoManager {
     public CompletableFuture<Boolean> setChargeLimit(int limit) {
         return serviceConnector.setChargeLimit(limit);
     }
-    
+
+    /**
+     * 注册屏幕状态监听
+     */
+    private void registerScreenStateReceiver() {
+        if (screenStateReceiver != null) {
+            return;
+        }
+
+        screenStateReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if (Intent.ACTION_SCREEN_ON.equals(action)) {
+                    isScreenOn = true;
+                    updateUpdateMode();
+                } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+                    isScreenOn = false;
+                    updateUpdateMode();
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(Intent.ACTION_SCREEN_ON);
+        filter.addAction(Intent.ACTION_SCREEN_OFF);
+        context.registerReceiver(screenStateReceiver, filter);
+    }
+
+    /**
+     * 注销屏幕状态监听
+     */
+    private void unregisterScreenStateReceiver() {
+        if (screenStateReceiver != null) {
+            try {
+                context.unregisterReceiver(screenStateReceiver);
+                screenStateReceiver = null;
+            } catch (IllegalArgumentException e) {
+                // 接收器未注册，忽略
+            }
+        }
+    }
+
+    /**
+     * 更新更新模式
+     * 根据屏幕状态和应用可见性决定使用高频还是低频更新
+     */
+    private void updateUpdateMode() {
+        boolean shouldUseHighFrequency = isScreenOn && isAppVisible;
+
+        if (shouldUseHighFrequency) {
+            // 高频模式：停止定时更新，使用广播实时更新
+            stopLowFrequencyUpdate();
+        } else {
+            // 低频模式：启动定时更新，停止广播频繁触发
+            startLowFrequencyUpdate();
+        }
+    }
+
+    /**
+     * 启动低频更新
+     */
+    private void startLowFrequencyUpdate() {
+        stopLowFrequencyUpdate();
+
+        updateRunnable = new Runnable() {
+            @Override
+            public void run() {
+                handleBatteryUpdate();
+                updateHandler.postDelayed(this, LOW_FREQUENCY_UPDATE_INTERVAL);
+            }
+        };
+
+        updateHandler.postDelayed(updateRunnable, LOW_FREQUENCY_UPDATE_INTERVAL);
+    }
+
+    /**
+     * 停止低频更新
+     */
+    private void stopLowFrequencyUpdate() {
+        if (updateRunnable != null) {
+            updateHandler.removeCallbacks(updateRunnable);
+            updateRunnable = null;
+        }
+    }
+
+    /**
+     * 处理电池更新
+     * 包含节流机制和数据变化检测
+     */
+    private void handleBatteryUpdate() {
+        long currentTime = System.currentTimeMillis();
+
+        // 节流：高频模式下限制最小更新间隔
+        if (isScreenOn && isAppVisible) {
+            if (currentTime - lastUpdateTime < MIN_UPDATE_INTERVAL) {
+                return;
+            }
+        }
+
+        BatteryInfo info = getCurrentBatteryInfo();
+        if (info == null) {
+            return;
+        }
+
+        // 数据变化检测：只有数据真正改变时才通知监听器
+        if (hasSignificantChange(lastBatteryInfo, info)) {
+            lastBatteryInfo = info;
+            lastUpdateTime = currentTime;
+
+            if (listener != null) {
+                listener.onBatteryInfoChanged(info);
+            }
+        }
+    }
+
+    /**
+     * 检测电池信息是否有显著变化
+     * @param oldInfo 旧的电池信息
+     * @param newInfo 新的电池信息
+     * @return true表示有显著变化
+     */
+    private boolean hasSignificantChange(BatteryInfo oldInfo, BatteryInfo newInfo) {
+        if (oldInfo == null) {
+            return true;
+        }
+
+        // 检查关键指标是否变化
+        return oldInfo.getLevel() != newInfo.getLevel() ||
+               oldInfo.getTemperature() != newInfo.getTemperature() ||
+               oldInfo.getVoltage() != newInfo.getVoltage() ||
+               oldInfo.getCurrent() != newInfo.getCurrent();
+    }
+
     /**
      * 清理资源
      */
@@ -254,5 +419,6 @@ public class BatteryInfoManager {
         if (serviceConnector != null) {
             serviceConnector.cleanup();
         }
+        stopLowFrequencyUpdate();
     }
 }
