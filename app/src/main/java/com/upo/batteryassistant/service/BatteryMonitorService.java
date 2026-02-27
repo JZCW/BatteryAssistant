@@ -241,40 +241,15 @@ public class BatteryMonitorService extends Service {
      * 更新电池信息并刷新通知
      */
     private void updateBatteryInfo() {
-        currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
-        if (currentBatteryInfo != null) {
-            updateNotificationIfNeeded();
-        }
-    }
-
-    /**
-     * 根据屏幕状态和更新间隔决定是否更新通知
-     */
-    private void updateNotificationIfNeeded() {
         long currentTime = System.currentTimeMillis();
         long updateInterval = isScreenOn ? NOTIFICATION_UPDATE_INTERVAL_HIGH : NOTIFICATION_UPDATE_INTERVAL_LOW;
-
-        // 检查是否需要更新通知
         if (currentTime - lastNotificationUpdateTime >= updateInterval) {
-            // 检查数据是否有显著变化
-            if (hasSignificantChangeForNotification(lastNotificationInfo, currentBatteryInfo)) {
-                lastNotificationInfo = currentBatteryInfo;
+        currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
+            if (currentBatteryInfo != null) {
                 lastNotificationUpdateTime = currentTime;
                 notificationManager.notify(NOTIFICATION_ID, createNotification());
             }
         }
-    }
-
-    /**
-     * 检测电池信息是否有显著变化（用于通知更新）
-     */
-    private boolean hasSignificantChangeForNotification(BatteryInfo oldInfo, BatteryInfo newInfo) {
-        if (oldInfo == null) {
-            return true;
-        }
-
-        // 检查关键指标是否变化
-        return oldInfo.getLevel() != newInfo.getLevel();
     }
 
     /**
@@ -326,13 +301,6 @@ public class BatteryMonitorService extends Service {
         }
 
         return builder.build();
-    }
-
-    /**
-     * 获取当前电池信息（供外部调用）
-     */
-    public BatteryInfo getCurrentBatteryInfo() {
-        return currentBatteryInfo;
     }
 }
 
