@@ -30,7 +30,6 @@ public class BatteryMonitorService extends Service {
     
     private BatteryInfoManager batteryInfoManager;
     private ChargeHistoryManager chargeHistoryManager;
-    private BroadcastReceiver batteryReceiver;
     private BroadcastReceiver powerReceiver;
     private BroadcastReceiver screenStateReceiver;
     private NotificationManager notificationManager;
@@ -38,12 +37,18 @@ public class BatteryMonitorService extends Service {
     private Handler updateHandler;
     private Runnable updateRunnable;
     private boolean isScreenOn = true;
+    private boolean isCharging = false;
     private long lastNotificationUpdateTime = 0;
+    private long lastDataUpdateTime = 0;
     private BatteryInfo lastNotificationInfo;
     
-    // 更新间隔配置
-    private static final long NOTIFICATION_UPDATE_INTERVAL_HIGH = 1000; // 屏幕亮起时 1秒
-    private static final long NOTIFICATION_UPDATE_INTERVAL_LOW = 60000; // 息屏时 60秒
+    // 更新间隔配置（单位：毫秒）
+    // 非充电时
+    private static final long DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON = 10000; // 10秒
+    private static final long DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_OFF = 300000; // 5分钟
+    // 充电时
+    private static final long DATA_FETCH_INTERVAL_CHARGING_SCREEN_ON = 5000; // 5秒
+    private static final long DATA_FETCH_INTERVAL_CHARGING_SCREEN_OFF = 30000; // 30秒
 
     @Override
     public void onCreate() {
@@ -60,17 +65,14 @@ public class BatteryMonitorService extends Service {
         // 初始化充放电历史管理器
         chargeHistoryManager.init();
         
-        // 注册电池状态监听
-        registerBatteryReceiver();
-        
         // 注册充电器事件监听
         registerPowerReceiver();
         
         // 注册屏幕状态监听
         registerScreenStateReceiver();
         
-        // 立即获取一次电池信息
-        updateBatteryInfo();
+        // 启动定时更新任务
+        startPeriodicUpdate();
     }
 
     @Override
@@ -83,7 +85,6 @@ public class BatteryMonitorService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        unregisterBatteryReceiver();
         unregisterPowerReceiver();
         unregisterScreenStateReceiver();
         stopNotificationUpdate();
@@ -112,41 +113,7 @@ public class BatteryMonitorService extends Service {
         }
     }
 
-    /**
-     * 注册电池状态广播接收器
-     */
-    private void registerBatteryReceiver() {
-        if (batteryReceiver != null) {
-            return;
-        }
-
-        batteryReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                if (Intent.ACTION_BATTERY_CHANGED.equals(intent.getAction())) {
-                    updateBatteryInfo();
-                }
-            }
-        };
-
-        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        registerReceiver(batteryReceiver, filter);
-    }
-
-    /**
-     * 注销电池状态广播接收器
-     */
-    private void unregisterBatteryReceiver() {
-        if (batteryReceiver != null) {
-            try {
-                unregisterReceiver(batteryReceiver);
-                batteryReceiver = null;
-            } catch (IllegalArgumentException e) {
-                // 接收器未注册，忽略
-            }
-        }
-    }
-    
+        
     /**
      * 注册充电器事件广播接收器
      */
@@ -160,10 +127,14 @@ public class BatteryMonitorService extends Service {
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 if (Intent.ACTION_POWER_CONNECTED.equals(action)) {
+                    isCharging = true;
                     chargeHistoryManager.onPowerConnected();
                 } else if (Intent.ACTION_POWER_DISCONNECTED.equals(action)) {
+                    isCharging = false;
                     chargeHistoryManager.onPowerDisconnected();
                 }
+                // 充电状态变化时重新调度更新任务
+                restartPeriodicUpdate();
             }
         };
         
@@ -204,6 +175,8 @@ public class BatteryMonitorService extends Service {
                 } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                     isScreenOn = false;
                 }
+                // 屏幕状态变化时重新调度更新任务
+                restartPeriodicUpdate();
             }
         };
 
@@ -238,17 +211,96 @@ public class BatteryMonitorService extends Service {
     }
 
     /**
+     * 启动定时更新任务
+     */
+    private void startPeriodicUpdate() {
+        if (updateRunnable != null) {
+            return;
+        }
+        
+        updateRunnable = new Runnable() {
+            @Override
+            public void run() {
+                updateBatteryInfo();
+                // 根据当前状态计算下一次更新时间
+                long nextUpdateInterval = getNextUpdateInterval();
+                updateHandler.postDelayed(this, nextUpdateInterval);
+            }
+        };
+        
+        // 立即执行一次
+        updateHandler.post(updateRunnable);
+    }
+
+    /**
+     * 重启定时更新任务
+     */
+    private void restartPeriodicUpdate() {
+        stopNotificationUpdate();
+        startPeriodicUpdate();
+    }
+
+    /**
+     * 根据当前状态计算下一次更新间隔
+     */
+    private long getNextUpdateInterval() {
+        if (isCharging) {
+            if (isScreenOn) {
+                return DATA_FETCH_INTERVAL_CHARGING_SCREEN_ON;
+            } else {
+                return DATA_FETCH_INTERVAL_CHARGING_SCREEN_OFF;
+            }
+        } else {
+            if (isScreenOn) {
+                return DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON;
+            } else {
+                return DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_OFF;
+            }
+        }
+    }
+
+    /**
      * 更新电池信息并刷新通知
      */
     private void updateBatteryInfo() {
         long currentTime = System.currentTimeMillis();
-        long updateInterval = isScreenOn ? NOTIFICATION_UPDATE_INTERVAL_HIGH : NOTIFICATION_UPDATE_INTERVAL_LOW;
-        if (currentTime - lastNotificationUpdateTime >= updateInterval) {
-        currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
-            if (currentBatteryInfo != null) {
-                lastNotificationUpdateTime = currentTime;
-                notificationManager.notify(NOTIFICATION_ID, createNotification());
+        
+        // 根据充电状态和屏幕状态确定数据获取间隔
+        long dataFetchInterval;
+        boolean shouldUpdateNotification;
+        
+        if (isCharging) {
+            if (isScreenOn) {
+                // 充电 + 亮屏：每5秒获取数据并更新通知
+                dataFetchInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_ON;
+                shouldUpdateNotification = true;
+            } else {
+                // 充电 + 关屏：每30秒获取数据并更新通知
+                dataFetchInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_OFF;
+                shouldUpdateNotification = true;
             }
+        } else {
+            if (isScreenOn) {
+                // 非充电 + 亮屏：每10秒获取数据并更新通知
+                dataFetchInterval = DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON;
+                shouldUpdateNotification = true;
+            } else {
+                // 非充电 + 关屏：每5分钟获取数据但不更新通知
+                dataFetchInterval = DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_OFF;
+                shouldUpdateNotification = false;
+            }
+        }
+        
+        // 检查是否到了获取新数据的时间
+        if (currentTime - lastDataUpdateTime >= dataFetchInterval) {
+            currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
+            lastDataUpdateTime = currentTime;
+        }
+        
+        // 根据策略决定是否更新通知
+        if (shouldUpdateNotification && currentBatteryInfo != null) {
+            lastNotificationUpdateTime = currentTime;
+            notificationManager.notify(NOTIFICATION_ID, createNotification());
         }
     }
 
