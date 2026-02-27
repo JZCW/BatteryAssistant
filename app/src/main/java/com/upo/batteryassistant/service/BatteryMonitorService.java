@@ -38,9 +38,6 @@ public class BatteryMonitorService extends Service {
     private Runnable updateRunnable;
     private boolean isScreenOn = true;
     private boolean isCharging = false;
-    private long lastNotificationUpdateTime = 0;
-    private long lastDataUpdateTime = 0;
-    private BatteryInfo lastNotificationInfo;
     
     // 更新间隔配置（单位：毫秒）
     // 非充电时
@@ -221,9 +218,7 @@ public class BatteryMonitorService extends Service {
         updateRunnable = new Runnable() {
             @Override
             public void run() {
-                updateBatteryInfo();
-                // 根据当前状态计算下一次更新时间
-                long nextUpdateInterval = getNextUpdateInterval();
+                long nextUpdateInterval = updateBatteryInfo();;
                 updateHandler.postDelayed(this, nextUpdateInterval);
             }
         };
@@ -241,67 +236,36 @@ public class BatteryMonitorService extends Service {
     }
 
     /**
-     * 根据当前状态计算下一次更新间隔
-     */
-    private long getNextUpdateInterval() {
-        if (isCharging) {
-            if (isScreenOn) {
-                return DATA_FETCH_INTERVAL_CHARGING_SCREEN_ON;
-            } else {
-                return DATA_FETCH_INTERVAL_CHARGING_SCREEN_OFF;
-            }
-        } else {
-            if (isScreenOn) {
-                return DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON;
-            } else {
-                return DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_OFF;
-            }
-        }
-    }
-
-    /**
      * 更新电池信息并刷新通知
+     * @return 下次更新间隔
      */
-    private void updateBatteryInfo() {
-        long currentTime = System.currentTimeMillis();
-        
-        // 根据充电状态和屏幕状态确定数据获取间隔
-        long dataFetchInterval;
-        boolean shouldUpdateNotification;
-        
+    private long updateBatteryInfo() {
+        boolean shouldUpdateNotification = true;
+        long nextUpdateInterval;
+
         if (isCharging) {
             if (isScreenOn) {
-                // 充电 + 亮屏：每5秒获取数据并更新通知
-                dataFetchInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_ON;
-                shouldUpdateNotification = true;
+                nextUpdateInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_ON;
             } else {
-                // 充电 + 关屏：每30秒获取数据并更新通知
-                dataFetchInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_OFF;
-                shouldUpdateNotification = true;
+                nextUpdateInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_OFF;
             }
         } else {
             if (isScreenOn) {
-                // 非充电 + 亮屏：每10秒获取数据并更新通知
-                dataFetchInterval = DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON;
-                shouldUpdateNotification = true;
+                nextUpdateInterval = DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON;
             } else {
-                // 非充电 + 关屏：每5分钟获取数据但不更新通知
-                dataFetchInterval = DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_OFF;
-                shouldUpdateNotification = false;
+                shouldUpdateNotification = false; // 非充电 + 关屏 获取数据但不更新通知
+                nextUpdateInterval = DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_OFF;
             }
         }
-        
-        // 检查是否到了获取新数据的时间
-        if (currentTime - lastDataUpdateTime >= dataFetchInterval) {
-            currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
-            lastDataUpdateTime = currentTime;
-        }
-        
+
+        currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
+
         // 根据策略决定是否更新通知
         if (shouldUpdateNotification && currentBatteryInfo != null) {
-            lastNotificationUpdateTime = currentTime;
             notificationManager.notify(NOTIFICATION_ID, createNotification());
         }
+
+        return nextUpdateInterval;
     }
 
     /**
