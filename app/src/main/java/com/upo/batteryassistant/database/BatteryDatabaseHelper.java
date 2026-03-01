@@ -21,10 +21,10 @@ import java.util.Locale;
 public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "BatteryDatabaseHelper";
     private static final String DATABASE_NAME = "battery_assistant.db";
-    private static final int DATABASE_VERSION = 3;
+    private static final int DATABASE_VERSION = 4;
     
     // 创建charge_sessions表的SQL
-    private static final String SQL_CREATE_CHARGE_SESSIONS_TABLE = 
+    private static final String SQL_CREATE_CHARGE_SESSIONS_TABLE =
         "CREATE TABLE " + DatabaseContract.ChargeSessionEntry.TABLE_NAME + " (" +
         DatabaseContract.ChargeSessionEntry.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
         DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + " INTEGER NOT NULL," +
@@ -43,7 +43,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + " INTEGER DEFAULT 0," +
         DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
         DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + " INTEGER," +
-        DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + " INTEGER" +
+        DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + " INTEGER," +
+        DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " INTEGER DEFAULT 0" +
         ");";
     
     // 创建daily_stats表的SQL
@@ -122,12 +123,11 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // 完全重建，删除所有旧表
-        db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.ChargeSessionEntry.TABLE_NAME);
-        db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.DailyStatsEntry.TABLE_NAME);
-        db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME);
-        db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME);
-        onCreate(db);
+        if (oldVersion < 4) {
+            // 添加 is_ongoing 字段
+            db.execSQL("ALTER TABLE " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                      " ADD COLUMN " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " INTEGER DEFAULT 0");
+        }
     }
     
     /**
@@ -278,7 +278,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF, session.getDozeChargeCounterDiff());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY, session.getEstimatedCapacity());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT, session.getCycleCount());
-        
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING, session.isOngoing() ? 1 : 0);
+
         return values;
     }
     
@@ -306,7 +307,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         session.setDozeChargeCounterDiff(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF)));
         session.setEstimatedCapacity(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY)));
         session.setCycleCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT)));
-        
+        session.setOngoing(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING)) == 1);
+
         return session;
     }
     
@@ -316,20 +318,65 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     public List<ChargeSession> getSessions(int offset, int limit) {
         SQLiteDatabase db = getReadableDatabase();
         List<ChargeSession> sessions = new ArrayList<>();
-        
+
         String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                      " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 0" +
                       " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
                       " LIMIT ? OFFSET ?";
-        
+
         Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(limit), String.valueOf(offset)});
-        
+
         while (cursor.moveToNext()) {
             ChargeSession session = parseSessionFromCursor(cursor);
             sessions.add(session);
         }
         cursor.close();
-        
+
         return sessions;
+    }
+
+    /**
+     * 获取进行中的会话
+     */
+    public List<ChargeSession> getOngoingSessions() {
+        SQLiteDatabase db = getReadableDatabase();
+        List<ChargeSession> sessions = new ArrayList<>();
+
+        String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                      " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 1" +
+                      " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC";
+
+        Cursor cursor = db.rawQuery(query, null);
+
+        while (cursor.moveToNext()) {
+            ChargeSession session = parseSessionFromCursor(cursor);
+            sessions.add(session);
+        }
+        cursor.close();
+
+        return sessions;
+    }
+
+    /**
+     * 删除进行中的会话
+     */
+    public void deleteOngoingSessions() {
+        SQLiteDatabase db = getWritableDatabase();
+        db.delete(DatabaseContract.ChargeSessionEntry.TABLE_NAME,
+                 DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = ?",
+                 new String[]{"1"});
+    }
+
+    /**
+     * 更新会话的进行中状态
+     */
+    public void updateSessionOngoingStatus(long sessionId, boolean isOngoing) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING, isOngoing ? 1 : 0);
+        db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
+                 DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
+                 new String[]{String.valueOf(sessionId)});
     }
     
     /**

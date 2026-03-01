@@ -45,6 +45,9 @@ public final class DatabaseContract {
         // 估计容量和周期计数（仅充电）
         public static final String COLUMN_ESTIMATED_CAPACITY = "estimated_capacity";
         public static final String COLUMN_CYCLE_COUNT = "cycle_count";
+
+        // 进行中状态
+        public static final String COLUMN_IS_ONGOING = "is_ongoing";
         
         // 阶段类型常量
         public static final int SESSION_TYPE_UNKNOWN = -1;  // 未知阶段

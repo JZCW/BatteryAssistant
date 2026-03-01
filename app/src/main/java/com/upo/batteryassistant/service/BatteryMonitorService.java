@@ -260,6 +260,9 @@ public class BatteryMonitorService extends Service {
 
         currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
 
+        // 定期保存进行中的会话
+        chargeHistoryManager.saveOngoingSession();
+
         // 根据策略决定是否更新通知
         if (shouldUpdateNotification && currentBatteryInfo != null) {
             notificationManager.notify(NOTIFICATION_ID, createNotification());

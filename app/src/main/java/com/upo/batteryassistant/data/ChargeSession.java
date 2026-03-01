@@ -30,6 +30,9 @@ public class ChargeSession {
     // 估计容量和周期计数（仅充电）
     private int estimatedCapacity;  // 估计容量
     private int cycleCount;         // 周期计数
+
+    // 进行中状态
+    private boolean isOngoing;      // 是否进行中
     
     public ChargeSession() {
         // 初始化默认值
@@ -181,9 +184,17 @@ public class ChargeSession {
     public int getCycleCount() {
         return cycleCount;
     }
-    
+
     public void setCycleCount(int cycleCount) {
         this.cycleCount = cycleCount;
+    }
+
+    public boolean isOngoing() {
+        return isOngoing;
+    }
+
+    public void setOngoing(boolean ongoing) {
+        isOngoing = ongoing;
     }
     
     /**
