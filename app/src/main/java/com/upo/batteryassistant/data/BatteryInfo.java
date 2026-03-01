@@ -7,6 +7,7 @@ import android.util.Log;
  */
 public class BatteryInfo {
     // 基础信息
+    private long timestamp = 0;
     private int level = -1;                // 电量百分比 (0-100)
     private int temperature = -1;          // 温度，单位：0.1°C
     private int voltage = -1;              // 电压，单位：mV
@@ -21,7 +22,14 @@ public class BatteryInfo {
     private int fullCapacity = -1;         // 满电容量，单位：mAh
     private int designCapacity = -1;       // 设计容量，单位：mAh
 
-    public BatteryInfo() {
+    public BatteryInfo() {}
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 
     public int getLevel() {

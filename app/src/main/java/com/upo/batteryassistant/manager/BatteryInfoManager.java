@@ -46,16 +46,18 @@ public class BatteryInfoManager {
      * 获取当前电池信息
      */
     public BatteryInfo getCurrentBatteryInfo() {
-        //TODO 缓存数据 如果间隔过短则不更新
+        if (cache != null && (System.currentTimeMillis() - cache.getTimestamp()) < 2000) {
+            return cache;
+        }
+
         BatteryInfo info = new BatteryInfo();
 
         fillBasicInfo(info);
 
-
-
         // ========== Magisk Service 高级信息填充 ==========
         // fillAdvancedInfoIfRootAvailable(info);
 
+        cache = info;
         return info;
     }
 
@@ -69,6 +71,8 @@ public class BatteryInfoManager {
         if (batteryStatus == null) {
             return false;
         }
+
+        info.setTimestamp(System.currentTimeMillis());
 
         int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
         int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
