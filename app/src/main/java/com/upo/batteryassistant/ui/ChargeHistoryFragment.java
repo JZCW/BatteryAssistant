@@ -188,18 +188,15 @@ public class ChargeHistoryFragment extends Fragment {
                     String.format("%d%%", levelChange);
                 levelChangeText.setText("电量变化: " + levelChangeStr);
                 
-                // 开始状态
-                String startInfo = String.format("开始: %d%% | %.1f°C | %.2fV",
-                    session.getStartLevel(),
-                    session.getStartTemperatureCelsius(),
-                    session.getStartVoltageVolts());
+                // 开始状态（使用新的字段）
+                String startInfo = String.format("开始: %d%%", session.getStartLevel());
                 startInfoText.setText(startInfo);
                 
-                // 结束状态
-                String endInfo = String.format("结束: %d%% | %.1f°C | %.2fV",
+                // 结束状态（使用新的字段）
+                String endInfo = String.format("结束: %d%% | 最高%.1f°C | 最低%.1f°C",
                     session.getEndLevel(),
-                    session.getEndTemperatureCelsius(),
-                    session.getEndVoltageVolts());
+                    session.getMaxTemperatureCelsius(),
+                    session.getMinTemperatureCelsius());
                 endInfoText.setText(endInfo);
             }
         }

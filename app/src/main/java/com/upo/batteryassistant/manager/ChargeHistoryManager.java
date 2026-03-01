@@ -16,6 +16,7 @@ import java.util.List;
  * 负责管理充放电阶段的记录和查询
  */
 public class ChargeHistoryManager {
+    private static final String TAG = "ChargeHistoryManager";
     private static ChargeHistoryManager instance;
     private Context context;
     private BatteryDatabaseHelper dbHelper;
@@ -27,9 +28,9 @@ public class ChargeHistoryManager {
     private static final String KEY_CURRENT_SESSION_START_TIMESTAMP = "current_session_start_timestamp";
     private static final String KEY_CURRENT_SESSION_TYPE = "current_session_type";
     private static final String KEY_CURRENT_SESSION_START_LEVEL = "current_session_start_level";
-    private static final String KEY_CURRENT_SESSION_START_TEMPERATURE = "current_session_start_temperature";
-    private static final String KEY_CURRENT_SESSION_START_VOLTAGE = "current_session_start_voltage";
-    private static final String KEY_CURRENT_SESSION_START_CURRENT = "current_session_start_current";
+    private static final String KEY_CURRENT_SESSION_START_CHARGE_COUNTER = "current_session_start_charge_counter";
+    private static final String KEY_CURRENT_SESSION_MAX_TEMPERATURE = "current_session_max_temperature";
+    private static final String KEY_CURRENT_SESSION_MIN_TEMPERATURE = "current_session_min_temperature";
 
     private ChargeHistoryManager(Context context) {
         this.context = context.getApplicationContext();
@@ -80,16 +81,17 @@ public class ChargeHistoryManager {
         long startTimestamp = prefs.getLong(KEY_CURRENT_SESSION_START_TIMESTAMP, -1);
         int startSessionType = prefs.getInt(KEY_CURRENT_SESSION_TYPE, -1);
         int startLevel = prefs.getInt(KEY_CURRENT_SESSION_START_LEVEL, -1);
-        int startTemperature = prefs.getInt(KEY_CURRENT_SESSION_START_TEMPERATURE, -1);
-        int startVoltage = prefs.getInt(KEY_CURRENT_SESSION_START_VOLTAGE, -1);
-        int startCurrent = prefs.getInt(KEY_CURRENT_SESSION_START_CURRENT, -1);
+        int startChargeCounter = prefs.getInt(KEY_CURRENT_SESSION_START_CHARGE_COUNTER, -1);
+        int maxTemperature = prefs.getInt(KEY_CURRENT_SESSION_MAX_TEMPERATURE, -1);
+        int minTemperature = prefs.getInt(KEY_CURRENT_SESSION_MIN_TEMPERATURE, -1);
 
         // 获取当前电池信息
         BatteryInfo info = BatteryInfoManager.getInstance(context).getCurrentBatteryInfo();
-        if (info == null){
-            Log.e("ChargeHistoryManager", "无法获取电池信息");
+        if (info == null) {
+            Log.e(TAG, "无法获取电池信息");
             return;
         }
+        
         long timestamp = System.currentTimeMillis();
         int newSessionType = (chargeType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_UNKNOWN) ?
             (info.isCharging() ?
@@ -98,23 +100,37 @@ public class ChargeHistoryManager {
             chargeType;
         long duration = timestamp - startTimestamp;
 
+        // 更新温度统计
+        int currentTemp = info.getTemperature();
+        if (maxTemperature < 0 || currentTemp > maxTemperature) {
+            maxTemperature = currentTemp;
+        }
+        if (minTemperature < 0 || currentTemp < minTemperature) {
+            minTemperature = currentTemp;
+        }
+
         // 更新当前状态
-        if (newSessionType==startSessionType && duration < 4000) { // 过滤相同状态的短记录
+        if (newSessionType == startSessionType && duration < 4000) { // 过滤相同状态的短记录
+            // 仍然需要更新温度统计
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putInt(KEY_CURRENT_SESSION_MAX_TEMPERATURE, maxTemperature);
+            editor.putInt(KEY_CURRENT_SESSION_MIN_TEMPERATURE, minTemperature);
+            editor.apply();
             return;
         }
+        
         SharedPreferences.Editor editor = prefs.edit();
         editor.putLong(KEY_CURRENT_SESSION_START_TIMESTAMP, timestamp);
         editor.putInt(KEY_CURRENT_SESSION_TYPE, newSessionType);
         editor.putInt(KEY_CURRENT_SESSION_START_LEVEL, info.getLevel());
-        editor.putInt(KEY_CURRENT_SESSION_START_TEMPERATURE, info.getTemperature());
-        editor.putInt(KEY_CURRENT_SESSION_START_VOLTAGE, info.getVoltage());
-        editor.putInt(KEY_CURRENT_SESSION_START_CURRENT, info.getCurrent());
+        editor.putInt(KEY_CURRENT_SESSION_START_CHARGE_COUNTER, info.getChargeCounter());
+        editor.putInt(KEY_CURRENT_SESSION_MAX_TEMPERATURE, currentTemp);
+        editor.putInt(KEY_CURRENT_SESSION_MIN_TEMPERATURE, currentTemp);
         editor.apply();
 
         // 保存阶段记录
         if (startTimestamp < 0 || startSessionType < 0 || startLevel < 0) {
-            // 数据不完整，无法保存
-            Log.e("ChargeHistoryManager", "数据不完整，无法保存");
+            Log.e(TAG, "数据不完整，无法保存");
             return;
         }
 
@@ -132,14 +148,17 @@ public class ChargeHistoryManager {
         session.setSessionType(sessionType);
         session.setDuration(duration);
         session.setStartLevel(startLevel);
-        session.setStartTemperature(startTemperature);
-        session.setStartVoltage(startVoltage);
-        session.setStartCurrent(startCurrent);
         session.setEndLevel(info.getLevel());
-        session.setEndTemperature(info.getTemperature());
-        session.setEndVoltage(info.getVoltage());
-        session.setEndCurrent(info.getCurrent());
-        session.setLevelChange(levelChange);
+        session.setStartChargeCounter(startChargeCounter);
+        session.setEndChargeCounter(info.getChargeCounter());
+        session.setMaxTemperature(maxTemperature);
+        session.setMinTemperature(minTemperature);
+        
+        // 仅充电阶段设置估计容量和周期计数
+        if (sessionType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
+            session.setEstimatedCapacity(info.getFullCapacity());
+            session.setCycleCount(info.getCycleCount());
+        }
 
         // 在后台线程执行数据库操作
         new Thread(() -> {
@@ -159,6 +178,27 @@ public class ChargeHistoryManager {
      */
     public int getSessionCount() {
         return dbHelper.getSessionCount();
+    }
+    
+    /**
+     * 获取每日统计数据
+     */
+    public List<BatteryDatabaseHelper.DailyStats> getDailyStats(int offset, int limit) {
+        return dbHelper.getDailyStats(offset, limit);
+    }
+    
+    /**
+     * 获取每周统计数据
+     */
+    public List<BatteryDatabaseHelper.WeeklyStats> getWeeklyStats(int offset, int limit) {
+        return dbHelper.getWeeklyStats(offset, limit);
+    }
+    
+    /**
+     * 获取每月统计数据
+     */
+    public List<BatteryDatabaseHelper.MonthlyStats> getMonthlyStats(int offset, int limit) {
+        return dbHelper.getMonthlyStats(offset, limit);
     }
 }
 
