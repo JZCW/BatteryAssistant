@@ -21,8 +21,7 @@ public final class DatabaseContract {
         public static final String COLUMN_SESSION_TYPE = "session_type";
         public static final String COLUMN_START_TIMESTAMP = "start_timestamp";
         public static final String COLUMN_END_TIMESTAMP = "end_timestamp";
-        public static final String COLUMN_PAUSE_DURATION = "pause_duration";
-        public static final String COLUMN_DURATION = "duration";
+        public static final String COLUMN_PAUSE_TIMESTAMP = "pause_timestamp";
         
         // 电量信息
         public static final String COLUMN_START_LEVEL = "start_level";

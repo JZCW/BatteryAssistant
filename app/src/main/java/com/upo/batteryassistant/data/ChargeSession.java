@@ -8,8 +8,7 @@ public class ChargeSession {
     private int sessionType;  // 0=充电, 1=放电
     private long startTimestamp;
     private long endTimestamp;
-    private long pauseDuration;  // 暂停时间(仅充电，未实现)
-    private long duration;       // 持续时间（毫秒）
+    private long pauseTimestamp;
     
     // 电量信息
     private int startLevel;           // 开始电量百分比
@@ -21,12 +20,10 @@ public class ChargeSession {
     private int maxTemperature;  // 最高温度(0.1°C)
     private int minTemperature;  // 最低温度(0.1°C)
     
-    // 屏幕相关信息（未实现）
-    private long screenOnDuration;          // 屏幕开启时长
+    // 分状态信息
+    private long screenOnDuration;         // 屏幕开启时长
     private int screenOnLevelChange;       // 屏幕开启使用电量(仅放电)
     private int screenOnChargeCounterDiff; // 屏幕开启充入电量(仅充电)
-    
-    // Doze相关信息（未实现）
     private long dozeDuration;          // Doze时长(仅放电)
     private int dozeChargeCounterDiff;  // Doze使用电量(仅放电)
     
@@ -36,7 +33,7 @@ public class ChargeSession {
     
     public ChargeSession() {
         // 初始化默认值
-        pauseDuration = 0;
+        pauseTimestamp = 0;
         screenOnDuration = 0;
         screenOnLevelChange = 0;
         screenOnChargeCounterDiff = 0;
@@ -77,20 +74,12 @@ public class ChargeSession {
         this.endTimestamp = endTimestamp;
     }
     
-    public long getPauseDuration() {
-        return pauseDuration;
+    public long getPauseTimestamp() {
+        return pauseTimestamp;
     }
     
-    public void setPauseDuration(long pauseDuration) {
-        this.pauseDuration = pauseDuration;
-    }
-    
-    public long getDuration() {
-        return duration;
-    }
-    
-    public void setDuration(long duration) {
-        this.duration = duration;
+    public void setPauseTimestamp(long pauseTimestamp) {
+        this.pauseTimestamp = pauseTimestamp;
     }
     
     public int getStartLevel() {
@@ -222,19 +211,6 @@ public class ChargeSession {
     }
     
     /**
-     * 获取持续时间文本（小时:分钟）
-     */
-    public String getDurationText() {
-        long hours = duration / (60 * 60 * 1000);
-        long minutes = (duration % (60 * 60 * 1000)) / (60 * 1000);
-        if (hours > 0) {
-            return String.format("%d小时%d分钟", hours, minutes);
-        } else {
-            return String.format("%d分钟", minutes);
-        }
-    }
-    
-    /**
      * 获取最高温度（摄氏度）
      */
     public float getMaxTemperatureCelsius() {
@@ -260,9 +236,6 @@ public class ChargeSession {
         this.estimatedCapacity = laterSession.estimatedCapacity;
         this.cycleCount = laterSession.cycleCount;
         
-        // 更新持续时间
-        this.duration = endTimestamp - startTimestamp;
-        
         // 更新温度统计
         if (laterSession.maxTemperature > this.maxTemperature) {
             this.maxTemperature = laterSession.maxTemperature;
@@ -272,7 +245,7 @@ public class ChargeSession {
         }
         
         // 累加暂停时间
-        this.pauseDuration += laterSession.pauseDuration;
+        this.pauseTimestamp += laterSession.pauseTimestamp;
         
         // 累加屏幕相关数据
         this.screenOnDuration += laterSession.screenOnDuration;

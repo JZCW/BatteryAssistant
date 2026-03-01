@@ -179,7 +179,16 @@ public class ChargeHistoryFragment extends Fragment {
                 timeText.setText(String.format("%s - %s", startTime, endTime));
                 
                 // 持续时间
-                durationText.setText("持续时间: " + session.getDurationText());
+                long duration = session.getEndTimestamp() - session.getStartTimestamp();
+                long hours = duration / (60 * 60 * 1000);
+                long minutes = (duration % (60 * 60 * 1000)) / (60 * 1000);
+                String durationStr;
+                if (hours > 0) {
+                    durationStr = String.format("%d小时%d分钟", hours, minutes);
+                } else {
+                    durationStr = String.format("%d分钟", minutes);
+                }
+                durationText.setText("持续时间: " + durationStr);
                 
                 // 电量变化
                 int levelChange = session.getLevelChange();

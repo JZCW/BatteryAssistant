@@ -146,7 +146,6 @@ public class ChargeHistoryManager {
         session.setStartTimestamp(startTimestamp);
         session.setEndTimestamp(timestamp);
         session.setSessionType(sessionType);
-        session.setDuration(duration);
         session.setStartLevel(startLevel);
         session.setEndLevel(info.getLevel());
         session.setStartChargeCounter(startChargeCounter);

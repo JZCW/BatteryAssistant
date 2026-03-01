@@ -21,7 +21,7 @@ import java.util.Locale;
 public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "BatteryDatabaseHelper";
     private static final String DATABASE_NAME = "battery_assistant.db";
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
     
     // 创建charge_sessions表的SQL
     private static final String SQL_CREATE_CHARGE_SESSIONS_TABLE = 
@@ -30,8 +30,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + " INTEGER NOT NULL," +
         DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " INTEGER NOT NULL," +
         DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + " INTEGER NOT NULL," +
-        DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_DURATION + " INTEGER DEFAULT 0," +
-        DatabaseContract.ChargeSessionEntry.COLUMN_DURATION + " INTEGER NOT NULL," +
+        DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + " INTEGER DEFAULT 0," +
         DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + " INTEGER NOT NULL," +
         DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + " INTEGER NOT NULL," +
         DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + " INTEGER," +
@@ -248,7 +247,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         }
         
         // 中间阶段持续时间必须小于阈值
-        if (middle.getDuration() >= DatabaseContract.MERGE_DIFFERENT_TYPE_THRESHOLD) {
+        long duration = middle.getEndTimestamp() - middle.getStartTimestamp();
+        if (duration >= DatabaseContract.MERGE_DIFFERENT_TYPE_THRESHOLD) {
             return false;
         }
         
@@ -264,8 +264,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE, session.getSessionType());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP, session.getStartTimestamp());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP, session.getEndTimestamp());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_DURATION, session.getPauseDuration());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DURATION, session.getDuration());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP, session.getPauseTimestamp());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL, session.getStartLevel());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL, session.getEndLevel());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER, session.getStartChargeCounter());
@@ -293,8 +292,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         session.setSessionType(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE)));
         session.setStartTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP)));
         session.setEndTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP)));
-        session.setPauseDuration(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_DURATION)));
-        session.setDuration(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_DURATION)));
+        session.setPauseTimestamp(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP)));
         session.setStartLevel(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL)));
         session.setEndLevel(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL)));
         session.setStartChargeCounter(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER)));
