@@ -381,6 +381,63 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
                  DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
                  new String[]{String.valueOf(sessionId)});
     }
+
+    /**
+     * 部分更新会话（用于进行中会话的定期更新）
+     * 不改变 is_ongoing 状态，不触发统计更新
+     */
+    public void updateSessionPartial(ChargeSession session) {
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP, session.getEndTimestamp());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL, session.getEndLevel());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER, session.getEndChargeCounter());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE, session.getMaxTemperature());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE, session.getMinTemperature());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION, session.getScreenOnDuration());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_LEVEL_CHANGE, session.getScreenOnLevelChange());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF, session.getScreenOnChargeCounterDiff());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION, session.getDozeDuration());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF, session.getDozeChargeCounterDiff());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY, session.getEstimatedCapacity());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT, session.getCycleCount());
+
+        db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
+                 DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
+                 new String[]{String.valueOf(session.getId())});
+    }
+
+    /**
+     * 完整更新会话并完成它（设置 is_ongoing = false，触发统计更新）
+     */
+    public void finishSession(ChargeSession session) {
+        SQLiteDatabase db = getWritableDatabase();
+
+        // 更新会话记录
+        ContentValues values = sessionToContentValues(session);
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING, 0);
+        db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
+                 DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
+                 new String[]{String.valueOf(session.getId())});
+
+        // 更新聚合数据（仅充电阶段）
+        if (session.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
+            updateDailyStats(db, session);
+            updateWeeklyStats(db, session);
+            updateMonthlyStats(db, session);
+        }
+    }
+
+    /**
+     * 插入新的进行中会话
+     */
+    public long insertOngoingSession(ChargeSession session) {
+        session.setOngoing(true);
+        ContentValues values = sessionToContentValues(session);
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING, 1);
+        return getWritableDatabase().insert(DatabaseContract.ChargeSessionEntry.TABLE_NAME, null, values);
+    }
     
     /**
      * 获取总记录数

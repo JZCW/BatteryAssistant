@@ -24,12 +24,6 @@ public class BootReceiver extends BroadcastReceiver {
 
             Log.i(TAG, "收到广播: " + intent.getAction());
 
-            // 通知 ChargeHistoryManager 设备重启
-            if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction())) {
-                ChargeHistoryManager manager = ChargeHistoryManager.getInstance(context);
-                manager.onDeviceReboot();
-            }
-
             // 启动电池监控服务
             Intent serviceIntent = new Intent(context, BatteryMonitorService.class);
 
