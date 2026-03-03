@@ -1,5 +1,6 @@
 package com.upo.batteryassistant.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -207,6 +208,13 @@ public class ChargeHistoryFragment extends Fragment {
                     session.getMaxTemperatureCelsius(),
                     session.getMinTemperatureCelsius());
                 endInfoText.setText(endInfo);
+                
+                // 点击跳转到详情页面
+                itemView.setOnClickListener(v -> {
+                    Intent intent = new Intent(itemView.getContext(), ChargeSessionDetailActivity.class);
+                    intent.putExtra(ChargeSessionDetailActivity.EXTRA_SESSION, session);
+                    itemView.getContext().startActivity(intent);
+                });
             }
         }
     }

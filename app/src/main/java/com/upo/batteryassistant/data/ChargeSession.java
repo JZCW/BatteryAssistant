@@ -1,9 +1,11 @@
 package com.upo.batteryassistant.data;
 
+import java.io.Serializable;
+
 /**
  * 充放电阶段数据类
  */
-public class ChargeSession {
+public class ChargeSession implements Serializable {
     private long id;
     private int sessionType;  // 0=充电, 1=放电
     private long startTimestamp;
