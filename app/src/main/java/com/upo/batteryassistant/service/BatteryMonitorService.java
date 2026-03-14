@@ -14,6 +14,7 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
+import android.os.BatteryManager;
 import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import com.upo.batteryassistant.R;
@@ -48,7 +49,7 @@ public class BatteryMonitorService extends Service {
     private Runnable updateRunnable;
 
     // 当前状态
-    private StateInfo stateInfo = new StateInfo();
+    private StateInfo stateInfo;
 
     // 更新间隔配置（单位：毫秒）
     // 非充电时
@@ -74,13 +75,12 @@ public class BatteryMonitorService extends Service {
         // 初始化充放电历史管理器
         chargeHistoryManager.init();
 
-        // 注册充电器事件监听
+        // 初始化状态信息
+        initializeStateInfo();
+
+        // 注册事件监听
         registerPowerReceiver();
-
-        // 注册屏幕状态监听
         registerScreenStateReceiver();
-
-        // 注册 Doze 状态监听
         registerDozeReceiver();
 
         // 启动定时更新任务
@@ -269,7 +269,8 @@ public class BatteryMonitorService extends Service {
         updateRunnable = new Runnable() {
             @Override
             public void run() {
-                long nextUpdateInterval = updateBatteryInfo();;
+                long nextUpdateInterval = updateBatteryInfo();
+                Log.d(TAG, "下次更新间隔: " + nextUpdateInterval + "ms");
                 updateHandler.postDelayed(this, nextUpdateInterval);
             }
         };
@@ -284,6 +285,38 @@ public class BatteryMonitorService extends Service {
     private void restartPeriodicUpdate() {
         stopNotificationUpdate();
         startPeriodicUpdate();
+    }
+
+    /**
+     * 初始化状态信息
+     */
+    private void initializeStateInfo() {
+        stateInfo = new StateInfo();
+        
+        // 获取当前充电状态
+        IntentFilter batteryFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent batteryStatus = registerReceiver(null, batteryFilter);
+        if (batteryStatus != null) {
+            int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || 
+                               status == BatteryManager.BATTERY_STATUS_FULL;
+            stateInfo.setCharging(isCharging);
+            Log.d(TAG, "初始充电状态: " + (isCharging ? "充电中" : "未充电"));
+        }
+        
+        // 获取当前屏幕状态
+        if (powerManager != null) {
+            stateInfo.setScreenOn(powerManager.isInteractive());
+            Log.d(TAG, "初始屏幕状态: " + (powerManager.isInteractive() ? "亮屏" : "灭屏"));
+        }
+        
+        // 获取当前Doze状态
+        if (powerManager != null) {
+            stateInfo.setIdle(powerManager.isDeviceIdleMode());
+            Log.d(TAG, "初始Doze状态: " + (powerManager.isDeviceIdleMode() ? "Doze模式" : "正常模式"));
+        }
+        
+        Log.d(TAG, "状态信息初始化完成: " + stateInfo.toString());
     }
 
     /**
