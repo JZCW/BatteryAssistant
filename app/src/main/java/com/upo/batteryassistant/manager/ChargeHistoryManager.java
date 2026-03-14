@@ -204,13 +204,10 @@ public class ChargeHistoryManager {
 
         long now = currentInfo.getTimestamp();
 
-        // 判断是否需要持久化
-        // 时间间隔阈值
-        if (now - lastPersistTimestamp >= PERSIST_INTERVAL) {
-            return;
-        }
-        // 电量变化阈值
-        if (Math.abs(currentInfo.getLevel() - lastPersistLevel) >= PERSIST_LEVEL_THRESHOLD) {
+        // 判断是否需要持久化：仅当时间间隔和电量变化均未达到阈值时跳过
+        boolean timeEnough = (now - lastPersistTimestamp) >= PERSIST_INTERVAL;
+        boolean levelEnough = Math.abs(currentInfo.getLevel() - lastPersistLevel) >= PERSIST_LEVEL_THRESHOLD;
+        if (!timeEnough && !levelEnough) {
             return;
         }
 
@@ -221,6 +218,19 @@ public class ChargeHistoryManager {
         }).start();
         lastPersistTimestamp = now;
         lastPersistLevel = currentInfo.getLevel();
+    }
+
+    /**
+     * 立即持久化当前会话到数据库（部分更新）
+     */
+    public void forcePersistNow() {
+        if (currentSessionCache == null) {
+            return;
+        }
+        final ChargeSession session = currentSessionCache;
+        dbHelper.updateSessionPartial(session);
+        lastPersistTimestamp = System.currentTimeMillis();
+        lastPersistLevel = session.getEndLevel();
     }
 
     /**

@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.ChargeSession;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
@@ -34,24 +35,20 @@ public class ChargeHistoryFragment extends Fragment {
     private int currentPage = 0;
     private static final int PAGE_SIZE = 20;
     private Handler mainHandler;
+    private SwipeRefreshLayout swipeRefreshLayout;
     
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_charge_history, container, false);
         
+        swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         recyclerView = view.findViewById(R.id.recycler_view);
         historyManager = ChargeHistoryManager.getInstance(requireContext());
         mainHandler = new Handler(Looper.getMainLooper());
         
         setupRecyclerView();
-        
-        // 如果adapter为空或没有数据，加载数据
-        if (adapter == null || adapter.getItemCount() == 0) {
-            currentPage = 0;
-            hasMore = true;
-            loadMoreData();
-        }
+        setupSwipeRefresh();
         
         return view;
     }
@@ -59,11 +56,9 @@ public class ChargeHistoryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // 确保数据已加载
-        if (adapter != null && adapter.getItemCount() == 0 && !isLoading) {
-            currentPage = 0;
-            hasMore = true;
-            loadMoreData();
+        // 进入页面时刷新一次（强制持久化后拉取首页）
+        if (!isLoading) {
+            refreshAll();
         }
     }
     
@@ -94,6 +89,38 @@ public class ChargeHistoryFragment extends Fragment {
                 }
             }
         });
+    }
+
+    private void setupSwipeRefresh() {
+        if (swipeRefreshLayout != null) {
+            swipeRefreshLayout.setOnRefreshListener(this::refreshAll);
+        }
+    }
+
+    private void refreshAll() {
+        if (isLoading) return;
+        isLoading = true;
+        if (swipeRefreshLayout != null && !swipeRefreshLayout.isRefreshing()) {
+            swipeRefreshLayout.setRefreshing(true);
+        }
+
+        new Thread(() -> {
+            // 刷新前先强制持久化一次进行中会话
+            historyManager.forcePersistNow();
+
+            // 拉取第一页数据
+            List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);
+
+            mainHandler.post(() -> {
+                adapter.setItems(sessions);
+                currentPage = 1;
+                hasMore = sessions.size() == PAGE_SIZE;
+                isLoading = false;
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+            });
+        }).start();
     }
     
     private void loadMoreData() {
@@ -150,6 +177,12 @@ public class ChargeHistoryFragment extends Fragment {
             int startPosition = sessions.size();
             sessions.addAll(newSessions);
             notifyItemRangeInserted(startPosition, newSessions.size());
+        }
+
+        public void setItems(List<ChargeSession> newSessions) {
+            sessions.clear();
+            sessions.addAll(newSessions);
+            notifyDataSetChanged();
         }
         
         class ViewHolder extends RecyclerView.ViewHolder {
