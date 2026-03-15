@@ -132,8 +132,7 @@ public class ChargeHistoryManager {
         }
 
         // 累加分状态数据（仅在有上次缓存时）
-        if (lastBatteryInfoCache != null) {
-            int levelDiff = currentInfo.getLevel() - lastBatteryInfoCache.getLevel();
+        if ((lastBatteryInfoCache != null) && (!isSessionInvalid(currentSessionCache))) {
             int chargeCounterDiff = 0;
             if (currentInfo.getChargeCounter() >= 0 && lastBatteryInfoCache.getChargeCounter() >= 0) {
                 chargeCounterDiff = currentInfo.getChargeCounter() - lastBatteryInfoCache.getChargeCounter();
@@ -304,9 +303,17 @@ public class ChargeHistoryManager {
      * 判断是否应该恢复会话
      */
     private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo, boolean isCharging) {
-        // 检查时间是否过长（超过10分钟）
+        // 检查间隔时间是否过长（超过5分钟）
         long duration = currentInfo.getTimestamp() - ongoingSession.getStartTimestamp();
-        if (duration > 10 * 60 * 1000) {
+        if (duration > 5 * 60 * 1000) {
+            Log.d(TAG, "间隔时间过长，不恢复会话: " + duration + "ms");
+            return false;
+        }
+
+        // 检查先前持续时间是否过长（超过20分钟）
+        long previousDuration = ongoingSession.getEndTimestamp() - ongoingSession.getStartTimestamp();
+        if (previousDuration > 20 * 60 * 1000) {
+            Log.d(TAG, "先前持续时间过长，不恢复会话: " + previousDuration + "ms");
             return false;
         }
 
@@ -319,12 +326,14 @@ public class ChargeHistoryManager {
             isMonotonic = levelChange <= 0;
         }
         if (!isMonotonic) {
+            Log.d(TAG, "电量变化方向不一致，不恢复会话");
             return false;
         }
 
         // 检查充电状态是否一致
         boolean sessionCharging = (ongoingSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
         if (isCharging != sessionCharging) {
+            Log.d(TAG, "充电状态不一致，不恢复会话");
             return false;
         }
 
@@ -346,11 +355,9 @@ public class ChargeHistoryManager {
             // 多条 ongoing，异常情况，全部结束并标记分状态无效
             Log.w(TAG, "发现多条进行中会话，全部结束");
             for (ChargeSession session : ongoingSessions) {
-                markSessionInvalid(session);
+                session.setOngoing(false);
                 dbHelper.finishSession(session);
             }
-            // 创建新会话
-            startNewSession(currentInfo, isCharging);
             return;
         }
 
@@ -360,17 +367,13 @@ public class ChargeHistoryManager {
         // 检查是否可以恢复
         if (shouldRestoreSession(ongoingSession, currentInfo, isCharging)) {
             // 恢复会话，但标记分状态无效
-            ongoingSession.setScreenOnDuration(-1);
-            ongoingSession.setScreenOnLevelChange(-1);
-            ongoingSession.setScreenOnChargeCounterDiff(-1);
-            ongoingSession.setDozeDuration(-1);
-            ongoingSession.setDozeChargeCounterDiff(-1);
+            markSessionInvalid(ongoingSession);
             currentSessionCache = ongoingSession;
 
             Log.i(TAG, "恢复进行中的会话，分状态标记为无效");
         } else {
             // 不能恢复，结束并创建新会话
-            markSessionInvalid(ongoingSession);
+            ongoingSession.setOngoing(false);
             dbHelper.finishSession(ongoingSession);
 
             Log.i(TAG, "不恢复会话");
@@ -386,8 +389,17 @@ public class ChargeHistoryManager {
         session.setScreenOnChargeCounterDiff(-1);
         session.setDozeDuration(-1);
         session.setDozeChargeCounterDiff(-1);
-        session.setOngoing(false);
-        session.setEndTimestamp(System.currentTimeMillis());
+    }
+
+    /**
+     * 判断分状态数据是否无效
+     */
+    private boolean isSessionInvalid(ChargeSession session) {
+        return session.getScreenOnDuration() == -1 ||
+               session.getScreenOnLevelChange() == -1 ||
+               session.getScreenOnChargeCounterDiff() == -1 ||
+               session.getDozeDuration() == -1 ||
+               session.getDozeChargeCounterDiff() == -1;
     }
 }
 
