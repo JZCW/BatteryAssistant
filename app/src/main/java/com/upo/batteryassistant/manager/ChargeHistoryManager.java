@@ -183,41 +183,34 @@ public class ChargeHistoryManager {
             currentSessionCache.setCycleCount(currentInfo.getCycleCount());
         }
 
-        // 检查是否需要持久化
-        persistCurrentSession(currentInfo);
-
         // 如果状态变化，开始新会话
         int currentType = currentSessionCache.getSessionType();
         if ((currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE && !lastIsCharging) ||
             (currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE && lastIsCharging)) {
             startNewSession(newSessionType, currentInfo);
+        } else {
+            // 否则检查是否需要持久化
+            new Thread(() -> {
+                persistCurrentSession();
+            }).start();
         }
     }
 
     /**
      * 持久化当前会话到数据库（部分更新，不改变 is_ongoing）
      */
-    private void persistCurrentSession(BatteryInfo currentInfo) {
-        if (currentSessionCache == null) {
-            return;
-        }
-
-        long now = currentInfo.getTimestamp();
+    private void persistCurrentSession() {
+        long now = lastBatteryInfoCache.getTimestamp();
 
         // 判断是否需要持久化：仅当时间间隔和电量变化均未达到阈值时跳过
         boolean timeEnough = (now - lastPersistTimestamp) >= PERSIST_INTERVAL;
-        boolean levelEnough = Math.abs(currentInfo.getLevel() - lastPersistLevel) >= PERSIST_LEVEL_THRESHOLD;
+        boolean levelEnough = Math.abs(lastBatteryInfoCache.getLevel() - lastPersistLevel) >= PERSIST_LEVEL_THRESHOLD;
         if (!timeEnough && !levelEnough) {
             return;
         }
 
         // 持久化
-        final ChargeSession session = currentSessionCache;
-        new Thread(() -> {
-            dbHelper.updateSessionPartial(session);
-        }).start();
-        lastPersistTimestamp = now;
-        lastPersistLevel = currentInfo.getLevel();
+        forcePersistNow();
     }
 
     /**
@@ -225,31 +218,15 @@ public class ChargeHistoryManager {
      */
     public void forcePersistNow() {
         if (currentSessionCache == null) {
-            Log.w(TAG, "No current session to persist");
+            return;
+        }
+        if (lastBatteryInfoCache == null) {
             return;
         }
         final ChargeSession session = currentSessionCache;
-        // 在持久化前尽可能用最近一次采样刷新结束态
-        if (lastBatteryInfoCache != null) {
-            session.setEndTimestamp(lastBatteryInfoCache.getTimestamp());
-            session.setEndLevel(lastBatteryInfoCache.getLevel());
-            session.setEndChargeCounter(lastBatteryInfoCache.getChargeCounter());
-            int temp = lastBatteryInfoCache.getTemperature();
-            if (session.getMaxTemperature() < 0 || temp > session.getMaxTemperature()) {
-                session.setMaxTemperature(temp);
-            }
-            if (session.getMinTemperature() < 0 || temp < session.getMinTemperature()) {
-                session.setMinTemperature(temp);
-            }
-        }
-        if (session.getId() > 0) {
-            dbHelper.updateSessionPartial(session);
-        } else {
-            // 会话可能刚插入，ID尚未回写，回退为更新最新一条ongoing记录
-            dbHelper.updateLatestOngoingPartial(session);
-        }
-        lastPersistTimestamp = System.currentTimeMillis();
-        lastPersistLevel = session.getEndLevel();
+        dbHelper.updateSessionPartial(session);
+        lastPersistTimestamp = lastBatteryInfoCache.getTimestamp();
+        lastPersistLevel = lastBatteryInfoCache.getLevel();
         Log.d(TAG, "Force persisted session: " + session.getId());
     }
 
@@ -294,11 +271,6 @@ public class ChargeHistoryManager {
             long id = dbHelper.insertOngoingSession(session);
             session.setId(id);
         }).start();
-
-        // 初始化缓存和持久化状态
-        lastBatteryInfoCache = info;
-        lastPersistTimestamp = info.getTimestamp();
-        lastPersistLevel = info.getLevel();
 
         Log.i(TAG, "开始新会话: " + (sessionType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE ? "充电" : "放电"));
     }
@@ -405,11 +377,7 @@ public class ChargeHistoryManager {
             ongoingSession.setScreenOnChargeCounterDiff(-1);
             ongoingSession.setDozeDuration(-1);
             ongoingSession.setDozeChargeCounterDiff(-1);
-
             currentSessionCache = ongoingSession;
-            lastBatteryInfoCache = currentInfo;
-            lastPersistTimestamp = System.currentTimeMillis();
-            lastPersistLevel = currentInfo.getLevel();
 
             Log.i(TAG, "恢复进行中的会话，分状态标记为无效");
         } else {

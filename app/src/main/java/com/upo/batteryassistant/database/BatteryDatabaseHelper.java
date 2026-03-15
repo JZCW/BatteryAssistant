@@ -322,42 +322,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = getReadableDatabase();
         List<ChargeSession> sessions = new ArrayList<>();
 
-        // 首页：把进行中会话置顶（若存在），再补足已完成会话
-        if (offset == 0) {
-            // 取最新的进行中会话（通常最多1条）
-            String ongoingQuery = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
-                                 " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 1" +
-                                 " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
-                                 " LIMIT 1";
-            Cursor ongoingCursor = db.rawQuery(ongoingQuery, null);
-            int ongoingCount = 0;
-            while (ongoingCursor.moveToNext()) {
-                ChargeSession session = parseSessionFromCursor(ongoingCursor);
-                sessions.add(session);
-                ongoingCount++;
-            }
-            ongoingCursor.close();
-
-            int finishedLimit = limit; // 始终取满已完成会话，允许首页总条数为 limit + ongoingCount
-            if (finishedLimit > 0) {
-                String finishedQuery = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
-                                       " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 0" +
-                                       " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
-                                       " LIMIT ? OFFSET ?";
-                Cursor finishedCursor = db.rawQuery(finishedQuery,
-                        new String[]{String.valueOf(finishedLimit), String.valueOf(0)});
-                while (finishedCursor.moveToNext()) {
-                    ChargeSession session = parseSessionFromCursor(finishedCursor);
-                    sessions.add(session);
-                }
-                finishedCursor.close();
-            }
-            return sessions;
-        }
-
-        // 后续分页：仅返回已完成会话
         String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
-                      " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 0" +
                       " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
                       " LIMIT ? OFFSET ?";
 
