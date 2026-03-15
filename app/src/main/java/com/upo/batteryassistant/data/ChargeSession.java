@@ -24,8 +24,7 @@ public class ChargeSession implements Serializable {
     
     // 分状态信息
     private long screenOnDuration;         // 屏幕开启时长
-    private int screenOnLevelChange;       // 屏幕开启使用电量(仅放电)
-    private int screenOnChargeCounterDiff; // 屏幕开启充入电量(仅充电)
+    private int screenOnChargeCounterDiff; // 屏幕开启电量变化(mAh,正数为充电,负数为放电)
     private long dozeDuration;          // Doze时长(仅放电)
     private int dozeChargeCounterDiff;  // Doze使用电量(仅放电)
     
@@ -40,7 +39,6 @@ public class ChargeSession implements Serializable {
         // 初始化默认值
         pauseTimestamp = 0;
         screenOnDuration = 0;
-        screenOnLevelChange = 0;
         screenOnChargeCounterDiff = 0;
         dozeDuration = 0;
         dozeChargeCounterDiff = 0;
@@ -141,14 +139,6 @@ public class ChargeSession implements Serializable {
     
     public void setScreenOnDuration(long screenOnDuration) {
         this.screenOnDuration = screenOnDuration;
-    }
-    
-    public int getScreenOnLevelChange() {
-        return screenOnLevelChange;
-    }
-    
-    public void setScreenOnLevelChange(int screenOnLevelChange) {
-        this.screenOnLevelChange = screenOnLevelChange;
     }
     
     public int getScreenOnChargeCounterDiff() {
@@ -262,7 +252,6 @@ public class ChargeSession implements Serializable {
         
         // 累加屏幕相关数据
         this.screenOnDuration += laterSession.screenOnDuration;
-        this.screenOnLevelChange += laterSession.screenOnLevelChange;
         this.screenOnChargeCounterDiff += laterSession.screenOnChargeCounterDiff;
         
         // 累加Doze相关数据

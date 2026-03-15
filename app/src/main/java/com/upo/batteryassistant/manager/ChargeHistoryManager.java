@@ -254,7 +254,6 @@ public class ChargeHistoryManager {
 
         // 初始化分状态字段为 0
         currentSessionCache.setScreenOnDuration(0);
-        currentSessionCache.setScreenOnLevelChange(0);
         currentSessionCache.setScreenOnChargeCounterDiff(0);
         currentSessionCache.setDozeDuration(0);
         currentSessionCache.setDozeChargeCounterDiff(0);
@@ -385,7 +384,6 @@ public class ChargeHistoryManager {
      */
     private void markSessionInvalid(ChargeSession session) {
         session.setScreenOnDuration(-1);
-        session.setScreenOnLevelChange(-1);
         session.setScreenOnChargeCounterDiff(-1);
         session.setDozeDuration(-1);
         session.setDozeChargeCounterDiff(-1);
@@ -396,7 +394,6 @@ public class ChargeHistoryManager {
      */
     private boolean isSessionInvalid(ChargeSession session) {
         return session.getScreenOnDuration() == -1 ||
-               session.getScreenOnLevelChange() == -1 ||
                session.getScreenOnChargeCounterDiff() == -1 ||
                session.getDozeDuration() == -1 ||
                session.getDozeChargeCounterDiff() == -1;

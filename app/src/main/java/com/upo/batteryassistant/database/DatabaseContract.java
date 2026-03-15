@@ -35,7 +35,6 @@ public final class DatabaseContract {
         
         // 屏幕相关信息（未实现）
         public static final String COLUMN_SCREEN_ON_DURATION = "screen_on_duration";
-        public static final String COLUMN_SCREEN_ON_LEVEL_CHANGE = "screen_on_level_change";
         public static final String COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF = "screen_on_charge_counter_diff";
         
         // Doze相关信息（未实现）

@@ -21,7 +21,7 @@ import java.util.Locale;
 public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "BatteryDatabaseHelper";
     private static final String DATABASE_NAME = "battery_assistant.db";
-    private static final int DATABASE_VERSION = 4;
+    private static final int DATABASE_VERSION = 5;
     
     // 创建charge_sessions表的SQL
     private static final String SQL_CREATE_CHARGE_SESSIONS_TABLE =
@@ -38,7 +38,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + " INTEGER," +
         DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + " INTEGER," +
         DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + " INTEGER DEFAULT 0," +
-        DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_LEVEL_CHANGE + " INTEGER DEFAULT 0," +
         DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
         DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + " INTEGER DEFAULT 0," +
         DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
@@ -130,6 +129,98 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME);
             db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME);
             onCreate(db);
+        } else if (oldVersion == 4 && newVersion >= 5) {
+            // 版本5：删除 screen_on_level_change 列
+            // 使用完全重建表的方式确保列被删除
+            upgradeToVersion5(db);
+        }
+    }
+    
+    /**
+     * 升级到版本5：删除 screen_on_level_change 列
+     * 通过重建表的方式实现，兼容所有SQLite版本
+     */
+    private void upgradeToVersion5(SQLiteDatabase db) {
+        // 创建临时表（不包含 screen_on_level_change 列）
+        String tempTableName = "charge_sessions_temp";
+        String createTempTable = "CREATE TABLE " + tempTableName + " (" +
+            DatabaseContract.ChargeSessionEntry.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + " INTEGER NOT NULL," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " INTEGER NOT NULL," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + " INTEGER NOT NULL," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + " INTEGER DEFAULT 0," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + " INTEGER NOT NULL," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + " INTEGER NOT NULL," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + " INTEGER," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + " INTEGER," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + " INTEGER," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + " INTEGER," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + " INTEGER DEFAULT 0," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + " INTEGER DEFAULT 0," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + " INTEGER," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + " INTEGER," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " INTEGER DEFAULT 0" +
+            ");";
+        
+        // 复制数据到临时表（跳过 screen_on_level_change 列）
+        String copyData = "INSERT INTO " + tempTableName + " (" +
+            DatabaseContract.ChargeSessionEntry.COLUMN_ID + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING +
+            ") SELECT " +
+            DatabaseContract.ChargeSessionEntry.COLUMN_ID + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + "," +
+            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING +
+            " FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
+        
+        // 删除旧表
+        String dropOldTable = "DROP TABLE " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
+        
+        // 重命名临时表
+        String renameTable = "ALTER TABLE " + tempTableName + " RENAME TO " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
+        
+        // 执行迁移
+        try {
+            db.execSQL(createTempTable);
+            db.execSQL(copyData);
+            db.execSQL(dropOldTable);
+            db.execSQL(renameTable);
+            Log.i(TAG, "Successfully upgraded database to version 5");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to upgrade database to version 5: " + e.getMessage());
+            throw e;
         }
     }
     
@@ -150,7 +241,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE, session.getMaxTemperature());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE, session.getMinTemperature());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION, session.getScreenOnDuration());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_LEVEL_CHANGE, session.getScreenOnLevelChange());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF, session.getScreenOnChargeCounterDiff());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION, session.getDozeDuration());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF, session.getDozeChargeCounterDiff());
@@ -179,7 +269,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         session.setMaxTemperature(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE)));
         session.setMinTemperature(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE)));
         session.setScreenOnDuration(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION)));
-        session.setScreenOnLevelChange(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_LEVEL_CHANGE)));
         session.setScreenOnChargeCounterDiff(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF)));
         session.setDozeDuration(cursor.getLong(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION)));
         session.setDozeChargeCounterDiff(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF)));
@@ -248,7 +337,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE, session.getMaxTemperature());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE, session.getMinTemperature());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION, session.getScreenOnDuration());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_LEVEL_CHANGE, session.getScreenOnLevelChange());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF, session.getScreenOnChargeCounterDiff());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION, session.getDozeDuration());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF, session.getDozeChargeCounterDiff());

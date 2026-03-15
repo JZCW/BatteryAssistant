@@ -93,19 +93,12 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         
         // 屏幕信息
         TextView screenOnDurationText = findViewById(R.id.detail_screen_on_duration_text);
-        TextView screenOnLevelChangeText = findViewById(R.id.detail_screen_on_level_change_text);
         TextView screenOnChargeCounterDiffText = findViewById(R.id.detail_screen_on_charge_counter_diff_text);
         
         if (session.getScreenOnDuration() > 0) {
             screenOnDurationText.setText(formatDuration(session.getScreenOnDuration()));
         } else {
             screenOnDurationText.setText("无数据");
-        }
-        
-        if (session.getScreenOnLevelChange() != 0) {
-            screenOnLevelChangeText.setText(session.getScreenOnLevelChange() + "%");
-        } else {
-            screenOnLevelChangeText.setText("无数据");
         }
         
         if (session.getScreenOnChargeCounterDiff() != 0) {
