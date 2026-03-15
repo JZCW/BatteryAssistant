@@ -322,6 +322,40 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = getReadableDatabase();
         List<ChargeSession> sessions = new ArrayList<>();
 
+        // 首页：把进行中会话置顶（若存在），再补足已完成会话
+        if (offset == 0) {
+            // 取最新的进行中会话（通常最多1条）
+            String ongoingQuery = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                                 " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 1" +
+                                 " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
+                                 " LIMIT 1";
+            Cursor ongoingCursor = db.rawQuery(ongoingQuery, null);
+            int ongoingCount = 0;
+            while (ongoingCursor.moveToNext()) {
+                ChargeSession session = parseSessionFromCursor(ongoingCursor);
+                sessions.add(session);
+                ongoingCount++;
+            }
+            ongoingCursor.close();
+
+            int finishedLimit = limit; // 始终取满已完成会话，允许首页总条数为 limit + ongoingCount
+            if (finishedLimit > 0) {
+                String finishedQuery = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                                       " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 0" +
+                                       " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
+                                       " LIMIT ? OFFSET ?";
+                Cursor finishedCursor = db.rawQuery(finishedQuery,
+                        new String[]{String.valueOf(finishedLimit), String.valueOf(0)});
+                while (finishedCursor.moveToNext()) {
+                    ChargeSession session = parseSessionFromCursor(finishedCursor);
+                    sessions.add(session);
+                }
+                finishedCursor.close();
+            }
+            return sessions;
+        }
+
+        // 后续分页：仅返回已完成会话
         String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
                       " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 0" +
                       " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
@@ -406,6 +440,43 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
                  DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
                  new String[]{String.valueOf(session.getId())});
+    }
+
+    /**
+     * 当会话ID尚未写回缓存时，更新最新一条进行中会话（按开始时间降序取一条）
+     */
+    public void updateLatestOngoingPartial(ChargeSession session) {
+        SQLiteDatabase db = getWritableDatabase();
+        // 查询最新一条ongoing的id
+        String q = "SELECT " + DatabaseContract.ChargeSessionEntry.COLUMN_ID +
+                " FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 1" +
+                " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC LIMIT 1";
+        Cursor c = db.rawQuery(q, null);
+        if (!c.moveToFirst()) {
+            c.close();
+            return;
+        }
+        long id = c.getLong(0);
+        c.close();
+
+        ContentValues values = new ContentValues();
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP, session.getEndTimestamp());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL, session.getEndLevel());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER, session.getEndChargeCounter());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE, session.getMaxTemperature());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE, session.getMinTemperature());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION, session.getScreenOnDuration());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_LEVEL_CHANGE, session.getScreenOnLevelChange());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF, session.getScreenOnChargeCounterDiff());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION, session.getDozeDuration());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF, session.getDozeChargeCounterDiff());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY, session.getEstimatedCapacity());
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT, session.getCycleCount());
+
+        db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
+                DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
+                new String[]{String.valueOf(id)});
     }
 
     /**

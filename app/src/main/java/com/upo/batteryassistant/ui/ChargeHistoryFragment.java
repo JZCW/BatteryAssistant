@@ -7,6 +7,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -105,6 +106,7 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
+            Log.d("ChargeHistoryFragment", "Refreshing all data");
             // 刷新前先强制持久化一次进行中会话
             historyManager.forcePersistNow();
 
@@ -114,7 +116,7 @@ public class ChargeHistoryFragment extends Fragment {
             mainHandler.post(() -> {
                 adapter.setItems(sessions);
                 currentPage = 1;
-                hasMore = sessions.size() == PAGE_SIZE;
+                hasMore = sessions.size() >= PAGE_SIZE;
                 isLoading = false;
                 if (swipeRefreshLayout != null) {
                     swipeRefreshLayout.setRefreshing(false);

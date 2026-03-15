@@ -225,12 +225,32 @@ public class ChargeHistoryManager {
      */
     public void forcePersistNow() {
         if (currentSessionCache == null) {
+            Log.w(TAG, "No current session to persist");
             return;
         }
         final ChargeSession session = currentSessionCache;
-        dbHelper.updateSessionPartial(session);
+        // 在持久化前尽可能用最近一次采样刷新结束态
+        if (lastBatteryInfoCache != null) {
+            session.setEndTimestamp(lastBatteryInfoCache.getTimestamp());
+            session.setEndLevel(lastBatteryInfoCache.getLevel());
+            session.setEndChargeCounter(lastBatteryInfoCache.getChargeCounter());
+            int temp = lastBatteryInfoCache.getTemperature();
+            if (session.getMaxTemperature() < 0 || temp > session.getMaxTemperature()) {
+                session.setMaxTemperature(temp);
+            }
+            if (session.getMinTemperature() < 0 || temp < session.getMinTemperature()) {
+                session.setMinTemperature(temp);
+            }
+        }
+        if (session.getId() > 0) {
+            dbHelper.updateSessionPartial(session);
+        } else {
+            // 会话可能刚插入，ID尚未回写，回退为更新最新一条ongoing记录
+            dbHelper.updateLatestOngoingPartial(session);
+        }
         lastPersistTimestamp = System.currentTimeMillis();
         lastPersistLevel = session.getEndLevel();
+        Log.d(TAG, "Force persisted session: " + session.getId());
     }
 
     /**
