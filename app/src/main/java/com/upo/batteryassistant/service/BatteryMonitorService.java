@@ -19,14 +19,11 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
-import com.upo.batteryassistant.data.ChargeSession;
 import com.upo.batteryassistant.data.StateInfo;
 
 import com.upo.batteryassistant.manager.BatteryInfoManager;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
 import com.upo.batteryassistant.ui.MainActivity;
-
-import java.util.List;
 
 /**
  * 电池监控服务（前台服务）

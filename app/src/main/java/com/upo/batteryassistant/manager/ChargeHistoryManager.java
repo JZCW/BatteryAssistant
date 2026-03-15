@@ -14,7 +14,6 @@ import java.util.List;
 /**
  * 充放电历史管理器
  * 负责查询充放电阶段的记录和统计数据
- * 注：会话管理已移至 BatteryMonitorService
  */
 public class ChargeHistoryManager {
     private static final String TAG = "ChargeHistoryManager";
@@ -106,16 +105,13 @@ public class ChargeHistoryManager {
 
         // 如果是首次初始化，尝试恢复异常中断的会话
         if (firstInit) {
-            recoverOngoingSessions(currentInfo);
+            recoverOngoingSessions(currentInfo, currentState.isCharging());
             firstInit = false;
         }
-        // 确定会话类型
-        int newSessionType = currentInfo.isCharging() ?
-            DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE :
-            DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE;
+
         // 如果没有会话，开始新会话
         if (currentSessionCache == null) {
-            startNewSession(newSessionType, currentInfo);
+            startNewSession(currentInfo, currentState.isCharging());
         }
 
         long now = currentInfo.getTimestamp();
@@ -171,11 +167,6 @@ public class ChargeHistoryManager {
             }
         }
 
-        // 更新缓存
-        lastBatteryInfoCache = currentInfo;
-        lastScreenOn = currentState.isScreenOn();
-        lastIsCharging = currentState.isCharging();
-        lastIsIdle = currentState.isIdle();
 
         // 更新充电会话的容量和周期数
         if (currentSessionCache.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
@@ -183,11 +174,17 @@ public class ChargeHistoryManager {
             currentSessionCache.setCycleCount(currentInfo.getCycleCount());
         }
 
+        // 更新缓存
+        lastBatteryInfoCache = currentInfo;
+        lastScreenOn = currentState.isScreenOn();
+        lastIsCharging = currentState.isCharging();
+        lastIsIdle = currentState.isIdle();
+
         // 如果状态变化，开始新会话
         int currentType = currentSessionCache.getSessionType();
         if ((currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE && !lastIsCharging) ||
             (currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE && lastIsCharging)) {
-            startNewSession(newSessionType, currentInfo);
+            startNewSession(currentInfo, lastIsCharging);
         } else {
             // 否则检查是否需要持久化
             new Thread(() -> {
@@ -233,11 +230,15 @@ public class ChargeHistoryManager {
     /**
      * 开始新会话
      */
-    private void startNewSession(int sessionType, BatteryInfo info) {
+    private void startNewSession(BatteryInfo info, boolean isCharging) {
         // 如果已有进行中会话，先结束
         if (currentSessionCache != null) {
             finishCurrentSession();
         }
+
+        int sessionType = isCharging ?
+            DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE :
+            DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE;
 
         // 创建新会话缓存
         currentSessionCache = new ChargeSession();
@@ -286,32 +287,23 @@ public class ChargeHistoryManager {
         // 标记为已完成
         currentSessionCache.setOngoing(false);
 
-        // 根据电量变化确定最终类型
-        int levelChange = currentSessionCache.getEndLevel() - currentSessionCache.getStartLevel();
-        if (levelChange > 0) {
-            currentSessionCache.setSessionType(DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE); //TODO 检查是否有预写入类型
-        } else if (levelChange < 0) {
-            currentSessionCache.setSessionType(DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE);
-        }
-
         // 写入数据库并更新统计
         final ChargeSession session = currentSessionCache;
         new Thread(() -> {
             dbHelper.finishSession(session);
         }).start();
 
-        Log.i(TAG, "结束会话: " + session.getSessionTypeText() + 
-              ", 电量变化: " + levelChange + "%");
+        Log.i(TAG, "结束会话: " + session.getSessionTypeText());
 
         // 清空缓存
         currentSessionCache = null;
-        lastBatteryInfoCache = null; //TODO 检查使用
+        lastBatteryInfoCache = null;
     }
 
     /**
      * 判断是否应该恢复会话
      */
-    private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo) {
+    private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo, boolean isCharging) {
         // 检查时间是否过长（超过10分钟）
         long duration = currentInfo.getTimestamp() - ongoingSession.getStartTimestamp();
         if (duration > 10 * 60 * 1000) {
@@ -331,9 +323,8 @@ public class ChargeHistoryManager {
         }
 
         // 检查充电状态是否一致
-        boolean currentCharging = currentInfo.isCharging(); // TODO 用内部状态
         boolean sessionCharging = (ongoingSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
-        if (currentCharging != sessionCharging) {
+        if (isCharging != sessionCharging) {
             return false;
         }
 
@@ -343,7 +334,7 @@ public class ChargeHistoryManager {
     /**
      * 恢复异常中断的会话
      */
-    private void recoverOngoingSessions(BatteryInfo currentInfo) {
+    private void recoverOngoingSessions(BatteryInfo currentInfo, boolean isCharging) {
         List<ChargeSession> ongoingSessions = dbHelper.getOngoingSessions();
 
         if (ongoingSessions.isEmpty()) {
@@ -359,10 +350,7 @@ public class ChargeHistoryManager {
                 dbHelper.finishSession(session);
             }
             // 创建新会话
-            int sessionType = currentInfo.isCharging() ?
-                DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE :
-                DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE;
-            startNewSession(sessionType, currentInfo);
+            startNewSession(currentInfo, isCharging);
             return;
         }
 
@@ -370,7 +358,7 @@ public class ChargeHistoryManager {
         ChargeSession ongoingSession = ongoingSessions.get(0);
 
         // 检查是否可以恢复
-        if (shouldRestoreSession(ongoingSession, currentInfo)) {
+        if (shouldRestoreSession(ongoingSession, currentInfo, isCharging)) {
             // 恢复会话，但标记分状态无效
             ongoingSession.setScreenOnDuration(-1);
             ongoingSession.setScreenOnLevelChange(-1);

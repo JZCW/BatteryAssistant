@@ -134,131 +134,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /**
-     * 插入充放电阶段（带合并逻辑）
-     */
-    public long insertSession(ChargeSession session) {
-        SQLiteDatabase db = getWritableDatabase();
-        
-        // 尝试合并
-        ChargeSession mergedSession = tryMergeSession(db, session);
-        
-        ContentValues values = sessionToContentValues(mergedSession);
-        long id = db.insert(DatabaseContract.ChargeSessionEntry.TABLE_NAME, null, values);
-        
-        // 更新聚合数据（仅充电阶段）
-        if (mergedSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
-            updateDailyStats(db, mergedSession);
-            updateWeeklyStats(db, mergedSession);
-            updateMonthlyStats(db, mergedSession);
-        }
-        
-        return id;
-    }
-    
-    /**
-     * 尝试合并会话
-     */
-    private ChargeSession tryMergeSession(SQLiteDatabase db, ChargeSession newSession) {
-        // 获取最近的一个会话
-        String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
-                      " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + " DESC LIMIT 2";
-        
-        Cursor cursor = db.rawQuery(query, null);
-        List<ChargeSession> recentSessions = new ArrayList<>();
-        
-        while (cursor.moveToNext()) {
-            recentSessions.add(parseSessionFromCursor(cursor));
-        }
-        cursor.close();
-        
-        if (recentSessions.isEmpty()) {
-            return newSession;
-        }
-        
-        ChargeSession lastSession = recentSessions.get(0);
-        
-        // 检查是否可以合并
-        if (canMergeSessions(lastSession, newSession)) {
-            // 删除旧会话
-            db.delete(DatabaseContract.ChargeSessionEntry.TABLE_NAME,
-                     DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
-                     new String[]{String.valueOf(lastSession.getId())});
-            
-            // 合并到新会话
-            lastSession.mergeWith(newSession);
-            return lastSession;
-        }
-        
-        // 检查不同类型合并（充-放-充）
-        if (recentSessions.size() >= 2) {
-            ChargeSession secondLastSession = recentSessions.get(1);
-            if (canMergeDifferentType(secondLastSession, lastSession, newSession)) {
-                // 删除中间和最后的会话
-                db.delete(DatabaseContract.ChargeSessionEntry.TABLE_NAME,
-                         DatabaseContract.ChargeSessionEntry.COLUMN_ID + " IN (?, ?)",
-                         new String[]{String.valueOf(secondLastSession.getId()), 
-                                     String.valueOf(lastSession.getId())});
-                
-                // 合并
-                secondLastSession.mergeWith(newSession);
-                return secondLastSession;
-            }
-        }
-        
-        return newSession;
-    }
-    
-    /**
-     * 检查同类型会话是否可以合并
-     */
-    private boolean canMergeSessions(ChargeSession earlier, ChargeSession later) {
-        // 必须是同类型
-        if (earlier.getSessionType() != later.getSessionType()) {
-            return false;
-        }
-        
-        // 检查时间间隔
-        long interval = later.getStartTimestamp() - earlier.getEndTimestamp();
-        if (interval >= DatabaseContract.MERGE_SAME_TYPE_INTERVAL_THRESHOLD) {
-            return false;
-        }
-        
-        // 检查电量差
-        int levelDiff = Math.abs(later.getStartLevel() - earlier.getEndLevel());
-        if (levelDiff > DatabaseContract.MERGE_SAME_TYPE_LEVEL_DIFF_THRESHOLD) {
-            return false;
-        }
-        
-        return true;
-    }
-    
-    /**
-     * 检查不同类型会话是否可以合并（充-放-充）
-     */
-    private boolean canMergeDifferentType(ChargeSession first, ChargeSession middle, ChargeSession last) {
-        // 第一和最后必须是同类型（充电）
-        if (first.getSessionType() != last.getSessionType()) {
-            return false;
-        }
-        if (first.getSessionType() != DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
-            return false;
-        }
-        
-        // 中间必须是不同类型
-        if (middle.getSessionType() == first.getSessionType()) {
-            return false;
-        }
-        
-        // 中间阶段持续时间必须小于阈值
-        long duration = middle.getEndTimestamp() - middle.getStartTimestamp();
-        if (duration >= DatabaseContract.MERGE_DIFFERENT_TYPE_THRESHOLD) {
-            return false;
-        }
-        
-        return true;
-    }
-    
-    /**
      * 将ChargeSession转换为ContentValues
      */
     private ContentValues sessionToContentValues(ChargeSession session) {
@@ -360,28 +235,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * 删除进行中的会话
-     */
-    public void deleteOngoingSessions() {
-        SQLiteDatabase db = getWritableDatabase();
-        db.delete(DatabaseContract.ChargeSessionEntry.TABLE_NAME,
-                 DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = ?",
-                 new String[]{"1"});
-    }
-
-    /**
-     * 更新会话的进行中状态
-     */
-    public void updateSessionOngoingStatus(long sessionId, boolean isOngoing) {
-        SQLiteDatabase db = getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING, isOngoing ? 1 : 0);
-        db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
-                 DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
-                 new String[]{String.valueOf(sessionId)});
-    }
-
-    /**
      * 部分更新会话（用于进行中会话的定期更新）
      * 不改变 is_ongoing 状态，不触发统计更新
      */
@@ -405,43 +258,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
                  DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
                  new String[]{String.valueOf(session.getId())});
-    }
-
-    /**
-     * 当会话ID尚未写回缓存时，更新最新一条进行中会话（按开始时间降序取一条）
-     */
-    public void updateLatestOngoingPartial(ChargeSession session) {
-        SQLiteDatabase db = getWritableDatabase();
-        // 查询最新一条ongoing的id
-        String q = "SELECT " + DatabaseContract.ChargeSessionEntry.COLUMN_ID +
-                " FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
-                " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 1" +
-                " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC LIMIT 1";
-        Cursor c = db.rawQuery(q, null);
-        if (!c.moveToFirst()) {
-            c.close();
-            return;
-        }
-        long id = c.getLong(0);
-        c.close();
-
-        ContentValues values = new ContentValues();
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP, session.getEndTimestamp());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL, session.getEndLevel());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER, session.getEndChargeCounter());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE, session.getMaxTemperature());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE, session.getMinTemperature());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION, session.getScreenOnDuration());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_LEVEL_CHANGE, session.getScreenOnLevelChange());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF, session.getScreenOnChargeCounterDiff());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION, session.getDozeDuration());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF, session.getDozeChargeCounterDiff());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY, session.getEstimatedCapacity());
-        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT, session.getCycleCount());
-
-        db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
-                DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
-                new String[]{String.valueOf(id)});
     }
 
     /**
@@ -591,12 +407,12 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     }
     
     /**
-     * 获取周一日期
+     * 获取周初日期（周日）
      */
     private String getWeekStart(long timestamp) {
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(timestamp);
-        cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+        cal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
         return formatDate(cal.getTimeInMillis(), "yyyy-MM-dd");
     }
     
