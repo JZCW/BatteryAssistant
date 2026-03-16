@@ -173,6 +173,9 @@ public class ChargeHistoryManager {
             currentSessionCache.setCycleCount(currentInfo.getCycleCount());
         }
 
+        // 增加更新计数
+        currentSessionCache.incrementCounter();
+
         // 更新缓存
         lastBatteryInfoCache = currentInfo;
         lastScreenOn = currentState.isScreenOn();

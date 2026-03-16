@@ -35,6 +35,9 @@ public class ChargeSession implements Serializable {
     // 进行中状态
     private boolean isOngoing;      // 是否进行中
     
+    // 更新计数
+    private int counter;            // 被updateCurrentSession()更新的次数
+    
     public ChargeSession() {
         // 初始化默认值
         pauseTimestamp = 0;
@@ -42,6 +45,7 @@ public class ChargeSession implements Serializable {
         screenOnChargeCounterDiff = 0;
         dozeDuration = 0;
         dozeChargeCounterDiff = 0;
+        counter = 0;
     }
     
     // Getters and Setters
@@ -187,6 +191,21 @@ public class ChargeSession implements Serializable {
 
     public void setOngoing(boolean ongoing) {
         isOngoing = ongoing;
+    }
+    
+    public int getCounter() {
+        return counter;
+    }
+    
+    public void setCounter(int counter) {
+        this.counter = counter;
+    }
+    
+    /**
+     * 增加更新计数
+     */
+    public void incrementCounter() {
+        this.counter++;
     }
     
     /**
