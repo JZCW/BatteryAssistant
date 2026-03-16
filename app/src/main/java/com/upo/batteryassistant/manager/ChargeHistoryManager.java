@@ -118,6 +118,7 @@ public class ChargeHistoryManager {
         long duration = now - currentSessionCache.getEndTimestamp();
 
         // 更新基础信息
+        currentSessionCache.setPauseTimestamp(now);
         currentSessionCache.setEndTimestamp(now);
         currentSessionCache.setEndLevel(currentInfo.getLevel());
         currentSessionCache.setEndChargeCounter(currentInfo.getChargeCounter());
@@ -131,8 +132,12 @@ public class ChargeHistoryManager {
             currentSessionCache.setMinTemperature(temp);
         }
 
-        // 累加分状态数据（仅在有上次缓存时）
-        if ((lastBatteryInfoCache != null) && (!isSessionInvalid(currentSessionCache))) {
+        // 累加分状态数据
+        if ((lastBatteryInfoCache == null) && (currentSessionCache.getCounter()>0)) {
+            Log.e("ChargeHistoryManager", "lastBatteryInfoCache is null but counter is " + currentSessionCache.getCounter());
+            currentSessionCache.markInvalid();
+        }
+        if ((!currentSessionCache.isSessionInvalid()) && (currentSessionCache.getCounter()>0)) {
             int chargeCounterDiff = 0;
             if (currentInfo.getChargeCounter() >= 0 && lastBatteryInfoCache.getChargeCounter() >= 0) {
                 chargeCounterDiff = currentInfo.getChargeCounter() - lastBatteryInfoCache.getChargeCounter();
@@ -145,27 +150,14 @@ public class ChargeHistoryManager {
                 currentSessionCache.setDozeChargeCounterDiff(
                     currentSessionCache.getDozeChargeCounterDiff() + chargeCounterDiff);
             } else {
-                if (lastIsCharging) {
-                    // 充电区间
-                    if (lastScreenOn) {
-                        currentSessionCache.setScreenOnDuration(
-                            currentSessionCache.getScreenOnDuration() + duration);
-                        currentSessionCache.setScreenOnChargeCounterDiff(
-                            currentSessionCache.getScreenOnChargeCounterDiff() + chargeCounterDiff);
-                    }
-                }
-                else {
-                    // 放电区间
-                    if (lastScreenOn) {
-                        currentSessionCache.setScreenOnDuration(
-                            currentSessionCache.getScreenOnDuration() + duration);
-                        currentSessionCache.setScreenOnChargeCounterDiff(
-                            currentSessionCache.getScreenOnChargeCounterDiff() + chargeCounterDiff); //FIXME 共用计数器
-                    }
+                if (lastScreenOn) {
+                    currentSessionCache.setScreenOnDuration(
+                        currentSessionCache.getScreenOnDuration() + duration);
+                    currentSessionCache.setScreenOnChargeCounterDiff(
+                        currentSessionCache.getScreenOnChargeCounterDiff() + chargeCounterDiff);
                 }
             }
         }
-
 
         // 更新充电会话的容量和周期数
         if (currentSessionCache.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
@@ -245,8 +237,9 @@ public class ChargeHistoryManager {
         // 创建新会话缓存
         currentSessionCache = new ChargeSession();
         currentSessionCache.setSessionType(sessionType);
-        currentSessionCache.setStartTimestamp(System.currentTimeMillis());
-        currentSessionCache.setEndTimestamp(System.currentTimeMillis());
+        currentSessionCache.setStartTimestamp(info.getTimestamp());
+        currentSessionCache.setPauseTimestamp(info.getTimestamp());
+        currentSessionCache.setEndTimestamp(info.getTimestamp());
         currentSessionCache.setStartLevel(info.getLevel());
         currentSessionCache.setEndLevel(info.getLevel());
         currentSessionCache.setStartChargeCounter(info.getChargeCounter());
@@ -254,12 +247,6 @@ public class ChargeHistoryManager {
         currentSessionCache.setMaxTemperature(info.getTemperature());
         currentSessionCache.setMinTemperature(info.getTemperature());
         currentSessionCache.setOngoing(true);
-
-        // 初始化分状态字段为 0
-        currentSessionCache.setScreenOnDuration(0);
-        currentSessionCache.setScreenOnChargeCounterDiff(0);
-        currentSessionCache.setDozeDuration(0);
-        currentSessionCache.setDozeChargeCounterDiff(0);
 
         // 充电会话设置容量和周期
         if (sessionType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
@@ -369,7 +356,7 @@ public class ChargeHistoryManager {
         // 检查是否可以恢复
         if (shouldRestoreSession(ongoingSession, currentInfo, isCharging)) {
             // 恢复会话，但标记分状态无效
-            markSessionInvalid(ongoingSession);
+            ongoingSession.markInvalid();
             currentSessionCache = ongoingSession;
 
             Log.i(TAG, "恢复进行中的会话，分状态标记为无效");
@@ -380,26 +367,6 @@ public class ChargeHistoryManager {
 
             Log.i(TAG, "不恢复会话");
         }
-    }
-
-    /**
-     * 标记会话的分状态数据为无效
-     */
-    private void markSessionInvalid(ChargeSession session) {
-        session.setScreenOnDuration(-1);
-        session.setScreenOnChargeCounterDiff(-1);
-        session.setDozeDuration(-1);
-        session.setDozeChargeCounterDiff(-1);
-    }
-
-    /**
-     * 判断分状态数据是否无效
-     */
-    private boolean isSessionInvalid(ChargeSession session) {
-        return session.getScreenOnDuration() == -1 ||
-               session.getScreenOnChargeCounterDiff() == -1 ||
-               session.getDozeDuration() == -1 ||
-               session.getDozeChargeCounterDiff() == -1;
     }
 }
 

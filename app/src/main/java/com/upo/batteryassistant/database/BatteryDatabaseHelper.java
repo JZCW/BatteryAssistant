@@ -430,6 +430,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         SQLiteDatabase db = getWritableDatabase();
         ContentValues values = new ContentValues();
 
+        values.put(DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP, session.getPauseTimestamp());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP, session.getEndTimestamp());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL, session.getEndLevel());
         values.put(DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER, session.getEndChargeCounter());

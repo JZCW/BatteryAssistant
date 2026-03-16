@@ -40,7 +40,6 @@ public class ChargeSession implements Serializable {
     
     public ChargeSession() {
         // 初始化默认值
-        pauseTimestamp = 0;
         screenOnDuration = 0;
         screenOnChargeCounterDiff = 0;
         dozeDuration = 0;
@@ -245,37 +244,25 @@ public class ChargeSession implements Serializable {
     public float getMinTemperatureCelsius() {
         return minTemperature / 10.0f;
     }
-    
+
     /**
-     * 合并两个会话（当前会话在前，传入会话在后）
-     * @param laterSession 后续会话
+     * 标记分状态数据无效
      */
-    public void mergeWith(ChargeSession laterSession) {
-        // 更新结束状态为后续会话的结束状态
-        this.endTimestamp = laterSession.endTimestamp;
-        this.endLevel = laterSession.endLevel;
-        this.endChargeCounter = laterSession.endChargeCounter;
-        this.estimatedCapacity = laterSession.estimatedCapacity;
-        this.cycleCount = laterSession.cycleCount;
-        
-        // 更新温度统计
-        if (laterSession.maxTemperature > this.maxTemperature) {
-            this.maxTemperature = laterSession.maxTemperature;
-        }
-        if (laterSession.minTemperature < this.minTemperature || this.minTemperature <= 0) {
-            this.minTemperature = laterSession.minTemperature;
-        }
-        
-        // 累加暂停时间
-        this.pauseTimestamp += laterSession.pauseTimestamp;
-        
-        // 累加屏幕相关数据
-        this.screenOnDuration += laterSession.screenOnDuration;
-        this.screenOnChargeCounterDiff += laterSession.screenOnChargeCounterDiff;
-        
-        // 累加Doze相关数据
-        this.dozeDuration += laterSession.dozeDuration;
-        this.dozeChargeCounterDiff += laterSession.dozeChargeCounterDiff;
+    public void markInvalid() {
+        this.setScreenOnDuration(-1);
+        this.setScreenOnChargeCounterDiff(-1);
+        this.setDozeDuration(-1);
+        this.setDozeChargeCounterDiff(-1);
+    }
+
+    /**
+     * 判断分状态数据是否无效
+     */
+    public boolean isSessionInvalid() {
+        return this.getScreenOnDuration() == -1 ||
+               this.getScreenOnChargeCounterDiff() == -1 ||
+               this.getDozeDuration() == -1 ||
+               this.getDozeChargeCounterDiff() == -1;
     }
 }
 
