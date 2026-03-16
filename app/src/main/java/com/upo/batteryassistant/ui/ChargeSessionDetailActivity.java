@@ -94,33 +94,37 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         // 屏幕信息
         TextView screenOnDurationText = findViewById(R.id.detail_screen_on_duration_text);
         TextView screenOnChargeCounterDiffText = findViewById(R.id.detail_screen_on_charge_counter_diff_text);
-        
-        if (session.getScreenOnDuration() > 0) {
+
+        if (session.getScreenOnDuration() >= 0) {
             screenOnDurationText.setText(formatDuration(session.getScreenOnDuration()));
         } else {
-            screenOnDurationText.setText("无数据");
+            screenOnDurationText.setText("不可用");
         }
-        
-        if (session.getScreenOnChargeCounterDiff() != 0) {
+
+        if (session.getScreenOnChargeCounterDiff() >= 0) {
+            screenOnChargeCounterDiffText.setText("+" + session.getScreenOnChargeCounterDiff() + " mAh");
+        } else if (session.getScreenOnChargeCounterDiff() < 0) {
             screenOnChargeCounterDiffText.setText(session.getScreenOnChargeCounterDiff() + " mAh");
         } else {
-            screenOnChargeCounterDiffText.setText("无数据");
+            screenOnChargeCounterDiffText.setText("不可用");
         }
         
         // Doze信息
         TextView dozeDurationText = findViewById(R.id.detail_doze_duration_text);
         TextView dozeChargeCounterDiffText = findViewById(R.id.detail_doze_charge_counter_diff_text);
-        
-        if (session.getDozeDuration() > 0) {
+
+        if (session.getDozeDuration() >= 0) {
             dozeDurationText.setText(formatDuration(session.getDozeDuration()));
         } else {
-            dozeDurationText.setText("无数据");
+            dozeDurationText.setText("不可用");
         }
-        
-        if (session.getDozeChargeCounterDiff() != 0) {
+
+        if (session.getDozeChargeCounterDiff() >= 0) {
+            dozeChargeCounterDiffText.setText("+" + session.getDozeChargeCounterDiff() + " mAh");
+        } else if (session.getDozeChargeCounterDiff() < 0) {
             dozeChargeCounterDiffText.setText(session.getDozeChargeCounterDiff() + " mAh");
         } else {
-            dozeChargeCounterDiffText.setText("无数据");
+            dozeChargeCounterDiffText.setText("不可用");
         }
         
         // 容量和周期信息
@@ -139,9 +143,47 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
             cycleCountText.setText("无数据");
         }
         
-        // ID信息
+        // 息屏非Doze信息（推断）
+        TextView nondozeDurationText = findViewById(R.id.detail_nondoze_duration_text);
+        TextView nondozeChargeCounterDiffText = findViewById(R.id.detail_nondoze_charge_counter_diff_text);
+
+        // 计算总时长和总电量变化
+        long totalDuration = session.getEndTimestamp() - session.getStartTimestamp();
+        int totalChargeCounterDiff = session.getChargeCounterDiff();
+
+        // 推断非Doze时长
+        long nondozeDuration = -1;
+        if (session.getScreenOnDuration() >= 0 && session.getDozeDuration() >= 0) {
+            nondozeDuration = totalDuration - session.getScreenOnDuration() - session.getDozeDuration();
+        }
+
+        // 推断非Doze电量变化
+        int nondozeChargeCounterDiff = -1;
+        if (session.getScreenOnChargeCounterDiff() >= 0 && session.getDozeChargeCounterDiff() >= 0) {
+            nondozeChargeCounterDiff = totalChargeCounterDiff - session.getScreenOnChargeCounterDiff() - session.getDozeChargeCounterDiff();
+        }
+
+        // 显示非Doze时长
+        if (nondozeDuration >= 0) {
+            nondozeDurationText.setText(formatDuration(nondozeDuration));
+        } else {
+            nondozeDurationText.setText("不可用");
+        }
+
+        // 显示非Doze电量变化
+        if (nondozeChargeCounterDiff >= 0) {
+            nondozeChargeCounterDiffText.setText("+" + nondozeChargeCounterDiff + " mAh");
+        } else if (nondozeChargeCounterDiff < 0) {
+            nondozeChargeCounterDiffText.setText(nondozeChargeCounterDiff + " mAh");
+        } else {
+            nondozeChargeCounterDiffText.setText("不可用");
+        }
+
+        // ID信息和更新计数
         TextView idText = findViewById(R.id.detail_id_text);
+        TextView counterText = findViewById(R.id.detail_counter_text);
         idText.setText(String.valueOf(session.getId()));
+        counterText.setText(String.valueOf(session.getCounter()));
     }
     
     private String formatDuration(long milliseconds) {

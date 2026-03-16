@@ -127,6 +127,21 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
+                    android:text="更新计数"
+                    android:textSize="14sp"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+                <TextView
+                    android:id="@+id/detail_counter_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/detail_id_text_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
                     android:text="记录ID"
                     android:textSize="14sp"
                     android:textColor="?android:attr/textColorSecondary" />
@@ -347,27 +362,13 @@
                     android:layout_height="wrap_content"
                     android:textSize="14sp" />
 
-                <TextView
-                    android:id="@+id/detail_screen_on_level_change_text_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="屏幕开启电量变化"
-                    android:textSize="14sp"
-                    android:textColor="?android:attr/textColorSecondary" />
-
-                <TextView
-                    android:id="@+id/detail_screen_on_level_change_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/detail_screen_on_charge_counter_diff_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:text="屏幕开启充入电量"
+                    android:text="屏幕开启电量变化(±mAh)"
                     android:textSize="14sp"
                     android:textColor="?android:attr/textColorSecondary" />
 
@@ -428,6 +429,61 @@
 
                 <TextView
                     android:id="@+id/detail_doze_charge_counter_diff_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12dp"
+            app:cardCornerRadius="8dp"
+            app:cardElevation="2dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="息屏非Doze信息"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorPrimary" />
+
+                <TextView
+                    android:id="@+id/detail_nondoze_duration_text_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="息屏非Doze时长"
+                    android:textSize="14sp"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+                <TextView
+                    android:id="@+id/detail_nondoze_duration_text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp" />
+
+                <TextView
+                    android:id="@+id/detail_nondoze_charge_counter_diff_text_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="息屏非Doze电量变化(±mAh)"
+                    android:textSize="14sp"
+                    android:textColor="?android:attr/textColorSecondary" />
+
+                <TextView
+                    android:id="@+id/detail_nondoze_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="14sp" />
