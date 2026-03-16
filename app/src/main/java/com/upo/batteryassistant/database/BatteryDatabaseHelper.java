@@ -130,11 +130,13 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME);
             db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME);
             onCreate(db);
-        } else if (oldVersion == 4 && newVersion >= 5) {
+        } 
+        if (oldVersion == 4 && newVersion >= 5) {
             // 版本5：删除 screen_on_level_change 列
             // 使用完全重建表的方式确保列被删除
             upgradeToVersion5(db);
-        } else if (oldVersion == 5 && newVersion >= 6) {
+        } 
+        if (oldVersion == 5 && newVersion >= 6) {
             // 版本6：添加 counter 列
             upgradeToVersion6(db);
         }
