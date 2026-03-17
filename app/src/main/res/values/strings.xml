@@ -19,4 +19,9 @@
     <string name="stats_period_daily_desc">日期：%1$s</string>
     <string name="stats_period_week_desc">周起始：%1$s</string>
     <string name="stats_period_month_desc">月份：%1$s</string>
+    <string name="stats_detail_hint">点击图表节点查看详细信息</string>
+    <string name="stats_detail_title">%1$s</string>
+    <string name="stats_detail_description">%1$s</string>
+    <string name="stats_detail_level_change_value">%1$s</string>
+    <string name="stats_detail_charge_counter_value">%1$s</string>
 </resources>

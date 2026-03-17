@@ -12,8 +12,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.components.XAxis;
@@ -21,6 +19,8 @@ import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.highlight.Highlight;
+import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.database.BatteryDatabaseHelper;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
@@ -35,21 +35,27 @@ import java.util.List;
 public class StatsPeriodFragment extends Fragment {
     private static final String ARG_PERIOD_TYPE = "arg_period_type";
     private static final int PAGE_SIZE = 20;
-    private static final int PREFETCH_THRESHOLD = 5;
 
     private StatsPeriodType periodType = StatsPeriodType.DAILY;
     private ChargeHistoryManager historyManager;
     private Handler mainHandler;
 
     private SwipeRefreshHelper swipeHelper;
-    private RecyclerView recyclerView;
-    private StatsAdapter adapter;
     private LineChart lineChart;
     private TextView emptyView;
+    private TextView detailHint;
+    private View detailCard;
+    private TextView detailTitle;
+    private TextView detailDescription;
+    private TextView detailSessionCount;
+    private TextView detailLevelChange;
+    private TextView detailChargeCounter;
+    private TextView detailEstimatedCapacity;
+    private TextView detailCycleCount;
 
+    private final List<StatsEntry> statsEntries = new ArrayList<>();
+    private final List<StatsEntry> chartOrderedEntries = new ArrayList<>();
     private boolean isLoading = false;
-    private boolean hasMore = true;
-    private int currentOffset = 0;
 
     public static StatsPeriodFragment newInstance(StatsPeriodType type) {
         StatsPeriodFragment fragment = new StatsPeriodFragment();
@@ -79,18 +85,23 @@ public class StatsPeriodFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         swipeHelper = new SwipeRefreshHelper(view.findViewById(R.id.swipe_refresh));
-        recyclerView = view.findViewById(R.id.recycler_view);
         lineChart = view.findViewById(R.id.line_chart);
         emptyView = view.findViewById(R.id.empty_view);
+        detailHint = view.findViewById(R.id.detail_hint);
+        detailCard = view.findViewById(R.id.detail_card);
+        detailTitle = view.findViewById(R.id.detail_title);
+        detailDescription = view.findViewById(R.id.detail_description);
+        detailSessionCount = view.findViewById(R.id.detail_session_count);
+        detailLevelChange = view.findViewById(R.id.detail_level_change);
+        detailChargeCounter = view.findViewById(R.id.detail_charge_counter);
+        detailEstimatedCapacity = view.findViewById(R.id.detail_estimated_capacity);
+        detailCycleCount = view.findViewById(R.id.detail_cycle_count);
 
         setupChart();
-        setupRecyclerView();
         swipeHelper.setOnRefreshListener(this::refreshData);
 
-        if (adapter.getItemCount() == 0) {
-            swipeHelper.showRefreshing(true);
-            refreshData();
-        }
+        swipeHelper.showRefreshing(true);
+        refreshData();
     }
 
     @Override
@@ -102,56 +113,38 @@ public class StatsPeriodFragment extends Fragment {
     private void setupChart() {
         lineChart.getDescription().setEnabled(false);
         lineChart.setNoDataText(getString(R.string.stats_chart_no_data));
-        lineChart.setTouchEnabled(false);
+        lineChart.setNoDataTextColor(ContextCompat.getColor(requireContext(), R.color.stats_secondary_text));
+        lineChart.setTouchEnabled(true);
+        lineChart.setHighlightPerTapEnabled(true);
+        lineChart.setDragEnabled(true);
+        lineChart.setScaleEnabled(true);
+
+        int primaryText = ContextCompat.getColor(requireContext(), R.color.stats_primary_text);
+        int secondaryText = ContextCompat.getColor(requireContext(), R.color.stats_secondary_text);
+
         XAxis xAxis = lineChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
         xAxis.setGranularity(1f);
         xAxis.setDrawGridLines(false);
-        lineChart.getAxisRight().setEnabled(false);
-    }
+        xAxis.setTextColor(secondaryText);
+        xAxis.setAxisLineColor(secondaryText);
 
-    private void setupRecyclerView() {
-        recyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new StatsAdapter(getResources());
-        recyclerView.setAdapter(adapter);
-        recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
-                super.onScrolled(rv, dx, dy);
-                LinearLayoutManager lm = (LinearLayoutManager) rv.getLayoutManager();
-                if (lm == null || isLoading || !hasMore) {
-                    return;
-                }
-                int visibleItemCount = lm.getChildCount();
-                int totalItemCount = lm.getItemCount();
-                int firstVisibleItem = lm.findFirstVisibleItemPosition();
-                if ((firstVisibleItem + visibleItemCount) >= (totalItemCount - PREFETCH_THRESHOLD)) {
-                    loadMore();
-                }
-            }
-        });
+        lineChart.getAxisRight().setEnabled(false);
+        lineChart.getAxisLeft().setTextColor(secondaryText);
+        lineChart.getAxisLeft().setGridColor(secondaryText);
+        lineChart.getLegend().setTextColor(primaryText);
     }
 
     private void refreshData() {
         if (isLoading) return;
         isLoading = true;
-        hasMore = true;
-        currentOffset = 0;
-        loadStats(true);
+        loadStats();
     }
 
-    private void loadMore() {
-        if (isLoading || !hasMore) return;
-        isLoading = true;
-        loadStats(false);
-    }
-
-    private void loadStats(boolean replace) {
-        final int offset = replace ? 0 : currentOffset;
+    private void loadStats() {
         new Thread(() -> {
-            List<StatsEntry> entries = queryStats(offset, PAGE_SIZE);
-            boolean more = entries.size() >= PAGE_SIZE;
-            mainHandler.post(() -> applyStatsResults(replace, entries, more));
+            List<StatsEntry> entries = queryStats(0, PAGE_SIZE);
+            mainHandler.post(() -> applyStatsResults(entries));
         }).start();
     }
 
@@ -197,50 +190,50 @@ public class StatsPeriodFragment extends Fragment {
             totalChargeCounterDiff, estimatedCapacity, cycleCount);
     }
 
-    private void applyStatsResults(boolean replace, List<StatsEntry> newEntries, boolean more) {
+    private void applyStatsResults(List<StatsEntry> newEntries) {
         if (!isAdded()) {
             return;
         }
-        if (replace) {
-            adapter.setItems(newEntries);
-            currentOffset = newEntries.size();
-        } else {
-            adapter.addItems(newEntries);
-            currentOffset += newEntries.size();
-        }
-        hasMore = more;
+        statsEntries.clear();
+        statsEntries.addAll(newEntries);
         isLoading = false;
         swipeHelper.showRefreshing(false);
+        clearSelection();
         updateEmptyState();
-        updateChart(adapter.getItems());
+        updateChart();
     }
 
     private void updateEmptyState() {
-        boolean empty = adapter.getItemCount() == 0;
+        boolean empty = statsEntries.isEmpty();
         emptyView.setVisibility(empty ? View.VISIBLE : View.GONE);
         lineChart.setVisibility(empty ? View.INVISIBLE : View.VISIBLE);
-        recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
+        detailHint.setVisibility(empty ? View.GONE : View.VISIBLE);
+        detailCard.setVisibility(View.GONE);
     }
 
-    private void updateChart(List<StatsEntry> entries) {
-        if (entries.isEmpty()) {
+    private void updateChart() {
+        if (statsEntries.isEmpty()) {
             lineChart.clear();
             lineChart.invalidate();
             return;
         }
-        List<StatsEntry> reversed = new ArrayList<>(entries);
-        Collections.reverse(reversed);
+        chartOrderedEntries.clear();
+        chartOrderedEntries.addAll(statsEntries);
+        Collections.reverse(chartOrderedEntries); // oldest to newest for chart X axis
+
         List<Entry> chartEntries = new ArrayList<>();
-        for (int i = 0; i < reversed.size(); i++) {
-            chartEntries.add(new Entry(i, reversed.get(i).getTotalLevelChange()));
+        for (int i = 0; i < chartOrderedEntries.size(); i++) {
+            chartEntries.add(new Entry(i, chartOrderedEntries.get(i).getTotalLevelChange()));
         }
         LineDataSet dataSet = new LineDataSet(chartEntries, getString(R.string.stats_chart_dataset_label));
-        int accentColor = ContextCompat.getColor(requireContext(), R.color.purple_500);
+        int accentColor = ContextCompat.getColor(requireContext(), R.color.stats_accent);
         dataSet.setColor(accentColor);
         dataSet.setCircleColor(accentColor);
         dataSet.setLineWidth(2f);
-        dataSet.setCircleRadius(3f);
+        dataSet.setCircleRadius(4f);
         dataSet.setDrawValues(false);
+        dataSet.setHighLightColor(accentColor);
+        dataSet.setHighlightLineWidth(1.5f);
 
         LineData lineData = new LineData(dataSet);
         lineChart.setData(lineData);
@@ -248,13 +241,55 @@ public class StatsPeriodFragment extends Fragment {
             @Override
             public String getFormattedValue(float value) {
                 int index = (int) value;
-                if (index >= 0 && index < reversed.size()) {
-                    return reversed.get(index).getPeriodLabel();
+                if (index >= 0 && index < chartOrderedEntries.size()) {
+                    return chartOrderedEntries.get(index).getPeriodLabel();
                 }
                 return "";
             }
         });
+        lineChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) {
+                int index = (int) h.getX();
+                if (index >= 0 && index < chartOrderedEntries.size()) {
+                    showDetail(chartOrderedEntries.get(index));
+                }
+            }
+
+            @Override
+            public void onNothingSelected() {
+                clearSelection();
+            }
+        });
         lineChart.invalidate();
+    }
+
+    private void showDetail(@NonNull StatsEntry entry) {
+        detailHint.setVisibility(View.GONE);
+        detailCard.setVisibility(View.VISIBLE);
+
+        detailTitle.setText(entry.getPeriodLabel());
+        detailDescription.setText(entry.getPeriodDescription());
+        detailSessionCount.setText(getString(R.string.stats_session_count_value, entry.getSessionCount()));
+
+        String levelChangeFormatted = getString(R.string.stats_signed_value_with_unit,
+            entry.getTotalLevelChange(), "%");
+        detailLevelChange.setText(getString(R.string.stats_level_change_value, levelChangeFormatted));
+
+        String chargeCounterFormatted = getString(R.string.stats_signed_value_with_unit,
+            entry.getTotalChargeCounterDiff(), "mAh");
+        detailChargeCounter.setText(getString(R.string.stats_charge_counter_diff_value, chargeCounterFormatted));
+
+        detailEstimatedCapacity.setText(getString(R.string.stats_estimated_capacity_value, entry.getEstimatedCapacity()));
+        detailCycleCount.setText(getString(R.string.stats_cycle_count_value, entry.getCycleCount()));
+    }
+
+    private void clearSelection() {
+        detailCard.setVisibility(View.GONE);
+        if (!statsEntries.isEmpty()) {
+            detailHint.setVisibility(View.VISIBLE);
+        }
+        lineChart.highlightValue(null);
     }
 
     /**

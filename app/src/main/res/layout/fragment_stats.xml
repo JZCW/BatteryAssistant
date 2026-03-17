@@ -3,17 +3,20 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    android:background="@color/stats_background">
 
     <com.google.android.material.tabs.TabLayout
         android:id="@+id/stats_tab_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary"
+        android:background="@color/stats_background"
         app:tabMode="fixed"
         app:tabGravity="fill"
-        app:tabTextColor="@android:color/white"
-        app:tabIndicatorColor="@android:color/white" />
+        app:tabTextColor="@color/stats_secondary_text"
+        app:tabSelectedTextColor="@color/stats_primary_text"
+        app:tabIndicatorColor="@color/stats_accent"
+        app:tabRippleColor="@android:color/transparent" />
 
     <androidx.viewpager2.widget.ViewPager2
         android:id="@+id/stats_view_pager"
