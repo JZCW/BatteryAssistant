@@ -10,7 +10,7 @@
         android:id="@+id/stats_tab_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/stats_background"
+        android:background="@color/stats_card_background"
         app:tabMode="fixed"
         app:tabGravity="fill"
         app:tabTextColor="@color/stats_secondary_text"
@@ -18,8 +18,8 @@
         app:tabIndicatorColor="@color/stats_accent"
         app:tabRippleColor="@android:color/transparent" />
 
-    <androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/stats_view_pager"
+    <FrameLayout
+        android:id="@+id/stats_content_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1" />

@@ -8,10 +8,8 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.viewpager2.widget.ViewPager2;
 
 import com.google.android.material.tabs.TabLayout;
-import com.google.android.material.tabs.TabLayoutMediator;
 import com.upo.batteryassistant.R;
 
 /**
@@ -19,7 +17,7 @@ import com.upo.batteryassistant.R;
  */
 public class StatsFragment extends Fragment {
     private TabLayout tabLayout;
-    private ViewPager2 viewPager;
+    private StatsPeriodFragment periodFragment;
 
     @Nullable
     @Override
@@ -32,28 +30,65 @@ public class StatsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         tabLayout = view.findViewById(R.id.stats_tab_layout);
-        viewPager = view.findViewById(R.id.stats_view_pager);
 
-        StatsPagerAdapter adapter = new StatsPagerAdapter(this);
-        viewPager.setAdapter(adapter);
-        viewPager.setOffscreenPageLimit(3);
+        if (savedInstanceState == null) {
+            periodFragment = StatsPeriodFragment.newInstance(StatsPeriodType.DAILY);
+            getChildFragmentManager().beginTransaction()
+                .replace(R.id.stats_content_container, periodFragment)
+                .commitNow();
+        } else {
+            periodFragment = (StatsPeriodFragment) getChildFragmentManager()
+                .findFragmentById(R.id.stats_content_container);
+        }
 
-        new TabLayoutMediator(tabLayout, viewPager, (tab, position) -> {
-            if (getContext() == null) {
-                return;
+        setupTabs();
+    }
+
+    private void setupTabs() {
+        tabLayout.removeAllTabs();
+        addTab(StatsPeriodType.DAILY, R.string.stats_tab_daily);
+        addTab(StatsPeriodType.WEEKLY, R.string.stats_tab_weekly);
+        addTab(StatsPeriodType.MONTHLY, R.string.stats_tab_monthly);
+
+        tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                handleTabSelection(tab);
             }
-            switch (position) {
-                case 0:
-                    tab.setText(R.string.stats_tab_daily);
-                    break;
-                case 1:
-                    tab.setText(R.string.stats_tab_weekly);
-                    break;
-                case 2:
-                default:
-                    tab.setText(R.string.stats_tab_monthly);
-                    break;
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                // no-op
             }
-        }).attach();
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                handleTabSelection(tab);
+            }
+        });
+
+        TabLayout.Tab defaultTab = tabLayout.getTabAt(0);
+        if (defaultTab != null) {
+            defaultTab.select();
+        }
+    }
+
+    private void addTab(@NonNull StatsPeriodType type, int titleRes) {
+        TabLayout.Tab tab = tabLayout.newTab().setText(titleRes);
+        tab.setTag(type);
+        tabLayout.addTab(tab, tabLayout.getTabCount() == 0);
+    }
+
+    private void handleTabSelection(@Nullable TabLayout.Tab tab) {
+        if (tab == null || periodFragment == null) {
+            return;
+        }
+        Object tag = tab.getTag();
+        if (tag instanceof StatsPeriodType) {
+            StatsPeriodType type = (StatsPeriodType) tag;
+            if (periodFragment.getPeriodType() != type) {
+                periodFragment.setPeriodType(type);
+            }
+        }
     }
 }

@@ -7,9 +7,9 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="stats_background">#0F141B</color>
-    <color name="stats_card_background">#182029</color>
-    <color name="stats_primary_text">#F5F8FF</color>
-    <color name="stats_secondary_text">#B3C1D9</color>
-    <color name="stats_accent">#5DE1FF</color>
+    <color name="stats_background">#130A1F</color>
+    <color name="stats_card_background">#1E1230</color>
+    <color name="stats_primary_text">#FFFFFF</color>
+    <color name="stats_secondary_text">#CABAF0</color>
+    <color name="stats_accent">@color/purple_500</color>
 </resources>
