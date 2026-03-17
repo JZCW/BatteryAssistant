@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private TabLayout tabLayout;
     private BatteryInfoFragment batteryInfoFragment;
     private ChargeHistoryFragment chargeHistoryFragment;
+    private com.upo.batteryassistant.ui.stats.StatsFragment statsFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,8 +57,9 @@ public class MainActivity extends AppCompatActivity {
         tabLayout = findViewById(R.id.tab_layout);
         
         // 添加标签
-        tabLayout.addTab(tabLayout.newTab().setText("电池信息"));
-        tabLayout.addTab(tabLayout.newTab().setText("充放电历史"));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_battery_info));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_charge_history));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_stats));
         
         // 设置标签选择监听
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -87,6 +89,9 @@ public class MainActivity extends AppCompatActivity {
         if (chargeHistoryFragment == null) {
             chargeHistoryFragment = new ChargeHistoryFragment();
         }
+        if (statsFragment == null) {
+            statsFragment = new com.upo.batteryassistant.ui.stats.StatsFragment();
+        }
         
         // 使用show/hide而不是replace，保持Fragment状态
         androidx.fragment.app.FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
@@ -102,6 +107,9 @@ public class MainActivity extends AppCompatActivity {
             if (chargeHistoryFragment.isAdded()) {
                 transaction.hide(chargeHistoryFragment);
             }
+            if (statsFragment.isAdded()) {
+                transaction.hide(statsFragment);
+            }
         } else if (position == 1) {
             // 显示充放电历史Fragment
             if (!chargeHistoryFragment.isAdded()) {
@@ -112,6 +120,21 @@ public class MainActivity extends AppCompatActivity {
             // 隐藏电池信息Fragment
             if (batteryInfoFragment.isAdded()) {
                 transaction.hide(batteryInfoFragment);
+            }
+            if (statsFragment.isAdded()) {
+                transaction.hide(statsFragment);
+            }
+        } else if (position == 2) {
+            if (!statsFragment.isAdded()) {
+                transaction.add(R.id.fragment_container, statsFragment);
+            } else {
+                transaction.show(statsFragment);
+            }
+            if (batteryInfoFragment.isAdded()) {
+                transaction.hide(batteryInfoFragment);
+            }
+            if (chargeHistoryFragment.isAdded()) {
+                transaction.hide(chargeHistoryFragment);
             }
         }
         
