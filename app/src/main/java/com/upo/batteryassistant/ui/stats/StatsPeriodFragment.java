@@ -14,18 +14,18 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.github.mikephil.charting.charts.BarChart;
+import android.graphics.Color;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
 import com.github.mikephil.charting.data.BarEntry;
-import com.github.mikephil.charting.formatter.ValueFormatter;
+import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.database.BatteryDatabaseHelper;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -67,6 +67,7 @@ public class StatsPeriodFragment extends Fragment {
     private boolean pendingReload = false;
     private boolean isViewReady = false;
     private int highlightedIndex = -1;
+    private boolean suppressSelectionCallback = false;
 
     public static StatsPeriodFragment newInstance(StatsPeriodType type) {
         StatsPeriodFragment fragment = new StatsPeriodFragment();
@@ -174,11 +175,13 @@ public class StatsPeriodFragment extends Fragment {
         xAxis.setDrawGridLines(false);
         xAxis.setTextColor(secondaryText);
         xAxis.setAxisLineColor(secondaryText);
+        xAxis.setDrawLabels(false);
 
         statsChart.getAxisRight().setEnabled(false);
         statsChart.getAxisLeft().setTextColor(secondaryText);
         statsChart.getAxisLeft().setGridColor(secondaryText);
-        statsChart.getLegend().setTextColor(primaryText);
+        statsChart.getAxisLeft().setAxisMinimum(0f);
+        statsChart.getLegend().setEnabled(false);
     }
 
     private void refreshData() {
@@ -324,30 +327,18 @@ public class StatsPeriodFragment extends Fragment {
         int accentColor = ContextCompat.getColor(requireContext(), R.color.stats_accent);
         dataSet.setColor(accentColor);
         dataSet.setDrawValues(false);
-        dataSet.setHighLightColor(accentColor);
-        dataSet.setHighLightAlpha(180);
+        dataSet.setHighLightColor(Color.WHITE);
+        dataSet.setHighLightAlpha(200);
+        dataSet.setHighlightEnabled(true);
 
         BarData barData = new BarData(dataSet);
         barData.setBarWidth(0.6f);
+        barData.setHighlightEnabled(true);
         statsChart.setData(barData);
-        final StatsPeriodType axisPeriodType = periodType;
-        statsChart.getXAxis().setValueFormatter(new ValueFormatter() {
-            @Override
-            public String getFormattedValue(float value) {
-                int index = (int) value;
-                if (index >= 0 && index < chartOrderedEntries.size()) {
-                    return getAxisLabelForEntry(chartOrderedEntries.get(index), axisPeriodType);
-                }
-                return "";
-            }
-        });
-        int visibleCount = Math.min(chartOrderedEntries.size(), getMaxEntryCount(periodType));
-        statsChart.getXAxis().setLabelCount(visibleCount, true);
-        statsChart.getXAxis().setAxisMinimum(-0.5f);
-        statsChart.getXAxis().setAxisMaximum(Math.max(chartOrderedEntries.size() - 0.5f, visibleCount - 0.5f));
-        statsChart.setVisibleXRangeMaximum(visibleCount);
-        statsChart.setVisibleXRangeMinimum(visibleCount);
+        statsChart.setHighlightPerDragEnabled(false);
+        statsChart.setHighlightPerTapEnabled(true);
         statsChart.setFitBars(true);
+        final int visibleCount = Math.min(chartOrderedEntries.size(), getMaxEntryCount(periodType));
         if (chartOrderedEntries.size() > visibleCount) {
             statsChart.moveViewToX(chartOrderedEntries.size() - visibleCount);
         } else {
@@ -355,11 +346,23 @@ public class StatsPeriodFragment extends Fragment {
         }
         statsChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
             @Override
-            public void onValueSelected(com.github.mikephil.charting.data.Entry e, Highlight h) {
+            public void onValueSelected(Entry e, Highlight h) {
+                if (suppressSelectionCallback) {
+                    return;
+                }
+                if (e == null || h == null) {
+                    return;
+                }
+                if (e.getY() == 0f) {
+                    // 点击到0值柱：忽略点击，恢复之前的高亮或保持未选状态
+                    restorePreviousHighlightOrClear();
+                    return;
+                }
                 int index = (int) h.getX();
                 if (index >= 0 && index < chartOrderedEntries.size()) {
                     highlightedIndex = index;
                     showDetail(chartOrderedEntries.get(index));
+                    highlightChartEntry(index);
                 }
             }
 
@@ -405,19 +408,15 @@ public class StatsPeriodFragment extends Fragment {
             if (detailHint != null) {
                 detailHint.setVisibility(View.GONE);
             }
-            if (statsChart != null) {
-                statsChart.highlightValue(null);
-            }
+            clearChartHighlight();
             highlightedIndex = -1;
             return;
         }
         int latestIndex = chartOrderedEntries.size() - 1;
         highlightedIndex = latestIndex;
-        StatsEntry latestEntry = chartOrderedEntries.get(latestIndex);
-        showDetail(latestEntry);
-        if (statsChart != null && statsChart.getData() != null) {
-            statsChart.highlightValue(latestIndex, 0);
-        }
+        StatsEntry entryToShow = chartOrderedEntries.get(latestIndex);
+        showDetail(entryToShow);
+        highlightChartEntry(latestIndex);
     }
 
     private void clearSelection() {
@@ -427,11 +426,53 @@ public class StatsPeriodFragment extends Fragment {
         if (statsEntries.isEmpty()) {
             detailCard.setVisibility(View.GONE);
             detailHint.setVisibility(View.GONE);
-            statsChart.highlightValue(null);
+            clearChartHighlight();
             highlightedIndex = -1;
         } else {
             showLatestEntry();
         }
+    }
+
+    private void highlightChartEntry(int index) {
+        if (statsChart == null || statsChart.getData() == null) {
+            return;
+        }
+        if (index < 0 || index >= chartOrderedEntries.size()) {
+            clearChartHighlight();
+            return;
+        }
+        suppressSelectionCallback = true;
+        statsChart.highlightValue(index, 0);
+        suppressSelectionCallback = false;
+        statsChart.invalidate();
+    }
+
+    private void clearChartHighlight() {
+        if (statsChart == null) {
+            return;
+        }
+        suppressSelectionCallback = true;
+        statsChart.highlightValue(null);
+        suppressSelectionCallback = false;
+        statsChart.invalidate();
+    }
+
+    private void restorePreviousHighlightOrClear() {
+        if (highlightedIndex >= 0 && highlightedIndex < chartOrderedEntries.size()) {
+            highlightChartEntry(highlightedIndex);
+            showDetail(chartOrderedEntries.get(highlightedIndex));
+        } else {
+            clearChartHighlight();
+        }
+    }
+
+    private int findLastNonZeroIndex() {
+        for (int i = chartOrderedEntries.size() - 1; i >= 0; i--) {
+            if (chartOrderedEntries.get(i).getTotalLevelChange() != 0f) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private List<StatsEntry> buildDisplayEntries(StatsPeriodType type, List<StatsEntry> rawEntries) {
@@ -514,57 +555,7 @@ public class StatsPeriodFragment extends Fragment {
         }
     }
 
-    private String getAxisLabelForEntry(StatsEntry entry, StatsPeriodType type) {
-        if (entry == null) {
-            return "";
-        }
-        String label = entry.getPeriodLabel();
-        if (label == null || label.isEmpty()) {
-            return "";
-        }
-        try {
-            switch (type) {
-                case WEEKLY: {
-                    Integer weekOfYear = parseWeekOfYear(label);
-                    if (weekOfYear != null) {
-                        return String.valueOf(weekOfYear);
-                    }
-                    break;
-                }
-                case MONTHLY: {
-                    String[] parts = label.split("-");
-                    if (parts.length >= 2) {
-                        int month = Integer.parseInt(parts[1]);
-                        return String.valueOf(month);
-                    }
-                    break;
-                }
-                case DAILY:
-                default: {
-                    String[] parts = label.split("-");
-                    if (parts.length >= 3) {
-                        int day = Integer.parseInt(parts[2]);
-                        return String.valueOf(day);
-                    }
-                    break;
-                }
-            }
-        } catch (NumberFormatException ignored) {
-            // fallback to empty label
-        }
-        return "";
-    }
-
-    private Integer parseWeekOfYear(String label) {
-        try {
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            Calendar calendar = Calendar.getInstance();
-            calendar.setTime(sdf.parse(label));
-            return calendar.get(Calendar.WEEK_OF_YEAR);
-        } catch (ParseException e) {
-            return null;
-        }
-    }
+    // 已无 X 轴标签需求，删除旧的标签辅助方法
 
     /**
      * 简单封装 SwipeRefreshLayout，避免空指针判断。
