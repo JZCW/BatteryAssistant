@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * 电池数据库Helper
@@ -21,7 +23,7 @@ import java.util.Locale;
 public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "BatteryDatabaseHelper";
     private static final String DATABASE_NAME = "battery_assistant.db";
-    private static final int DATABASE_VERSION = 6;
+    private static final int DATABASE_VERSION = 7;
     
     // 创建charge_sessions表的SQL
     private static final String SQL_CREATE_CHARGE_SESSIONS_TABLE =
@@ -108,17 +110,29 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     public BatteryDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
+
+    /**
+     * 升级到版本7：删除 weekly_stats 与 monthly_stats 及其索引
+     */
+    private void upgradeToVersion7(SQLiteDatabase db) {
+        try {
+            db.execSQL("DROP INDEX IF EXISTS idx_weekly_stats_week");
+            db.execSQL("DROP INDEX IF EXISTS idx_monthly_stats_month");
+            db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME);
+            db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME);
+            Log.i(TAG, "Successfully upgraded database to version 7 (drop weekly/monthly tables)");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to upgrade database to version 7: " + e.getMessage());
+            throw e;
+        }
+    }
     
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(SQL_CREATE_CHARGE_SESSIONS_TABLE);
         db.execSQL(SQL_CREATE_DAILY_STATS_TABLE);
-        db.execSQL(SQL_CREATE_WEEKLY_STATS_TABLE);
-        db.execSQL(SQL_CREATE_MONTHLY_STATS_TABLE);
         db.execSQL(SQL_CREATE_SESSION_TYPE_TIMESTAMP_INDEX);
         db.execSQL(SQL_CREATE_DAILY_STATS_DATE_INDEX);
-        db.execSQL(SQL_CREATE_WEEKLY_STATS_WEEK_INDEX);
-        db.execSQL(SQL_CREATE_MONTHLY_STATS_MONTH_INDEX);
     }
     
     @Override
@@ -139,6 +153,10 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion == 5 && newVersion >= 6) {
             // 版本6：添加 counter 列
             upgradeToVersion6(db);
+        }
+        if (oldVersion <= 6 && newVersion >= 7) {
+            // 版本7：删除 weekly/monthly 表与索引
+            upgradeToVersion7(db);
         }
     }
     
@@ -461,13 +479,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
                  DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
                  new String[]{String.valueOf(session.getId())});
-
-        // 更新聚合数据（仅充电阶段）
-        if (session.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
-            updateDailyStats(db, session);
-            updateWeeklyStats(db, session);
-            updateMonthlyStats(db, session);
-        }
+        // 统计改为随样本流即时累计，这里不再更新聚合数据
     }
 
     /**
@@ -594,6 +606,63 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.getDefault());
         return sdf.format(timestamp);
     }
+
+    /**
+     * 基于样本对增量，按当前样本日期（本地时区）更新 daily_stats。
+     * isCharging=false 时不累计增量，仅覆盖估计容量与周期数。
+     * isFirstChargeUpdate=true 时对当日 session_count +1。
+     */
+    public void applySampleDeltaToDaily(long tPrev, long tNow,
+                                        int ccPrev, int ccNow,
+                                        int levelPrev, int levelNow,
+                                        boolean isCharging,
+                                        int estimatedCapacity, int cycleCount,
+                                        boolean isFirstChargeUpdate) {
+        String date = formatDate(tNow, "yyyy-MM-dd");
+        SQLiteDatabase db = getWritableDatabase();
+        Cursor cursor = db.query(DatabaseContract.DailyStatsEntry.TABLE_NAME, null,
+                DatabaseContract.DailyStatsEntry.COLUMN_DATE + " = ?",
+                new String[]{date}, null, null, null);
+        boolean exists = cursor.moveToFirst();
+        int currentSessionCount = 0;
+        int currentLevelChange = 0;
+        int currentChargeDiff = 0;
+        if (exists) {
+            currentSessionCount = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT));
+            currentLevelChange = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE));
+            currentChargeDiff = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF));
+        }
+        cursor.close();
+
+        int deltaLevel = (levelPrev >= 0 && levelNow >= 0) ? (levelNow - levelPrev) : 0;
+        int deltaCharge = (ccPrev >= 0 && ccNow >= 0) ? (ccNow - ccPrev) : 0;
+
+        ContentValues values = new ContentValues();
+        if (exists) {
+            if (isCharging) {
+                values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE, currentLevelChange + deltaLevel);
+                values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, currentChargeDiff + deltaCharge);
+            }
+            if (isFirstChargeUpdate) {
+                values.put(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT, currentSessionCount + 1);
+            }
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, estimatedCapacity);
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, cycleCount);
+            if (values.size() > 0) {
+                db.update(DatabaseContract.DailyStatsEntry.TABLE_NAME, values,
+                        DatabaseContract.DailyStatsEntry.COLUMN_DATE + " = ?",
+                        new String[]{date});
+            }
+        } else {
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_DATE, date);
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT, isFirstChargeUpdate ? 1 : 0);
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE, isCharging ? deltaLevel : 0);
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, isCharging ? deltaCharge : 0);
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, estimatedCapacity);
+            values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, cycleCount);
+            db.insert(DatabaseContract.DailyStatsEntry.TABLE_NAME, null, values);
+        }
+    }
     
     /**
      * 获取周初日期（周日）
@@ -637,56 +706,119 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
      * 获取每周统计数据
      */
     public List<WeeklyStats> getWeeklyStats(int offset, int limit) {
+        // 从 daily_stats 动态聚合最近 15 周
         SQLiteDatabase db = getReadableDatabase();
-        List<WeeklyStats> stats = new ArrayList<>();
-        
-        String query = "SELECT * FROM " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME +
-                      " ORDER BY " + DatabaseContract.WeeklyStatsEntry.COLUMN_WEEK_START + " DESC" +
-                      " LIMIT ? OFFSET ?";
-        
-        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(limit), String.valueOf(offset)});
-        
+        List<WeeklyStats> result = new ArrayList<>();
+        Cursor cursor = db.rawQuery(
+                "SELECT " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT +
+                        " FROM " + DatabaseContract.DailyStatsEntry.TABLE_NAME +
+                        " ORDER BY " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + " DESC LIMIT 120", null);
+        List<DailyStats> recent = new ArrayList<>();
         while (cursor.moveToNext()) {
-            WeeklyStats stat = new WeeklyStats();
-            stat.setWeekStart(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseContract.WeeklyStatsEntry.COLUMN_WEEK_START)));
-            stat.setSessionCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.WeeklyStatsEntry.COLUMN_SESSION_COUNT)));
-            stat.setTotalLevelChange(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.WeeklyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE)));
-            stat.setTotalChargeCounterDiff(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.WeeklyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)));
-            stat.setEstimatedCapacity(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.WeeklyStatsEntry.COLUMN_ESTIMATED_CAPACITY)));
-            stat.setCycleCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.WeeklyStatsEntry.COLUMN_CYCLE_COUNT)));
-            stats.add(stat);
+            DailyStats ds = new DailyStats();
+            ds.setDate(cursor.getString(0));
+            ds.setSessionCount(cursor.getInt(1));
+            ds.setTotalLevelChange(cursor.getInt(2));
+            ds.setTotalChargeCounterDiff(cursor.getInt(3));
+            ds.setEstimatedCapacity(cursor.getInt(4));
+            ds.setCycleCount(cursor.getInt(5));
+            recent.add(ds);
         }
         cursor.close();
-        
-        return stats;
+
+        Map<String, WeeklyStats> map = new LinkedHashMap<>();
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        Calendar cal = Calendar.getInstance();
+        cal.setFirstDayOfWeek(Calendar.MONDAY);
+        for (DailyStats ds : recent) {
+            try {
+                cal.setTime(sdf.parse(ds.getDate()));
+            } catch (Exception e) { continue; }
+            cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
+            String weekStart = sdf.format(cal.getTime());
+            WeeklyStats ws = map.get(weekStart);
+            if (ws == null) {
+                ws = new WeeklyStats();
+                ws.setWeekStart(weekStart);
+                ws.setSessionCount(0);
+                ws.setTotalLevelChange(0);
+                ws.setTotalChargeCounterDiff(0);
+                ws.setEstimatedCapacity(ds.getEstimatedCapacity());
+                ws.setCycleCount(ds.getCycleCount());
+                map.put(weekStart, ws);
+            }
+            ws.setSessionCount(ws.getSessionCount() + ds.getSessionCount());
+            ws.setTotalLevelChange(ws.getTotalLevelChange() + ds.getTotalLevelChange());
+            ws.setTotalChargeCounterDiff(ws.getTotalChargeCounterDiff() + ds.getTotalChargeCounterDiff());
+        }
+        List<WeeklyStats> all = new ArrayList<>(map.values());
+        int start = Math.min(offset, all.size());
+        int end = Math.min(start + limit, Math.min(all.size(), 15));
+        for (int i = start; i < end; i++) {
+            result.add(all.get(i));
+        }
+        return result;
     }
     
     /**
      * 获取每月统计数据
      */
     public List<MonthlyStats> getMonthlyStats(int offset, int limit) {
+        // 从 daily_stats 动态聚合最近 12 个月
         SQLiteDatabase db = getReadableDatabase();
-        List<MonthlyStats> stats = new ArrayList<>();
-        
-        String query = "SELECT * FROM " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME +
-                      " ORDER BY " + DatabaseContract.MonthlyStatsEntry.COLUMN_YEAR_MONTH + " DESC" +
-                      " LIMIT ? OFFSET ?";
-        
-        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(limit), String.valueOf(offset)});
-        
+        List<MonthlyStats> result = new ArrayList<>();
+        Cursor cursor = db.rawQuery(
+                "SELECT " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY + "," +
+                        DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT +
+                        " FROM " + DatabaseContract.DailyStatsEntry.TABLE_NAME +
+                        " ORDER BY " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + " DESC LIMIT 400", null);
+        List<DailyStats> recent = new ArrayList<>();
         while (cursor.moveToNext()) {
-            MonthlyStats stat = new MonthlyStats();
-            stat.setYearMonth(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseContract.MonthlyStatsEntry.COLUMN_YEAR_MONTH)));
-            stat.setSessionCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.MonthlyStatsEntry.COLUMN_SESSION_COUNT)));
-            stat.setTotalLevelChange(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.MonthlyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE)));
-            stat.setTotalChargeCounterDiff(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.MonthlyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)));
-            stat.setEstimatedCapacity(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.MonthlyStatsEntry.COLUMN_ESTIMATED_CAPACITY)));
-            stat.setCycleCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.MonthlyStatsEntry.COLUMN_CYCLE_COUNT)));
-            stats.add(stat);
+            DailyStats ds = new DailyStats();
+            ds.setDate(cursor.getString(0));
+            ds.setSessionCount(cursor.getInt(1));
+            ds.setTotalLevelChange(cursor.getInt(2));
+            ds.setTotalChargeCounterDiff(cursor.getInt(3));
+            ds.setEstimatedCapacity(cursor.getInt(4));
+            ds.setCycleCount(cursor.getInt(5));
+            recent.add(ds);
         }
         cursor.close();
-        
-        return stats;
+
+        Map<String, MonthlyStats> map = new LinkedHashMap<>();
+        for (DailyStats ds : recent) {
+            String ym = ds.getDate().substring(0, 7); // YYYY-MM
+            MonthlyStats ms = map.get(ym);
+            if (ms == null) {
+                ms = new MonthlyStats();
+                ms.setYearMonth(ym);
+                ms.setSessionCount(0);
+                ms.setTotalLevelChange(0);
+                ms.setTotalChargeCounterDiff(0);
+                ms.setEstimatedCapacity(ds.getEstimatedCapacity());
+                ms.setCycleCount(ds.getCycleCount());
+                map.put(ym, ms);
+            }
+            ms.setSessionCount(ms.getSessionCount() + ds.getSessionCount());
+            ms.setTotalLevelChange(ms.getTotalLevelChange() + ds.getTotalLevelChange());
+            ms.setTotalChargeCounterDiff(ms.getTotalChargeCounterDiff() + ds.getTotalChargeCounterDiff());
+        }
+        List<MonthlyStats> all = new ArrayList<>(map.values());
+        int start = Math.min(offset, all.size());
+        int end = Math.min(start + limit, Math.min(all.size(), 12));
+        for (int i = start; i < end; i++) {
+            result.add(all.get(i));
+        }
+        return result;
     }
     
     // ==================== 聚合数据类 ====================

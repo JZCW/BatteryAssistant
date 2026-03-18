@@ -28,6 +28,7 @@ public class ChargeHistoryManager {
     // 会话缓存
     private ChargeSession currentSessionCache;
     private BatteryInfo lastBatteryInfoCache;
+    private BatteryInfo prevBatteryInfoCache;
     private boolean lastIsIdle;
     private boolean lastIsCharging;
     private boolean lastScreenOn;
@@ -78,6 +79,8 @@ public class ChargeHistoryManager {
      * 获取每日统计数据
      */
     public List<BatteryDatabaseHelper.DailyStats> getDailyStats(int offset, int limit) {
+        // 在读取前尝试将缓存持久化，保证拿到最新记录
+        try { forcePersistNow(); } catch (Exception ignore) {}
         return dbHelper.getDailyStats(offset, limit);
     }
 
@@ -85,6 +88,7 @@ public class ChargeHistoryManager {
      * 获取每周统计数据
      */
     public List<BatteryDatabaseHelper.WeeklyStats> getWeeklyStats(int offset, int limit) {
+        try { forcePersistNow(); } catch (Exception ignore) {}
         return dbHelper.getWeeklyStats(offset, limit);
     }
 
@@ -92,6 +96,7 @@ public class ChargeHistoryManager {
      * 获取每月统计数据
      */
     public List<BatteryDatabaseHelper.MonthlyStats> getMonthlyStats(int offset, int limit) {
+        try { forcePersistNow(); } catch (Exception ignore) {}
         return dbHelper.getMonthlyStats(offset, limit);
     }
 
@@ -168,7 +173,8 @@ public class ChargeHistoryManager {
         // 增加更新计数
         currentSessionCache.incrementCounter();
 
-        // 更新缓存
+        // 更新缓存（先保留上一帧，供统计使用）
+        prevBatteryInfoCache = lastBatteryInfoCache;
         lastBatteryInfoCache = currentInfo;
         lastScreenOn = currentState.isScreenOn();
         lastIsCharging = currentState.isCharging();
@@ -216,6 +222,23 @@ public class ChargeHistoryManager {
         }
         final ChargeSession session = currentSessionCache;
         dbHelper.updateSessionPartial(session);
+        // 统计：基于样本对（prev -> last）进行日级增量入账
+        if (prevBatteryInfoCache != null) {
+            boolean isCharging = (session.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
+            boolean isFirstChargeUpdate = isCharging && (session.getCounter() == 1);
+            dbHelper.applySampleDeltaToDaily(
+                prevBatteryInfoCache.getTimestamp(),
+                lastBatteryInfoCache.getTimestamp(),
+                prevBatteryInfoCache.getChargeCounter(),
+                lastBatteryInfoCache.getChargeCounter(),
+                prevBatteryInfoCache.getLevel(),
+                lastBatteryInfoCache.getLevel(),
+                isCharging,
+                isCharging ? lastBatteryInfoCache.getFullCapacity() : -1,
+                isCharging ? lastBatteryInfoCache.getCycleCount() : -1,
+                isFirstChargeUpdate
+            );
+        }
         lastPersistTimestamp = lastBatteryInfoCache.getTimestamp();
         lastPersistLevel = lastBatteryInfoCache.getLevel();
         Log.d(TAG, "Force persisted session: " + session.getId());
