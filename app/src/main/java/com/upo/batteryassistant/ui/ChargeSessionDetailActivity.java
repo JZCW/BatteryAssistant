@@ -186,6 +186,8 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         counterText.setText(String.valueOf(session.getCounter()));
     }
     
+    
+
     private String formatDuration(long milliseconds) {
         long seconds = milliseconds / 1000;
         long minutes = seconds / 60;

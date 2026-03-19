@@ -14,19 +14,27 @@ import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.charts.ScatterChart;
 import android.graphics.Color;
 import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BarData;
 import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.ScatterData;
+import com.github.mikephil.charting.data.ScatterDataSet;
 import com.github.mikephil.charting.data.BarEntry;
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.highlight.Highlight;
 import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
+import com.github.mikephil.charting.components.YAxis;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.database.BatteryDatabaseHelper;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 
 import java.text.SimpleDateFormat;
+import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
@@ -60,6 +68,13 @@ public class StatsPeriodFragment extends Fragment {
     private TextView detailChargeCounter;
     private TextView detailEstimatedCapacity;
     private TextView detailCycleCount;
+    private ScatterChart capacityChart;
+    private TextView capacityDetailText;
+    private MaterialButtonToggleGroup capacityRangeToggle;
+    private MaterialButton btnCap3m, btnCap12m, btnCapAll;
+    private BatteryDatabaseHelper dbHelper;
+    private SimpleDateFormat dayFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+    private enum CapacityRange { M3, M12, ALL }
 
     private final List<StatsEntry> statsEntries = new ArrayList<>();
     private final List<StatsEntry> chartOrderedEntries = new ArrayList<>();
@@ -126,8 +141,32 @@ public class StatsPeriodFragment extends Fragment {
         detailChargeCounter = view.findViewById(R.id.detail_charge_counter);
         detailEstimatedCapacity = view.findViewById(R.id.detail_estimated_capacity);
         detailCycleCount = view.findViewById(R.id.detail_cycle_count);
+        capacityChart = view.findViewById(R.id.capacity_scatter_chart);
+        capacityDetailText = view.findViewById(R.id.capacity_detail_text);
+        capacityRangeToggle = view.findViewById(R.id.capacity_range_toggle);
+        btnCap3m = view.findViewById(R.id.btn_capacity_3m);
+        btnCap12m = view.findViewById(R.id.btn_capacity_12m);
+        btnCapAll = view.findViewById(R.id.btn_capacity_all);
+        dbHelper = new BatteryDatabaseHelper(requireContext());
 
         setupChart();
+        setupCapacityChart();
+        if (capacityRangeToggle != null && btnCap3m != null) {
+            capacityRangeToggle.check(btnCap3m.getId());
+            loadCapacityData(CapacityRange.M3);
+        }
+        if (capacityRangeToggle != null) {
+            capacityRangeToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+                if (!isChecked) return;
+                if (btnCap3m != null && checkedId == btnCap3m.getId()) {
+                    loadCapacityData(CapacityRange.M3);
+                } else if (btnCap12m != null && checkedId == btnCap12m.getId()) {
+                    loadCapacityData(CapacityRange.M12);
+                } else if (btnCapAll != null && checkedId == btnCapAll.getId()) {
+                    loadCapacityData(CapacityRange.ALL);
+                }
+            });
+        }
         swipeHelper.setOnRefreshListener(this::refreshData);
 
         isViewReady = true;
@@ -373,6 +412,113 @@ public class StatsPeriodFragment extends Fragment {
         });
         statsChart.invalidate();
         showLatestEntry();
+    }
+
+    private void setupCapacityChart() {
+        if (capacityChart == null) return;
+        capacityChart.getDescription().setEnabled(false);
+        capacityChart.setNoDataText(getString(R.string.stats_chart_no_data));
+        capacityChart.setTouchEnabled(true);
+        capacityChart.setHighlightPerTapEnabled(true);
+        capacityChart.setDragEnabled(true);
+        capacityChart.setScaleEnabled(true);
+        capacityChart.setPinchZoom(true);
+
+        int secondaryText = ContextCompat.getColor(requireContext(), R.color.stats_secondary_text);
+
+        XAxis xAxis2 = capacityChart.getXAxis();
+        xAxis2.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis2.setGranularity(24f * 60f * 60f * 1000f);
+        xAxis2.setTextColor(secondaryText);
+        xAxis2.setAxisLineColor(secondaryText);
+        xAxis2.setValueFormatter(new ValueFormatter() {
+            @Override
+            public String getFormattedValue(float value) {
+                return dayFormat.format(new java.util.Date((long) value));
+            }
+        });
+
+        YAxis left2 = capacityChart.getAxisLeft();
+        left2.setTextColor(secondaryText);
+        left2.setGridColor(secondaryText);
+        capacityChart.getAxisRight().setEnabled(false);
+        capacityChart.getLegend().setEnabled(false);
+
+        capacityChart.setOnChartValueSelectedListener(new OnChartValueSelectedListener() {
+            @Override
+            public void onValueSelected(Entry e, Highlight h) {
+                if (e == null) return;
+                String date = dayFormat.format(new java.util.Date((long) e.getX()));
+                int cap = (int) e.getY();
+                if (capacityDetailText != null) {
+                    capacityDetailText.setText(date + "  估计容量: " + cap + " mAh");
+                }
+            }
+
+            @Override
+            public void onNothingSelected() {
+                if (capacityDetailText != null) capacityDetailText.setText("");
+            }
+        });
+    }
+
+    private void loadCapacityData(CapacityRange range) {
+        if (dbHelper == null || capacityChart == null) return;
+
+        String start = null;
+        String end = dayFormat.format(new java.util.Date());
+        Calendar cal = Calendar.getInstance();
+        if (range == CapacityRange.M3) {
+            cal.add(Calendar.MONTH, -3);
+            start = dayFormat.format(cal.getTime());
+        } else if (range == CapacityRange.M12) {
+            cal.add(Calendar.MONTH, -12);
+            start = dayFormat.format(cal.getTime());
+        }
+
+        java.util.LinkedHashMap<String, Integer> map = dbHelper.getDailyEstimatedCapacities(start, range == CapacityRange.ALL ? null : end);
+        List<Entry> entries = new ArrayList<>();
+        float minY = Float.MAX_VALUE;
+        float maxY = -Float.MAX_VALUE;
+        for (String d : map.keySet()) {
+            try {
+                long x = dayFormat.parse(d).getTime();
+                int y = map.get(d);
+                entries.add(new Entry((float) x, (float) y));
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
+            } catch (java.text.ParseException ignored) {}
+        }
+
+        YAxis left = capacityChart.getAxisLeft();
+        if (entries.isEmpty()) {
+            left.setAxisMinimum(0f);
+            left.setAxisMaximum(1000f);
+            capacityChart.setData(new ScatterData());
+            capacityChart.invalidate();
+            if (capacityDetailText != null) capacityDetailText.setText("");
+            return;
+        }
+
+        float padding = Math.max(10f, (maxY - minY) * 0.1f);
+        left.setAxisMinimum(Math.max(0f, minY - padding));
+        left.setAxisMaximum(maxY + padding);
+
+        ScatterDataSet dataSet = new ScatterDataSet(entries, "Estimated Capacity");
+        int accentColor = ContextCompat.getColor(requireContext(), R.color.stats_accent);
+        dataSet.setColor(accentColor);
+        dataSet.setDrawValues(false);
+        dataSet.setScatterShape(ScatterChart.ScatterShape.CIRCLE);
+        dataSet.setScatterShapeSize(6f);
+        dataSet.setHighlightEnabled(true);
+        dataSet.setHighLightColor(Color.WHITE);
+        dataSet.setHighlightLineWidth(1.2f);
+        dataSet.setDrawHorizontalHighlightIndicator(true);
+        dataSet.setDrawVerticalHighlightIndicator(true);
+
+        ScatterData data = new ScatterData(dataSet);
+        capacityChart.setData(data);
+        capacityChart.invalidate();
     }
 
     private void showDetail(@NonNull StatsEntry entry) {

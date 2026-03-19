@@ -509,6 +509,59 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
     
+    /**
+     * 查询 daily_stats 中指定日期范围内的 estimated_capacity
+     * @param startDate 包含的开始日期，格式 yyyy-MM-dd；为 null 表示不限制下界
+     * @param endDate   包含的结束日期，格式 yyyy-MM-dd；为 null 表示不限制上界
+     * @return 日期->容量 的有序映射（按日期升序）
+     */
+    public LinkedHashMap<String, Integer> getDailyEstimatedCapacities(String startDate, String endDate) {
+        SQLiteDatabase db = getReadableDatabase();
+        LinkedHashMap<String, Integer> result = new LinkedHashMap<>();
+
+        StringBuilder sb = new StringBuilder();
+        List<String> args = new ArrayList<>();
+
+        sb.append("SELECT ")
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_DATE)
+          .append(", ")
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)
+          .append(" FROM ")
+          .append(DatabaseContract.DailyStatsEntry.TABLE_NAME)
+          .append(" WHERE ")
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)
+          .append(" IS NOT NULL AND ")
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)
+          .append(" > 0");
+
+        if (startDate != null) {
+            sb.append(" AND ")
+              .append(DatabaseContract.DailyStatsEntry.COLUMN_DATE)
+              .append(" >= ?");
+            args.add(startDate);
+        }
+        if (endDate != null) {
+            sb.append(" AND ")
+              .append(DatabaseContract.DailyStatsEntry.COLUMN_DATE)
+              .append(" <= ?");
+            args.add(endDate);
+        }
+
+        sb.append(" ORDER BY ")
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_DATE)
+          .append(" ASC");
+
+        Cursor cursor = db.rawQuery(sb.toString(), args.toArray(new String[0]));
+        while (cursor.moveToNext()) {
+            String date = cursor.getString(0);
+            int cap = cursor.getInt(1);
+            result.put(date, cap);
+        }
+        cursor.close();
+
+        return result;
+    }
+    
     // ==================== 聚合数据操作 ====================
     
     /**
