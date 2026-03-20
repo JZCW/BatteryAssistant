@@ -75,6 +75,7 @@ public class ChargeHistoryManager {
         return dbHelper.getSessionCount();
     }
 
+    //TODO 跟随会话持久化
     /**
      * 获取每日统计数据
      */

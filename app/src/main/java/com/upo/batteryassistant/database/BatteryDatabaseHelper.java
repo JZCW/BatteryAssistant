@@ -562,96 +562,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         return result;
     }
     
-    // ==================== 聚合数据操作 ====================
-    
-    /**
-     * 更新每日统计
-     */
-    private void updateDailyStats(SQLiteDatabase db, ChargeSession session) {
-        String date = formatDate(session.getEndTimestamp(), "yyyy-MM-dd");
-        updateStatsTable(db, DatabaseContract.DailyStatsEntry.TABLE_NAME,
-                        DatabaseContract.DailyStatsEntry.COLUMN_DATE,
-                        date, session);
-    }
-    
-    /**
-     * 更新每周统计
-     */
-    private void updateWeeklyStats(SQLiteDatabase db, ChargeSession session) {
-        String weekStart = getWeekStart(session.getEndTimestamp());
-        updateStatsTable(db, DatabaseContract.WeeklyStatsEntry.TABLE_NAME,
-                        DatabaseContract.WeeklyStatsEntry.COLUMN_WEEK_START,
-                        weekStart, session);
-    }
-    
-    /**
-     * 更新每月统计
-     */
-    private void updateMonthlyStats(SQLiteDatabase db, ChargeSession session) {
-        String yearMonth = formatDate(session.getEndTimestamp(), "yyyy-MM");
-        updateStatsTable(db, DatabaseContract.MonthlyStatsEntry.TABLE_NAME,
-                        DatabaseContract.MonthlyStatsEntry.COLUMN_YEAR_MONTH,
-                        yearMonth, session);
-    }
-    
-    /**
-     * 通用更新统计表
-     */
-    private void updateStatsTable(SQLiteDatabase db, String tableName, 
-                                  String dateColumn, String dateValue, ChargeSession session) {
-        // 检查是否已存在记录
-        Cursor cursor = db.query(tableName, null,
-                                dateColumn + " = ?", new String[]{dateValue},
-                                null, null, null);
-        
-        if (cursor.moveToFirst()) {
-            // 更新现有记录
-            int sessionCount = cursor.getInt(cursor.getColumnIndexOrThrow(
-                tableName.equals(DatabaseContract.DailyStatsEntry.TABLE_NAME) ? 
-                DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT :
-                tableName.equals(DatabaseContract.WeeklyStatsEntry.TABLE_NAME) ?
-                DatabaseContract.WeeklyStatsEntry.COLUMN_SESSION_COUNT :
-                DatabaseContract.MonthlyStatsEntry.COLUMN_SESSION_COUNT));
-            
-            int totalLevelChange = cursor.getInt(cursor.getColumnIndexOrThrow(
-                tableName.equals(DatabaseContract.DailyStatsEntry.TABLE_NAME) ? 
-                DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE :
-                tableName.equals(DatabaseContract.WeeklyStatsEntry.TABLE_NAME) ?
-                DatabaseContract.WeeklyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE :
-                DatabaseContract.MonthlyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE));
-            
-            int totalChargeCounterDiff = cursor.getInt(cursor.getColumnIndexOrThrow(
-                tableName.equals(DatabaseContract.DailyStatsEntry.TABLE_NAME) ? 
-                DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF :
-                tableName.equals(DatabaseContract.WeeklyStatsEntry.TABLE_NAME) ?
-                DatabaseContract.WeeklyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF :
-                DatabaseContract.MonthlyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF));
-            
-            ContentValues values = new ContentValues();
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT, sessionCount + 1);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE, 
-                      totalLevelChange + session.getLevelChange());
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, 
-                      totalChargeCounterDiff + session.getChargeCounterDiff());
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, session.getEstimatedCapacity());
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, session.getCycleCount());
-            
-            db.update(tableName, values, dateColumn + " = ?", new String[]{dateValue});
-        } else {
-            // 插入新记录
-            ContentValues values = new ContentValues();
-            values.put(dateColumn, dateValue);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT, 1);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE, session.getLevelChange());
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, session.getChargeCounterDiff());
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, session.getEstimatedCapacity());
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, session.getCycleCount());
-            
-            db.insert(tableName, null, values);
-        }
-        cursor.close();
-    }
-    
     /**
      * 格式化日期
      */
@@ -660,6 +570,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         return sdf.format(timestamp);
     }
 
+    //TODO 在缓存中做增量更新
     /**
      * 基于样本对增量，按当前样本日期（本地时区）更新 daily_stats。
      * isCharging=false 时不累计增量，仅覆盖估计容量与周期数。
@@ -717,6 +628,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         }
     }
     
+    //TODO remove
     /**
      * 获取周初日期（周日）
      */
@@ -901,6 +813,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         public void setCycleCount(int cycleCount) { this.cycleCount = cycleCount; }
     }
     
+    //TODO 统一用DailyStats
     /**
      * 每周统计数据类
      */
@@ -926,6 +839,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         public void setCycleCount(int cycleCount) { this.cycleCount = cycleCount; }
     }
     
+    //TODO 统一用DailyStats
     /**
      * 每月统计数据类
      */
