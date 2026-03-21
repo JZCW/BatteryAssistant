@@ -1,3 +1,27 @@
 <resources>
     <string name="app_name">BatteryAssistant</string>
+    <string name="tab_battery_info">电池信息</string>
+    <string name="tab_charge_history">充放电历史</string>
+    <string name="tab_stats">统计</string>
+    <string name="stats_tab_daily">每日</string>
+    <string name="stats_tab_weekly">每周</string>
+    <string name="stats_tab_monthly">每月</string>
+    <string name="stats_empty_state">暂无统计数据</string>
+    <string name="stats_session_count_value">会话次数：%1$d 次</string>
+    <string name="stats_level_change_value">电量变化：%1$s</string>
+    <string name="stats_charge_counter_diff_value">充电计数变化：%1$s</string>
+    <string name="stats_estimated_capacity_value">估算容量：%1$d mAh</string>
+    <string name="stats_cycle_count_value">循环次数：%1$d</string>
+    <string name="stats_signed_value_with_unit">%1$+d %2$s</string>
+    <string name="stats_chart_no_data">暂无图表数据</string>
+    <string name="stats_chart_dataset_label">电量变化趋势</string>
+    <string name="stats_load_failed">统计数据加载失败</string>
+    <string name="stats_period_daily_desc">日期：%1$s</string>
+    <string name="stats_period_week_desc">周数：%1$s</string>
+    <string name="stats_period_month_desc">月份：%1$s</string>
+    <string name="stats_detail_hint">点击图表节点查看详细信息</string>
+    <string name="stats_detail_title">%1$s</string>
+    <string name="stats_detail_description">%1$s</string>
+    <string name="stats_detail_level_change_value">%1$s</string>
+    <string name="stats_detail_charge_counter_value">%1$s</string>
 </resources>
