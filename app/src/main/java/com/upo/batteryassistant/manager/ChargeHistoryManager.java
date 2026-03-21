@@ -5,10 +5,14 @@ import android.util.Log;
 
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.data.ChargeSession;
+import com.upo.batteryassistant.data.DailyStats;
 import com.upo.batteryassistant.data.StateInfo;
 import com.upo.batteryassistant.database.BatteryDatabaseHelper;
 import com.upo.batteryassistant.database.DatabaseContract;
 
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
@@ -27,8 +31,8 @@ public class ChargeHistoryManager {
 
     // 会话缓存
     private ChargeSession currentSessionCache;
+    private DailyStats dailyStatsCache;
     private BatteryInfo lastBatteryInfoCache;
-    private BatteryInfo prevBatteryInfoCache;
     private boolean lastIsIdle;
     private boolean lastIsCharging;
     private boolean lastScreenOn;
@@ -79,7 +83,7 @@ public class ChargeHistoryManager {
     /**
      * 获取每日统计数据
      */
-    public List<BatteryDatabaseHelper.DailyStats> getDailyStats(int offset, int limit) {
+    public List<DailyStats> getDailyStats(int offset, int limit) {
         // 在读取前尝试将缓存持久化，保证拿到最新记录
         try { forcePersistNow(); } catch (Exception ignore) {}
         return dbHelper.getDailyStats(offset, limit);
@@ -112,12 +116,16 @@ public class ChargeHistoryManager {
         // 如果是首次初始化，尝试恢复异常中断的会话
         if (firstInit) {
             recoverOngoingSessions(currentInfo, currentState.isCharging());
+            recoverDailyStatsCache(currentInfo);
             firstInit = false;
         }
 
         // 如果没有会话，开始新会话
         if (currentSessionCache == null) {
             startNewSession(currentInfo, currentState.isCharging());
+        }
+        if (dailyStatsCache == null) {
+            startNewDailyStats(currentInfo);
         }
 
         long now = currentInfo.getTimestamp();
@@ -174,8 +182,10 @@ public class ChargeHistoryManager {
         // 增加更新计数
         currentSessionCache.incrementCounter();
 
-        // 更新缓存（先保留上一帧，供统计使用）
-        prevBatteryInfoCache = lastBatteryInfoCache;
+        // 更新历史统计
+        updateDailyStats(currentInfo);
+
+        // 更新缓存
         lastBatteryInfoCache = currentInfo;
         lastScreenOn = currentState.isScreenOn();
         lastIsCharging = currentState.isCharging();
@@ -223,23 +233,7 @@ public class ChargeHistoryManager {
         }
         final ChargeSession session = currentSessionCache;
         dbHelper.updateSessionPartial(session);
-        // 统计：基于样本对（prev -> last）进行日级增量入账
-        if (prevBatteryInfoCache != null) {
-            boolean isCharging = (session.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
-            boolean isFirstChargeUpdate = isCharging && (session.getCounter() == 1);
-            dbHelper.applySampleDeltaToDaily(
-                prevBatteryInfoCache.getTimestamp(),
-                lastBatteryInfoCache.getTimestamp(),
-                prevBatteryInfoCache.getChargeCounter(),
-                lastBatteryInfoCache.getChargeCounter(),
-                prevBatteryInfoCache.getLevel(),
-                lastBatteryInfoCache.getLevel(),
-                isCharging,
-                isCharging ? lastBatteryInfoCache.getFullCapacity() : -1,
-                isCharging ? lastBatteryInfoCache.getCycleCount() : -1,
-                isFirstChargeUpdate
-            );
-        }
+        dbHelper.updateDailyStats(dailyStatsCache);
         lastPersistTimestamp = lastBatteryInfoCache.getTimestamp();
         lastPersistLevel = lastBatteryInfoCache.getLevel();
         Log.d(TAG, "Force persisted session: " + session.getId());
@@ -391,6 +385,80 @@ public class ChargeHistoryManager {
 
             Log.i(TAG, "不恢复会话");
         }
+    }
+
+    /**
+     * 恢复日统计缓存
+     */
+    private void recoverDailyStatsCache(BatteryInfo currentInfo) {
+        String dateStr = getDateStr(currentInfo.getTimestamp());
+        dailyStatsCache = dbHelper.getDailyStats(dateStr);
+    }
+
+    /**
+     * 开始新的日统计
+     * @param currentInfo
+     */
+    private void startNewDailyStats(BatteryInfo currentInfo) {
+        if (dailyStatsCache != null) {
+            // 结束先前的统计
+            endDailyStats();
+        }
+        dailyStatsCache = new DailyStats();
+        dailyStatsCache.setDate(getDateStr(currentInfo.getTimestamp()));
+    }
+
+    /**
+     * 结束当前日统计
+     */
+    private void endDailyStats() {
+        if (dailyStatsCache != null) {
+            if (!dbHelper.updateDailyStats(dailyStatsCache)) {
+                Log.e(TAG, "更新日统计失败");
+            }
+            dailyStatsCache = null;
+        }
+    }
+
+    /**
+     * 更新日统计
+     */
+    private void updateDailyStats(BatteryInfo currentInfo) {
+        if (dailyStatsCache == null) {
+            startNewDailyStats(currentInfo);
+        } else {
+            String dateStr = getDateStr(currentInfo.getTimestamp());
+            if (!dailyStatsCache.getDate().equals(dateStr)) {
+                // 日期不同，需要重新开始
+                startNewDailyStats(currentInfo);
+            }
+        }
+
+        // 当且仅当充电状态下会话更新一次时计数
+        if ((currentSessionCache.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) && (currentSessionCache.getCounter() == 1)) {
+            dailyStatsCache.setSessionCount(dailyStatsCache.getSessionCount() + 1);
+        }
+
+        // 更新累加数据
+        if (lastBatteryInfoCache != null) {
+            dailyStatsCache.setTotalLevelChange(dailyStatsCache.getTotalLevelChange() + currentInfo.getLevel() - lastBatteryInfoCache.getLevel());
+            dailyStatsCache.setTotalChargeCounterDiff(dailyStatsCache.getTotalChargeCounterDiff() + currentInfo.getChargeCounter() - lastBatteryInfoCache.getChargeCounter());
+        }
+
+        // 更新其他数据(取最大值)
+        dailyStatsCache.setEstimatedCapacity(Math.max(dailyStatsCache.getEstimatedCapacity(), currentInfo.getFullCapacity()));
+        dailyStatsCache.setCycleCount(Math.max(dailyStatsCache.getCycleCount(), currentInfo.getCycleCount()));
+        //TODO 增加估算容量和单次最大充电量
+
+    }
+
+    /**
+     * 获取日期字符串
+     */
+    private String getDateStr(long timestamp) {
+        return Instant.ofEpochMilli(timestamp)
+                      .atZone(ZoneId.systemDefault()) // 使用系统时区
+                      .format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
     }
 }
 

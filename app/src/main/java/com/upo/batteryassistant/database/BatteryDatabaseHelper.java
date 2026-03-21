@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
 import com.upo.batteryassistant.data.ChargeSession;
+import com.upo.batteryassistant.data.DailyStats;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -508,7 +509,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         
         return count;
     }
-    
+
     /**
      * 查询 daily_stats 中指定日期范围内的 estimated_capacity
      * @param startDate 包含的开始日期，格式 yyyy-MM-dd；为 null 表示不限制下界
@@ -609,7 +610,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
      * @return 是否成功
      */
     public boolean updateDailyStats(DailyStats stats) {
-        if (stats == null || stats.getDate() == null) {
+        if (stats == null) {
             return false;
         }
         String date = stats.getDate();
@@ -864,30 +865,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     
     // ==================== 聚合数据类 ====================
     
-    /**
-     * 每日统计数据类
-     */
-    public static class DailyStats {
-        private String date;
-        private int sessionCount;
-        private int totalLevelChange;
-        private int totalChargeCounterDiff;
-        private int estimatedCapacity;
-        private int cycleCount;
-        
-        public String getDate() { return date; }
-        public void setDate(String date) { this.date = date; }
-        public int getSessionCount() { return sessionCount; }
-        public void setSessionCount(int sessionCount) { this.sessionCount = sessionCount; }
-        public int getTotalLevelChange() { return totalLevelChange; }
-        public void setTotalLevelChange(int totalLevelChange) { this.totalLevelChange = totalLevelChange; }
-        public int getTotalChargeCounterDiff() { return totalChargeCounterDiff; }
-        public void setTotalChargeCounterDiff(int totalChargeCounterDiff) { this.totalChargeCounterDiff = totalChargeCounterDiff; }
-        public int getEstimatedCapacity() { return estimatedCapacity; }
-        public void setEstimatedCapacity(int estimatedCapacity) { this.estimatedCapacity = estimatedCapacity; }
-        public int getCycleCount() { return cycleCount; }
-        public void setCycleCount(int cycleCount) { this.cycleCount = cycleCount; }
-    }
+
     
     //TODO 统一用DailyStats
     /**

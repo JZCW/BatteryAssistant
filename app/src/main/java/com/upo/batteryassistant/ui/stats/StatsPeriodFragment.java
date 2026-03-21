@@ -28,6 +28,7 @@ import com.github.mikephil.charting.listener.OnChartValueSelectedListener;
 import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.upo.batteryassistant.R;
+import com.upo.batteryassistant.data.DailyStats;
 import com.upo.batteryassistant.database.BatteryDatabaseHelper;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
 import com.google.android.material.button.MaterialButton;
@@ -280,8 +281,8 @@ public class StatsPeriodFragment extends Fragment {
                 break;
             case DAILY:
             default:
-                List<BatteryDatabaseHelper.DailyStats> dailyStats = historyManager.getDailyStats(offset, limit);
-                for (BatteryDatabaseHelper.DailyStats stat : dailyStats) {
+                List<DailyStats> dailyStats = historyManager.getDailyStats(offset, limit);
+                for (DailyStats stat : dailyStats) {
                     String label = stat.getDate();
                     String desc = getString(R.string.stats_period_daily_desc, stat.getDate());
                     result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
