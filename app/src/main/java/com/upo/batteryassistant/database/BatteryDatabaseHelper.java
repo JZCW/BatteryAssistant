@@ -305,7 +305,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
-    //TODO 更新散点图需要的数据
     /**
      * 查询 daily_stats 中指定日期范围内的 estimated_capacity
      * @param startDate 包含的开始日期，格式 yyyy-MM-dd；为 null 表示不限制下界
@@ -322,13 +321,13 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         sb.append("SELECT ")
           .append(DatabaseContract.DailyStatsEntry.COLUMN_DATE)
           .append(", ")
-          .append(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY)
           .append(" FROM ")
           .append(DatabaseContract.DailyStatsEntry.TABLE_NAME)
           .append(" WHERE ")
-          .append(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY)
           .append(" IS NOT NULL AND ")
-          .append(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)
+          .append(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY)
           .append(" > 0");
 
         if (startDate != null) {
