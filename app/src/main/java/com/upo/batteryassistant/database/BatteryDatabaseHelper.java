@@ -5,7 +5,6 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 
 import com.upo.batteryassistant.data.ChargeSession;
 import com.upo.batteryassistant.data.DailyStats;
@@ -64,30 +63,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         DatabaseContract.DailyStatsEntry.COLUMN_MAX_LEVEL_CHANGE + " INTEGER" +
         ");";
     
-    // 创建weekly_stats表的SQL
-    private static final String SQL_CREATE_WEEKLY_STATS_TABLE = 
-        "CREATE TABLE " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME + " (" +
-        DatabaseContract.WeeklyStatsEntry.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
-        DatabaseContract.WeeklyStatsEntry.COLUMN_WEEK_START + " TEXT NOT NULL UNIQUE," +
-        DatabaseContract.WeeklyStatsEntry.COLUMN_SESSION_COUNT + " INTEGER NOT NULL," +
-        DatabaseContract.WeeklyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE + " INTEGER NOT NULL," +
-        DatabaseContract.WeeklyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF + " INTEGER NOT NULL," +
-        DatabaseContract.WeeklyStatsEntry.COLUMN_ESTIMATED_CAPACITY + " INTEGER," +
-        DatabaseContract.WeeklyStatsEntry.COLUMN_CYCLE_COUNT + " INTEGER" +
-        ");";
-    
-    // 创建monthly_stats表的SQL
-    private static final String SQL_CREATE_MONTHLY_STATS_TABLE = 
-        "CREATE TABLE " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME + " (" +
-        DatabaseContract.MonthlyStatsEntry.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
-        DatabaseContract.MonthlyStatsEntry.COLUMN_YEAR_MONTH + " TEXT NOT NULL UNIQUE," +
-        DatabaseContract.MonthlyStatsEntry.COLUMN_SESSION_COUNT + " INTEGER NOT NULL," +
-        DatabaseContract.MonthlyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE + " INTEGER NOT NULL," +
-        DatabaseContract.MonthlyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF + " INTEGER NOT NULL," +
-        DatabaseContract.MonthlyStatsEntry.COLUMN_ESTIMATED_CAPACITY + " INTEGER," +
-        DatabaseContract.MonthlyStatsEntry.COLUMN_CYCLE_COUNT + " INTEGER" +
-        ");";
-    
     // 创建索引
     private static final String SQL_CREATE_SESSION_TYPE_TIMESTAMP_INDEX = 
         "CREATE INDEX idx_session_type_timestamp ON " + 
@@ -100,50 +75,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         DatabaseContract.DailyStatsEntry.TABLE_NAME + 
         "(" + DatabaseContract.DailyStatsEntry.COLUMN_DATE + ");";
     
-    private static final String SQL_CREATE_WEEKLY_STATS_WEEK_INDEX = 
-        "CREATE INDEX idx_weekly_stats_week ON " + 
-        DatabaseContract.WeeklyStatsEntry.TABLE_NAME + 
-        "(" + DatabaseContract.WeeklyStatsEntry.COLUMN_WEEK_START + ");";
-    
-    private static final String SQL_CREATE_MONTHLY_STATS_MONTH_INDEX = 
-        "CREATE INDEX idx_monthly_stats_month ON " + 
-        DatabaseContract.MonthlyStatsEntry.TABLE_NAME + 
-        "(" + DatabaseContract.MonthlyStatsEntry.COLUMN_YEAR_MONTH + ");";
-    
     public BatteryDatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
-    }
-
-    /**
-     * 升级到版本7：删除 weekly_stats 与 monthly_stats 及其索引
-     */
-    private void upgradeToVersion7(SQLiteDatabase db) {
-        try {
-            db.execSQL("DROP INDEX IF EXISTS idx_weekly_stats_week");
-            db.execSQL("DROP INDEX IF EXISTS idx_monthly_stats_month");
-            db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME);
-            db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME);
-            Log.i(TAG, "Successfully upgraded database to version 7 (drop weekly/monthly tables)");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to upgrade database to version 7: " + e.getMessage());
-            throw e;
-        }
-    }
-    
-    /**
-     * 升级到版本8：为 daily_stats 表添加 capacity 和 maxLevelChange 列
-     */
-    private void upgradeToVersion8(SQLiteDatabase db) {
-        try {
-            db.execSQL("ALTER TABLE " + DatabaseContract.DailyStatsEntry.TABLE_NAME + 
-                       " ADD COLUMN " + DatabaseContract.DailyStatsEntry.COLUMN_CAPACITY + " INTEGER");
-            db.execSQL("ALTER TABLE " + DatabaseContract.DailyStatsEntry.TABLE_NAME + 
-                       " ADD COLUMN " + DatabaseContract.DailyStatsEntry.COLUMN_MAX_LEVEL_CHANGE + " INTEGER");
-            Log.i(TAG, "Successfully upgraded database to version 8 (add capacity and maxLevelChange columns)");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to upgrade database to version 8: " + e.getMessage());
-            throw e;
-        }
     }
     
     @Override
@@ -156,212 +89,14 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        if (oldVersion < 4) {
-            // 完全重建，删除所有旧表
+        if (oldVersion < 8) {
+            // 完全重建
             db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.ChargeSessionEntry.TABLE_NAME);
             db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.DailyStatsEntry.TABLE_NAME);
-            db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.WeeklyStatsEntry.TABLE_NAME);
-            db.execSQL("DROP TABLE IF EXISTS " + DatabaseContract.MonthlyStatsEntry.TABLE_NAME);
             onCreate(db);
         } 
-        if (oldVersion == 4 && newVersion >= 5) {
-            // 版本5：删除 screen_on_level_change 列
-            // 使用完全重建表的方式确保列被删除
-            upgradeToVersion5(db);
-        } 
-        if (oldVersion == 5 && newVersion >= 6) {
-            // 版本6：添加 counter 列
-            upgradeToVersion6(db);
-        }
-        if (oldVersion <= 6 && newVersion >= 7) {
-            // 版本7：删除 weekly/monthly 表与索引
-            upgradeToVersion7(db);
-        }
-        if (oldVersion == 7 && newVersion >= 8) {
-            // 版本8：添加 capacity 和 maxLevelChange 列
-            upgradeToVersion8(db);
-        }
     }
-    
-    /**
-     * 升级到版本5：删除 screen_on_level_change 列
-     * 通过重建表的方式实现，兼容所有SQLite版本
-     */
-    private void upgradeToVersion5(SQLiteDatabase db) {
-        // 创建临时表（不包含 screen_on_level_change 列）
-        String tempTableName = "charge_sessions_temp";
-        String createTempTable = "CREATE TABLE " + tempTableName + " (" +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " INTEGER DEFAULT 0" +
-            ");";
-        
-        // 复制数据到临时表（跳过 screen_on_level_change 列）
-        String copyData = "INSERT INTO " + tempTableName + " (" +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ID + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING +
-            ") SELECT " +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ID + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING +
-            " FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
-        
-        // 删除旧表
-        String dropOldTable = "DROP TABLE " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
-        
-        // 重命名临时表
-        String renameTable = "ALTER TABLE " + tempTableName + " RENAME TO " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
-        
-        // 执行迁移
-        try {
-            db.execSQL(createTempTable);
-            db.execSQL(copyData);
-            db.execSQL(dropOldTable);
-            db.execSQL(renameTable);
-            Log.i(TAG, "Successfully upgraded database to version 5");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to upgrade database to version 5: " + e.getMessage());
-            throw e;
-        }
-    }
-    
-    /**
-     * 升级到版本6：添加 counter 列
-     * 通过重建表的方式实现，兼容所有SQLite版本
-     */
-    private void upgradeToVersion6(SQLiteDatabase db) {
-        // 创建临时表（包含 counter 列）
-        String tempTableName = "charge_sessions_temp";
-        String createTempTable = "CREATE TABLE " + tempTableName + " (" +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + " INTEGER NOT NULL," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + " INTEGER," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " INTEGER DEFAULT 0," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_COUNTER + " INTEGER DEFAULT 0" +
-            ");";
-        
-        // 复制数据到临时表（counter 列默认为 0）
-        String copyData = "INSERT INTO " + tempTableName + " (" +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ID + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_COUNTER +
-            ") SELECT " +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ID + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SESSION_TYPE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_PAUSE_TIMESTAMP + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_LEVEL + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_START_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_END_CHARGE_COUNTER + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MAX_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_MIN_TEMPERATURE + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_DURATION + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_DOZE_CHARGE_COUNTER_DIFF + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_ESTIMATED_CAPACITY + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_CYCLE_COUNT + "," +
-            DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + "," +
-            "0" +
-            " FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
-        
-        // 删除旧表
-        String dropOldTable = "DROP TABLE " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
-        
-        // 重命名临时表
-        String renameTable = "ALTER TABLE " + tempTableName + " RENAME TO " + DatabaseContract.ChargeSessionEntry.TABLE_NAME;
-        
-        // 执行迁移
-        try {
-            db.execSQL(createTempTable);
-            db.execSQL(copyData);
-            db.execSQL(dropOldTable);
-            db.execSQL(renameTable);
-            Log.i(TAG, "Successfully upgraded database to version 6");
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to upgrade database to version 6: " + e.getMessage());
-            throw e;
-        }
-    }
-    
+
     /**
      * 将ChargeSession转换为ContentValues
      */
@@ -502,7 +237,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         db.update(DatabaseContract.ChargeSessionEntry.TABLE_NAME, values,
                  DatabaseContract.ChargeSessionEntry.COLUMN_ID + " = ?",
                  new String[]{String.valueOf(session.getId())});
-        // 统计改为随样本流即时累计，这里不再更新聚合数据
     }
 
     /**
@@ -532,6 +266,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
+    //TODO 更新散点图需要的数据
     /**
      * 查询 daily_stats 中指定日期范围内的 estimated_capacity
      * @param startDate 包含的开始日期，格式 yyyy-MM-dd；为 null 表示不限制下界
@@ -583,14 +318,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         cursor.close();
 
         return result;
-    }
-    
-    /**
-     * 格式化日期
-     */
-    private String formatDate(long timestamp, String pattern) {
-        SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.getDefault());
-        return sdf.format(timestamp);
     }
 
     /**
@@ -673,75 +400,6 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
             return false;
         }
         return date.matches("\\d{4}-\\d{2}-\\d{2}");
-    }
-
-    //TODO 在缓存中做增量更新
-    /**
-     * 基于样本对增量，按当前样本日期（本地时区）更新 daily_stats。
-     * isCharging=false 时不累计增量，仅覆盖估计容量与周期数。
-     * isFirstChargeUpdate=true 时对当日 session_count +1。
-     */
-    public void applySampleDeltaToDaily(long tPrev, long tNow,
-                                        int ccPrev, int ccNow,
-                                        int levelPrev, int levelNow,
-                                        boolean isCharging,
-                                        int estimatedCapacity, int cycleCount,
-                                        boolean isFirstChargeUpdate) {
-        String date = formatDate(tNow, "yyyy-MM-dd");
-        SQLiteDatabase db = getWritableDatabase();
-        Cursor cursor = db.query(DatabaseContract.DailyStatsEntry.TABLE_NAME, null,
-                DatabaseContract.DailyStatsEntry.COLUMN_DATE + " = ?",
-                new String[]{date}, null, null, null);
-        boolean exists = cursor.moveToFirst();
-        int currentSessionCount = 0;
-        int currentLevelChange = 0;
-        int currentChargeDiff = 0;
-        if (exists) {
-            currentSessionCount = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT));
-            currentLevelChange = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE));
-            currentChargeDiff = cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF));
-        }
-        cursor.close();
-
-        int deltaLevel = (levelPrev >= 0 && levelNow >= 0) ? (levelNow - levelPrev) : 0;
-        int deltaCharge = (ccPrev >= 0 && ccNow >= 0) ? (ccNow - ccPrev) : 0;
-
-        ContentValues values = new ContentValues();
-        if (exists) {
-            if (isCharging) {
-                values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE, currentLevelChange + deltaLevel);
-                values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, currentChargeDiff + deltaCharge);
-            }
-            if (isFirstChargeUpdate) {
-                values.put(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT, currentSessionCount + 1);
-            }
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, estimatedCapacity);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, cycleCount);
-            if (values.size() > 0) {
-                db.update(DatabaseContract.DailyStatsEntry.TABLE_NAME, values,
-                        DatabaseContract.DailyStatsEntry.COLUMN_DATE + " = ?",
-                        new String[]{date});
-            }
-        } else {
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_DATE, date);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT, isFirstChargeUpdate ? 1 : 0);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE, isCharging ? deltaLevel : 0);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, isCharging ? deltaCharge : 0);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, estimatedCapacity);
-            values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, cycleCount);
-            db.insert(DatabaseContract.DailyStatsEntry.TABLE_NAME, null, values);
-        }
-    }
-    
-    //TODO remove
-    /**
-     * 获取周初日期（周日）
-     */
-    private String getWeekStart(long timestamp) {
-        Calendar cal = Calendar.getInstance();
-        cal.setTimeInMillis(timestamp);
-        cal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
-        return formatDate(cal.getTimeInMillis(), "yyyy-MM-dd");
     }
     
     /**

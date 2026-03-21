@@ -6,11 +6,6 @@ package com.upo.batteryassistant.database;
 public final class DatabaseContract {
     private DatabaseContract() {}
     
-    // 合并策略常量
-    public static final long MERGE_DIFFERENT_TYPE_THRESHOLD = 60 * 1000;  // 1分钟（毫秒）
-    public static final long MERGE_SAME_TYPE_INTERVAL_THRESHOLD = 5 * 60 * 1000;  // 5分钟（毫秒）
-    public static final int MERGE_SAME_TYPE_LEVEL_DIFF_THRESHOLD = 1;  // 1%
-    
     /**
      * 充放电阶段表
      */
@@ -33,15 +28,15 @@ public final class DatabaseContract {
         public static final String COLUMN_MAX_TEMPERATURE = "max_temperature";
         public static final String COLUMN_MIN_TEMPERATURE = "min_temperature";
         
-        // 屏幕相关信息（未实现）
+        // 屏幕相关信息
         public static final String COLUMN_SCREEN_ON_DURATION = "screen_on_duration";
         public static final String COLUMN_SCREEN_ON_CHARGE_COUNTER_DIFF = "screen_on_charge_counter_diff";
         
-        // Doze相关信息（未实现）
+        // Doze相关信息
         public static final String COLUMN_DOZE_DURATION = "doze_duration";
         public static final String COLUMN_DOZE_CHARGE_COUNTER_DIFF = "doze_charge_counter_diff";
         
-        // 估计容量和周期计数（仅充电）
+        // 估计容量和周期计数
         public static final String COLUMN_ESTIMATED_CAPACITY = "estimated_capacity";
         public static final String COLUMN_CYCLE_COUNT = "cycle_count";
 
@@ -72,36 +67,6 @@ public final class DatabaseContract {
         public static final String COLUMN_CYCLE_COUNT = "cycle_count";
         public static final String COLUMN_CAPACITY = "capacity";
         public static final String COLUMN_MAX_LEVEL_CHANGE = "max_level_change";
-    }
-    
-    /**
-     * 每周统计表
-     */
-    public static class WeeklyStatsEntry {
-        public static final String TABLE_NAME = "weekly_stats";
-        
-        public static final String COLUMN_ID = "_id";
-        public static final String COLUMN_WEEK_START = "week_start";  // YYYY-MM-DD (周一日期)
-        public static final String COLUMN_SESSION_COUNT = "session_count";
-        public static final String COLUMN_TOTAL_LEVEL_CHANGE = "total_level_change";
-        public static final String COLUMN_TOTAL_CHARGE_COUNTER_DIFF = "total_charge_counter_diff";
-        public static final String COLUMN_ESTIMATED_CAPACITY = "estimated_capacity";
-        public static final String COLUMN_CYCLE_COUNT = "cycle_count";
-    }
-    
-    /**
-     * 每月统计表
-     */
-    public static class MonthlyStatsEntry {
-        public static final String TABLE_NAME = "monthly_stats";
-        
-        public static final String COLUMN_ID = "_id";
-        public static final String COLUMN_YEAR_MONTH = "year_month";  // YYYY-MM
-        public static final String COLUMN_SESSION_COUNT = "session_count";
-        public static final String COLUMN_TOTAL_LEVEL_CHANGE = "total_level_change";
-        public static final String COLUMN_TOTAL_CHARGE_COUNTER_DIFF = "total_charge_counter_diff";
-        public static final String COLUMN_ESTIMATED_CAPACITY = "estimated_capacity";
-        public static final String COLUMN_CYCLE_COUNT = "cycle_count";
     }
 }
 
