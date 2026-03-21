@@ -299,6 +299,17 @@ public class ChargeHistoryManager {
             dbHelper.finishSession(session);
         }).start();
 
+        // 更新统计数据中的估算信息
+        if (dailyStatsCache != null) {
+            int level = session.getLevelChange();
+            if ((level > 0) && (level > dailyStatsCache.getMaxLevelChange())) {
+                dailyStatsCache.setMaxLevelChange(level);
+                int count = session.getChargeCounterDiff();
+                int capacity = count*100/level;
+                dailyStatsCache.setEstimatedCapacity(capacity);
+            }
+        }
+
         Log.i(TAG, "结束会话: " + session.getSessionTypeText());
 
         // 清空缓存
@@ -446,10 +457,8 @@ public class ChargeHistoryManager {
         }
 
         // 更新其他数据(取最大值)
-        dailyStatsCache.setEstimatedCapacity(Math.max(dailyStatsCache.getEstimatedCapacity(), currentInfo.getFullCapacity()));
+        dailyStatsCache.setCapacity(Math.max(dailyStatsCache.getCapacity(), currentInfo.getFullCapacity()));
         dailyStatsCache.setCycleCount(Math.max(dailyStatsCache.getCycleCount(), currentInfo.getCycleCount()));
-        //TODO 增加估算容量和单次最大充电量
-
     }
 
     /**

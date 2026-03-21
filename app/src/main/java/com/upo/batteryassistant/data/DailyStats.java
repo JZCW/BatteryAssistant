@@ -20,6 +20,8 @@ public class DailyStats {
         totalChargeCounterDiff = 0;
         estimatedCapacity = -1;
         cycleCount = -1;
+        cycleCount = -1;
+        maxLevelChange = -1;
     }
     
     public String getDate() { return date; }
