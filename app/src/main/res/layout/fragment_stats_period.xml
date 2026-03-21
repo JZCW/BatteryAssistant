@@ -146,21 +146,21 @@
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_capacity_3m"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="最近3个月" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_capacity_12m"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="最近12个月" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_capacity_all"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="全部时间" />
