@@ -695,7 +695,14 @@ public class StatsPeriodFragment extends Fragment {
     }
 
     private String formatLabel(Calendar calendar, StatsPeriodType type) {
-        String pattern = type == StatsPeriodType.MONTHLY ? "yyyy-MM" : "yyyy-MM-dd";
+        String pattern;
+        if (type == StatsPeriodType.MONTHLY) {
+            pattern = "yyyy-MM";
+        } else if (type == StatsPeriodType.WEEKLY) {
+            pattern = "YYww";
+        } else {
+            pattern = "yyyy-MM-dd";
+        }
         SimpleDateFormat sdf = new SimpleDateFormat(pattern, Locale.getDefault());
         return sdf.format(calendar.getTime());
     }
