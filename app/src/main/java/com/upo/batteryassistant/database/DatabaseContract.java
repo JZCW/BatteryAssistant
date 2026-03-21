@@ -70,6 +70,8 @@ public final class DatabaseContract {
         public static final String COLUMN_TOTAL_CHARGE_COUNTER_DIFF = "total_charge_counter_diff";
         public static final String COLUMN_ESTIMATED_CAPACITY = "estimated_capacity";
         public static final String COLUMN_CYCLE_COUNT = "cycle_count";
+        public static final String COLUMN_CAPACITY = "capacity";
+        public static final String COLUMN_MAX_LEVEL_CHANGE = "max_level_change";
     }
     
     /**

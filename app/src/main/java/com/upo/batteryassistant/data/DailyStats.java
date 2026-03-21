@@ -10,6 +10,8 @@ public class DailyStats {
     private int totalChargeCounterDiff;
     private int estimatedCapacity;
     private int cycleCount;
+    private int capacity;
+    private int maxLevelChange;
 
     public DailyStats() {
         // 初始化默认值
@@ -32,4 +34,8 @@ public class DailyStats {
     public void setEstimatedCapacity(int estimatedCapacity) { this.estimatedCapacity = estimatedCapacity; }
     public int getCycleCount() { return cycleCount; }
     public void setCycleCount(int cycleCount) { this.cycleCount = cycleCount; }
+    public int getCapacity() { return capacity; }
+    public void setCapacity(int capacity) { this.capacity = capacity; }
+    public int getMaxLevelChange() { return maxLevelChange; }
+    public void setMaxLevelChange(int maxLevelChange) { this.maxLevelChange = maxLevelChange; }
 }

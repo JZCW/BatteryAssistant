@@ -24,7 +24,7 @@ import java.util.Map;
 public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     private static final String TAG = "BatteryDatabaseHelper";
     private static final String DATABASE_NAME = "battery_assistant.db";
-    private static final int DATABASE_VERSION = 7;
+    private static final int DATABASE_VERSION = 8;
     
     // 创建charge_sessions表的SQL
     private static final String SQL_CREATE_CHARGE_SESSIONS_TABLE =
@@ -59,7 +59,9 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE + " INTEGER NOT NULL," +
         DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF + " INTEGER NOT NULL," +
         DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY + " INTEGER," +
-        DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT + " INTEGER" +
+        DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT + " INTEGER," +
+        DatabaseContract.DailyStatsEntry.COLUMN_CAPACITY + " INTEGER," +
+        DatabaseContract.DailyStatsEntry.COLUMN_MAX_LEVEL_CHANGE + " INTEGER" +
         ");";
     
     // 创建weekly_stats表的SQL
@@ -128,6 +130,22 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         }
     }
     
+    /**
+     * 升级到版本8：为 daily_stats 表添加 capacity 和 maxLevelChange 列
+     */
+    private void upgradeToVersion8(SQLiteDatabase db) {
+        try {
+            db.execSQL("ALTER TABLE " + DatabaseContract.DailyStatsEntry.TABLE_NAME + 
+                       " ADD COLUMN " + DatabaseContract.DailyStatsEntry.COLUMN_CAPACITY + " INTEGER");
+            db.execSQL("ALTER TABLE " + DatabaseContract.DailyStatsEntry.TABLE_NAME + 
+                       " ADD COLUMN " + DatabaseContract.DailyStatsEntry.COLUMN_MAX_LEVEL_CHANGE + " INTEGER");
+            Log.i(TAG, "Successfully upgraded database to version 8 (add capacity and maxLevelChange columns)");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to upgrade database to version 8: " + e.getMessage());
+            throw e;
+        }
+    }
+    
     @Override
     public void onCreate(SQLiteDatabase db) {
         db.execSQL(SQL_CREATE_CHARGE_SESSIONS_TABLE);
@@ -158,6 +176,10 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         if (oldVersion <= 6 && newVersion >= 7) {
             // 版本7：删除 weekly/monthly 表与索引
             upgradeToVersion7(db);
+        }
+        if (oldVersion == 7 && newVersion >= 8) {
+            // 版本8：添加 capacity 和 maxLevelChange 列
+            upgradeToVersion8(db);
         }
     }
     
@@ -592,6 +614,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
             stats.setTotalChargeCounterDiff(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)));
             stats.setEstimatedCapacity(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY)));
             stats.setCycleCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT)));
+            stats.setCapacity(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_CAPACITY)));
+            stats.setMaxLevelChange(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_MAX_LEVEL_CHANGE)));
         } else {
             stats.setDate(date);
             stats.setSessionCount(0);
@@ -599,6 +623,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
             stats.setTotalChargeCounterDiff(0);
             stats.setEstimatedCapacity(0);
             stats.setCycleCount(0);
+            stats.setCapacity(0);
+            stats.setMaxLevelChange(0);
         }
         cursor.close();
         return stats;
@@ -625,6 +651,8 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, stats.getTotalChargeCounterDiff());
         values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, stats.getEstimatedCapacity());
         values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, stats.getCycleCount());
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_CAPACITY, stats.getCapacity());
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_MAX_LEVEL_CHANGE, stats.getMaxLevelChange());
         int rowsAffected = db.update(DatabaseContract.DailyStatsEntry.TABLE_NAME, values,
                 DatabaseContract.DailyStatsEntry.COLUMN_DATE + " = ?",
                 new String[]{date});
