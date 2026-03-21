@@ -270,41 +270,32 @@ public class StatsPeriodFragment extends Fragment {
             case WEEKLY:
                 List<DailyStats> weeklyStats = historyManager.getWeeklyStats(offset, limit);
                 for (DailyStats stat : weeklyStats) {
-                    String label = stat.getDate();
-                    String desc = getString(R.string.stats_period_week_desc, label);
-                    result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
-                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), 0, 0));
+                    String desc = getString(R.string.stats_period_week_desc, stat.getDate());
+                    result.add(buildEntry(stat, desc));
                 }
                 break;
             case MONTHLY:
                 List<DailyStats> monthlyStats = historyManager.getMonthlyStats(offset, limit);
                 for (DailyStats stat : monthlyStats) {
-                    String label = stat.getDate();
-                    String desc = getString(R.string.stats_period_month_desc, label);
-                    result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
-                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), 0, 0));
+                    String desc = getString(R.string.stats_period_month_desc, stat.getDate());
+                    result.add(buildEntry(stat, desc));
                 }
                 break;
             case DAILY:
             default:
                 List<DailyStats> dailyStats = historyManager.getDailyStats(offset, limit);
                 for (DailyStats stat : dailyStats) {
-                    String label = stat.getDate();
                     String desc = getString(R.string.stats_period_daily_desc, stat.getDate());
-                    result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
-                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), stat.getCapacity(), stat.getMaxLevelChange()));
+                    result.add(buildEntry(stat, desc));
                 }
                 break;
         }
         return result;
     }
 
-    private StatsEntry buildEntry(String label, String desc, int sessionCount,
-                                  int totalLevelChange, int totalChargeCounterDiff,
-                                  int estimatedCapacity, int cycleCount,
-                                  int capacity, int maxLevelChange) {
-        return new StatsEntry(label, desc, sessionCount, totalLevelChange,
-            totalChargeCounterDiff, estimatedCapacity, cycleCount, capacity, maxLevelChange);
+    private StatsEntry buildEntry(DailyStats data, String desc) {
+        return new StatsEntry(data.getDate(), desc, data.getSessionCount(), data.getTotalLevelChange(),
+            data.getTotalChargeCounterDiff(), data.getEstimatedCapacity(), data.getCycleCount(), data.getCapacity(), data.getMaxLevelChange());
     }
 
     private void applyStatsResults(StatsPeriodType resultPeriod, List<StatsEntry> newEntries) {
@@ -650,7 +641,7 @@ public class StatsPeriodFragment extends Fragment {
             StatsEntry entry = entryMap.get(label);
             if (entry == null) {
                 String description = buildDescription(type, label);
-                entry = buildEntry(label, description, 0, 0, 0, 0, 0, 0, 0);
+                entry = new StatsEntry(label, description, 0, 0, 0, 0, 0, 0, 0);
             }
             filled.add(entry);
             shiftCalendar(calendar, type, 1);
