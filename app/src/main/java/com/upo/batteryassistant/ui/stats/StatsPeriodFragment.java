@@ -295,8 +295,6 @@ public class StatsPeriodFragment extends Fragment {
 
     private void loadStatsWithPersist() {
         new Thread(() -> {
-            // 进入页面或下拉刷新时强制持久化一次进行中会话
-            historyManager.forcePersistNow();
             loadStats();
         }).start();
     }
@@ -324,14 +322,14 @@ public class StatsPeriodFragment extends Fragment {
         List<StatsEntry> result = new ArrayList<>();
         switch (targetPeriod) {
             case WEEKLY:
-                List<DailyStats> weeklyStats = historyManager.getWeeklyStats(offset, limit);
+                List<DailyStats> weeklyStats = historyManager.getWeeklyStatsFresh(offset, limit);
                 for (DailyStats stat : weeklyStats) {
                     String desc = getString(R.string.stats_period_week_desc, stat.getDate());
                     result.add(buildEntry(stat, desc));
                 }
                 break;
             case MONTHLY:
-                List<DailyStats> monthlyStats = historyManager.getMonthlyStats(offset, limit);
+                List<DailyStats> monthlyStats = historyManager.getMonthlyStatsFresh(offset, limit);
                 for (DailyStats stat : monthlyStats) {
                     String desc = getString(R.string.stats_period_month_desc, stat.getDate());
                     result.add(buildEntry(stat, desc));
@@ -339,7 +337,7 @@ public class StatsPeriodFragment extends Fragment {
                 break;
             case DAILY:
             default:
-                List<DailyStats> dailyStats = historyManager.getDailyStats(offset, limit);
+                List<DailyStats> dailyStats = historyManager.getDailyStatsFresh(offset, limit);
                 for (DailyStats stat : dailyStats) {
                     String desc = getString(R.string.stats_period_daily_desc, stat.getDate());
                     result.add(buildEntry(stat, desc));

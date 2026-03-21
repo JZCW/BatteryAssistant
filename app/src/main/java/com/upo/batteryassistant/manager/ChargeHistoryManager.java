@@ -13,7 +13,15 @@ import com.upo.batteryassistant.database.DatabaseContract;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * 充放电历史管理器
@@ -28,6 +36,8 @@ public class ChargeHistoryManager {
     // 持久化间隔配置
     private static final long PERSIST_INTERVAL = 60 * 1000; // 60秒
     private static final int PERSIST_LEVEL_THRESHOLD = 1; // 电量变化1%触发持久化
+    private static final long PERSIST_SYNC_TIMEOUT_MS = 1000;
+    private static final long INSERT_WAIT_TIMEOUT_MS = 1000;
 
     // 会话缓存
     private ChargeSession currentSessionCache;
@@ -39,6 +49,9 @@ public class ChargeHistoryManager {
     private long lastPersistTimestamp;
     private int lastPersistLevel;
     private boolean firstInit;
+    private final Object cacheLock = new Object();
+    private final ExecutorService dbIo = Executors.newSingleThreadExecutor(r -> new Thread(r, "BA-DB-IO"));
+    private Future<Long> currentSessionInsertFuture;
 
     private ChargeHistoryManager(Context context) {
         this.dbHelper = new BatteryDatabaseHelper(context.getApplicationContext());
@@ -69,49 +82,78 @@ public class ChargeHistoryManager {
      * 分页查询充放电阶段
      */
     public List<ChargeSession> getSessions(int offset, int limit) {
-        return dbHelper.getSessions(offset, limit);
+        List<ChargeSession> sessions = runDbTask(() -> dbHelper.getSessions(offset, limit));
+        return sessions == null ? Collections.emptyList() : sessions;
+    }
+
+    /**
+     * 刷新前强一致查询：先持久化再查询
+     */
+    public List<ChargeSession> getSessionsFresh(int offset, int limit) {
+        forcePersistNowSync();
+        return getSessions(offset, limit);
     }
 
     /**
      * 获取总记录数
      */
     public int getSessionCount() {
-        return dbHelper.getSessionCount();
+        Integer count = runDbTask(() -> dbHelper.getSessionCount());
+        return count == null ? 0 : count;
     }
 
     /**
      * 获取指定结束时间之前的最新一条会话
      */
     public ChargeSession getLastSessionEndBefore(long endTimestampInclusive) {
-        return dbHelper.getLastSessionEndBefore(endTimestampInclusive);
+        return runDbTask(() -> dbHelper.getLastSessionEndBefore(endTimestampInclusive));
     }
 
     /**
      * 统计开始时间大于指定值的会话数量
      */
     public int countSessionsStartAfter(long startTimestamp) {
-        return dbHelper.countSessionsStartAfter(startTimestamp);
+        Integer count = runDbTask(() -> dbHelper.countSessionsStartAfter(startTimestamp));
+        return count == null ? 0 : count;
     }
 
     /**
      * 获取每日统计数据
      */
     public List<DailyStats> getDailyStats(int offset, int limit) {
-        return dbHelper.getDailyStats(offset, limit);
+        List<DailyStats> stats = runDbTask(() -> dbHelper.getDailyStats(offset, limit));
+        return stats == null ? Collections.emptyList() : stats;
+    }
+
+    public List<DailyStats> getDailyStatsFresh(int offset, int limit) {
+        forcePersistNowSync();
+        return getDailyStats(offset, limit);
     }
 
     /**
      * 获取每周统计数据
      */
     public List<DailyStats> getWeeklyStats(int offset, int limit) {
-        return dbHelper.getWeeklyStats(offset, limit);
+        List<DailyStats> stats = runDbTask(() -> dbHelper.getWeeklyStats(offset, limit));
+        return stats == null ? Collections.emptyList() : stats;
+    }
+
+    public List<DailyStats> getWeeklyStatsFresh(int offset, int limit) {
+        forcePersistNowSync();
+        return getWeeklyStats(offset, limit);
     }
 
     /**
      * 获取每月统计数据
      */
     public List<DailyStats> getMonthlyStats(int offset, int limit) {
-        return dbHelper.getMonthlyStats(offset, limit);
+        List<DailyStats> stats = runDbTask(() -> dbHelper.getMonthlyStats(offset, limit));
+        return stats == null ? Collections.emptyList() : stats;
+    }
+
+    public List<DailyStats> getMonthlyStatsFresh(int offset, int limit) {
+        forcePersistNowSync();
+        return getMonthlyStats(offset, limit);
     }
 
     /**
@@ -122,130 +164,211 @@ public class ChargeHistoryManager {
             return;
         }
 
-        // 如果是首次初始化，尝试恢复异常中断的会话
-        if (firstInit) {
-            recoverOngoingSessions(currentInfo, currentState.isCharging());
-            recoverDailyStatsCache(currentInfo);
-            firstInit = false;
-        }
-
-        // 如果没有会话，开始新会话
-        if (currentSessionCache == null) {
-            startNewSession(currentInfo, currentState.isCharging());
-        }
-        if (dailyStatsCache == null) {
-            startNewDailyStats(currentInfo);
-        }
-
-        long now = currentInfo.getTimestamp();
-        long duration = now - currentSessionCache.getEndTimestamp();
-
-        // 更新基础信息
-        currentSessionCache.setPauseTimestamp(now);
-        currentSessionCache.setEndTimestamp(now);
-        currentSessionCache.setEndLevel(currentInfo.getLevel());
-        currentSessionCache.setEndChargeCounter(currentInfo.getChargeCounter());
-
-        // 更新温度
-        int temp = currentInfo.getTemperature();
-        if (currentSessionCache.getMaxTemperature() < 0 || temp > currentSessionCache.getMaxTemperature()) {
-            currentSessionCache.setMaxTemperature(temp);
-        }
-        if (currentSessionCache.getMinTemperature() < 0 || temp < currentSessionCache.getMinTemperature()) {
-            currentSessionCache.setMinTemperature(temp);
-        }
-
-        // 累加分状态数据
-        if ((lastBatteryInfoCache == null) && (currentSessionCache.getCounter()>0)) {
-            Log.e("ChargeHistoryManager", "lastBatteryInfoCache is null but counter is " + currentSessionCache.getCounter());
-            currentSessionCache.markInvalid();
-        }
-        if ((!currentSessionCache.isSessionInvalid()) && (currentSessionCache.getCounter()>0)) {
-            int chargeCounterDiff = 0;
-            if (currentInfo.getChargeCounter() >= 0 && lastBatteryInfoCache.getChargeCounter() >= 0) {
-                chargeCounterDiff = currentInfo.getChargeCounter() - lastBatteryInfoCache.getChargeCounter();
+        synchronized (cacheLock) {
+            // 如果是首次初始化，尝试恢复异常中断的会话
+            if (firstInit) {
+                recoverOngoingSessions(currentInfo, currentState.isCharging());
+                recoverDailyStatsCache(currentInfo);
+                firstInit = false;
             }
 
-            if (lastIsIdle) {
-                // 计入Doze区间
-                currentSessionCache.setDozeDuration(
-                    currentSessionCache.getDozeDuration() + duration);
-                currentSessionCache.setDozeChargeCounterDiff(
-                    currentSessionCache.getDozeChargeCounterDiff() + chargeCounterDiff);
-            } else {
-                if (lastScreenOn) {
-                    currentSessionCache.setScreenOnDuration(
-                        currentSessionCache.getScreenOnDuration() + duration);
-                    currentSessionCache.setScreenOnChargeCounterDiff(
-                        currentSessionCache.getScreenOnChargeCounterDiff() + chargeCounterDiff);
+            // 如果没有会话，开始新会话
+            if (currentSessionCache == null) {
+                startNewSession(currentInfo, currentState.isCharging());
+            }
+            if (dailyStatsCache == null) {
+                startNewDailyStats(currentInfo);
+            }
+
+            long now = currentInfo.getTimestamp();
+            long duration = now - currentSessionCache.getEndTimestamp();
+
+            // 更新基础信息
+            currentSessionCache.setPauseTimestamp(now);
+            currentSessionCache.setEndTimestamp(now);
+            currentSessionCache.setEndLevel(currentInfo.getLevel());
+            currentSessionCache.setEndChargeCounter(currentInfo.getChargeCounter());
+
+            // 更新温度
+            int temp = currentInfo.getTemperature();
+            if (currentSessionCache.getMaxTemperature() < 0 || temp > currentSessionCache.getMaxTemperature()) {
+                currentSessionCache.setMaxTemperature(temp);
+            }
+            if (currentSessionCache.getMinTemperature() < 0 || temp < currentSessionCache.getMinTemperature()) {
+                currentSessionCache.setMinTemperature(temp);
+            }
+
+            // 累加分状态数据
+            if ((lastBatteryInfoCache == null) && (currentSessionCache.getCounter() > 0)) {
+                Log.e("ChargeHistoryManager", "lastBatteryInfoCache is null but counter is " + currentSessionCache.getCounter());
+                currentSessionCache.markInvalid();
+            }
+            if ((!currentSessionCache.isSessionInvalid()) && (currentSessionCache.getCounter() > 0)) {
+                int chargeCounterDiff = 0;
+                if (currentInfo.getChargeCounter() >= 0 && lastBatteryInfoCache.getChargeCounter() >= 0) {
+                    chargeCounterDiff = currentInfo.getChargeCounter() - lastBatteryInfoCache.getChargeCounter();
+                }
+
+                if (lastIsIdle) {
+                    // 计入Doze区间
+                    currentSessionCache.setDozeDuration(
+                        currentSessionCache.getDozeDuration() + duration);
+                    currentSessionCache.setDozeChargeCounterDiff(
+                        currentSessionCache.getDozeChargeCounterDiff() + chargeCounterDiff);
+                } else {
+                    if (lastScreenOn) {
+                        currentSessionCache.setScreenOnDuration(
+                            currentSessionCache.getScreenOnDuration() + duration);
+                        currentSessionCache.setScreenOnChargeCounterDiff(
+                            currentSessionCache.getScreenOnChargeCounterDiff() + chargeCounterDiff);
+                    }
                 }
             }
-        }
 
-        // 更新充电会话的容量和周期数
-        if (currentSessionCache.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
-            currentSessionCache.setEstimatedCapacity(currentInfo.getFullCapacity());
-            currentSessionCache.setCycleCount(currentInfo.getCycleCount());
-        }
+            // 更新充电会话的容量和周期数
+            if (currentSessionCache.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
+                currentSessionCache.setEstimatedCapacity(currentInfo.getFullCapacity());
+                currentSessionCache.setCycleCount(currentInfo.getCycleCount());
+            }
 
-        // 增加更新计数
-        currentSessionCache.incrementCounter();
+            // 增加更新计数
+            currentSessionCache.incrementCounter();
 
-        // 更新历史统计
-        updateDailyStats(currentInfo);
+            // 更新历史统计
+            updateDailyStats(currentInfo);
 
-        // 更新缓存
-        lastBatteryInfoCache = currentInfo;
-        lastScreenOn = currentState.isScreenOn();
-        lastIsCharging = currentState.isCharging();
-        lastIsIdle = currentState.isIdle();
+            // 更新缓存
+            lastBatteryInfoCache = currentInfo;
+            lastScreenOn = currentState.isScreenOn();
+            lastIsCharging = currentState.isCharging();
+            lastIsIdle = currentState.isIdle();
 
-        // 如果状态变化，开始新会话
-        int currentType = currentSessionCache.getSessionType();
-        if ((currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE && !lastIsCharging) ||
-            (currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE && lastIsCharging)) {
-            startNewSession(currentInfo, lastIsCharging);
-        } else {
-            // 否则检查是否需要持久化
-            new Thread(() -> {
-                persistCurrentSession();
-            }).start();
+            // 如果状态变化，开始新会话
+            int currentType = currentSessionCache.getSessionType();
+            if ((currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE && !lastIsCharging) ||
+                (currentType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_DISCHARGE && lastIsCharging)) {
+                startNewSession(currentInfo, lastIsCharging);
+            } else {
+                // 异步提交持久化任务，避免阻塞 updateCurrentSession
+                submitDbTask(this::persistCurrentSessionInternal);
+            }
         }
     }
 
     /**
      * 持久化当前会话到数据库（部分更新，不改变 is_ongoing）
      */
-    private void persistCurrentSession() {
-        long now = lastBatteryInfoCache.getTimestamp();
+    private void persistCurrentSessionInternal() {
+        ChargeSession session;
+        BatteryInfo batteryInfo;
+        synchronized (cacheLock) {
+            session = currentSessionCache;
+            batteryInfo = lastBatteryInfoCache;
+        }
+        if (session == null || batteryInfo == null) {
+            return;
+        }
+
+        long now;
+        long persistedTs;
+        int persistedLevel;
+        synchronized (cacheLock) {
+            now = batteryInfo.getTimestamp();
+            persistedTs = lastPersistTimestamp;
+            persistedLevel = lastPersistLevel;
+        }
 
         // 判断是否需要持久化：仅当时间间隔和电量变化均未达到阈值时跳过
-        boolean timeEnough = (now - lastPersistTimestamp) >= PERSIST_INTERVAL;
-        boolean levelEnough = Math.abs(lastBatteryInfoCache.getLevel() - lastPersistLevel) >= PERSIST_LEVEL_THRESHOLD;
+        boolean timeEnough = (now - persistedTs) >= PERSIST_INTERVAL;
+        boolean levelEnough = Math.abs(batteryInfo.getLevel() - persistedLevel) >= PERSIST_LEVEL_THRESHOLD;
         if (!timeEnough && !levelEnough) {
             return;
         }
 
         // 持久化
-        forcePersistNow();
+        forcePersistNowInternal();
     }
 
     /**
      * 立即持久化当前会话到数据库（部分更新）
      */
     public void forcePersistNow() {
-        if (currentSessionCache == null) {
-            return;
+        forcePersistNowSync();
+    }
+
+    public boolean forcePersistNowSync() {
+        return forcePersistNowSync(PERSIST_SYNC_TIMEOUT_MS);
+    }
+
+    public boolean forcePersistNowSync(long timeoutMs) {
+        Future<Boolean> task = forcePersistNowAsync();
+        try {
+            return task.get(timeoutMs, TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            Log.w(TAG, "forcePersistNowSync timeout", e);
+        } catch (ExecutionException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            Log.e(TAG, "forcePersistNowSync failed", e);
         }
-        if (lastBatteryInfoCache == null) {
-            return;
+        return false;
+    }
+
+    public Future<Boolean> forcePersistNowAsync() {
+        return dbIo.submit(this::forcePersistNowInternal);
+    }
+
+    private boolean forcePersistNowInternal() {
+        ChargeSession session;
+        DailyStats dailyStats;
+        BatteryInfo batteryInfo;
+        Future<Long> insertFuture;
+        synchronized (cacheLock) {
+            session = currentSessionCache;
+            dailyStats = dailyStatsCache;
+            batteryInfo = lastBatteryInfoCache;
+            insertFuture = currentSessionInsertFuture;
         }
-        final ChargeSession session = currentSessionCache;
+
+        if (session == null || batteryInfo == null) {
+            return false;
+        }
+
+        if (insertFuture != null) {
+            try {
+                Long id = insertFuture.get(INSERT_WAIT_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+                if (id == null || id <= 0) {
+                    Log.w(TAG, "session insert id invalid, skip persist");
+                    return false;
+                }
+            } catch (TimeoutException e) {
+                Log.w(TAG, "wait insert id timeout, skip persist", e);
+                return false;
+            } catch (ExecutionException | InterruptedException e) {
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
+                Log.e(TAG, "wait insert id failed", e);
+                return false;
+            }
+        }
+
+        if (session.getId() <= 0) {
+            Log.w(TAG, "session id not ready, skip persist");
+            return false;
+        }
+
         dbHelper.updateSessionPartial(session);
-        dbHelper.updateDailyStats(dailyStatsCache);
-        lastPersistTimestamp = lastBatteryInfoCache.getTimestamp();
-        lastPersistLevel = lastBatteryInfoCache.getLevel();
+        dbHelper.updateDailyStats(dailyStats);
+        synchronized (cacheLock) {
+            if (lastBatteryInfoCache != null) {
+                lastPersistTimestamp = lastBatteryInfoCache.getTimestamp();
+                lastPersistLevel = lastBatteryInfoCache.getLevel();
+            }
+        }
         Log.d(TAG, "Force persisted session: " + session.getId());
+        return true;
     }
 
     /**
@@ -283,10 +406,13 @@ public class ChargeHistoryManager {
 
         // 插入数据库
         final ChargeSession session = currentSessionCache;
-        new Thread(() -> {
+        currentSessionInsertFuture = dbIo.submit(() -> {
             long id = dbHelper.insertOngoingSession(session);
-            session.setId(id);
-        }).start();
+            synchronized (cacheLock) {
+                session.setId(id);
+            }
+            return id;
+        });
 
         Log.i(TAG, "开始新会话: " + (sessionType == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE ? "充电" : "放电"));
     }
@@ -304,9 +430,12 @@ public class ChargeHistoryManager {
 
         // 写入数据库并更新统计
         final ChargeSession session = currentSessionCache;
-        new Thread(() -> {
-            dbHelper.finishSession(session);
-        }).start();
+        submitDbTask(() -> {
+            forcePersistNowInternal();
+            if (session.getId() > 0) {
+                dbHelper.finishSession(session);
+            }
+        });
 
         // 更新统计数据中的估算信息
         if (dailyStatsCache != null) {
@@ -324,6 +453,7 @@ public class ChargeHistoryManager {
         // 清空缓存
         currentSessionCache = null;
         lastBatteryInfoCache = null;
+        currentSessionInsertFuture = null;
     }
 
     /**
@@ -371,7 +501,10 @@ public class ChargeHistoryManager {
      * 恢复异常中断的会话
      */
     private void recoverOngoingSessions(BatteryInfo currentInfo, boolean isCharging) {
-        List<ChargeSession> ongoingSessions = dbHelper.getOngoingSessions();
+        List<ChargeSession> ongoingSessions = runDbTask(() -> dbHelper.getOngoingSessions());
+        if (ongoingSessions == null) {
+            return;
+        }
 
         if (ongoingSessions.isEmpty()) {
             // 没有进行中的会话
@@ -383,7 +516,7 @@ public class ChargeHistoryManager {
             Log.w(TAG, "发现多条进行中会话，全部结束");
             for (ChargeSession session : ongoingSessions) {
                 session.setOngoing(false);
-                dbHelper.finishSession(session);
+                submitDbTask(() -> dbHelper.finishSession(session));
             }
             return;
         }
@@ -401,7 +534,7 @@ public class ChargeHistoryManager {
         } else {
             // 不能恢复，结束并创建新会话
             ongoingSession.setOngoing(false);
-            dbHelper.finishSession(ongoingSession);
+            submitDbTask(() -> dbHelper.finishSession(ongoingSession));
 
             Log.i(TAG, "不恢复会话");
         }
@@ -412,7 +545,7 @@ public class ChargeHistoryManager {
      */
     private void recoverDailyStatsCache(BatteryInfo currentInfo) {
         String dateStr = getDateStr(currentInfo.getTimestamp());
-        dailyStatsCache = dbHelper.getDailyStats(dateStr);
+        dailyStatsCache = runDbTask(() -> dbHelper.getDailyStats(dateStr));
     }
 
     /**
@@ -433,10 +566,35 @@ public class ChargeHistoryManager {
      */
     private void endDailyStats() {
         if (dailyStatsCache != null) {
-            if (!dbHelper.updateDailyStats(dailyStatsCache)) {
+            DailyStats stats = dailyStatsCache;
+            Boolean updated = runDbTask(() -> dbHelper.updateDailyStats(stats));
+            if (updated == null || !updated) {
                 Log.e(TAG, "更新日统计失败");
             }
             dailyStatsCache = null;
+        }
+    }
+
+    private void submitDbTask(Runnable runnable) {
+        dbIo.submit(() -> {
+            try {
+                runnable.run();
+            } catch (Exception e) {
+                Log.e(TAG, "db task failed", e);
+            }
+        });
+    }
+
+    private <T> T runDbTask(Callable<T> callable) {
+        Future<T> future = dbIo.submit(callable);
+        try {
+            return future.get();
+        } catch (ExecutionException | InterruptedException e) {
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            Log.e(TAG, "db task failed", e);
+            return null;
         }
     }
 

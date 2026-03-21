@@ -132,12 +132,8 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
-            Log.d("ChargeHistoryFragment", "Swipe refreshing with force persist");
-            // 下拉刷新时强制持久化一次进行中会话
-            historyManager.forcePersistNow();
-
-            // 拉取第一页数据
-            List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);
+            Log.d("ChargeHistoryFragment", "Swipe refreshing with fresh query");
+            List<ChargeSession> sessions = historyManager.getSessionsFresh(0, PAGE_SIZE);
 
             mainHandler.post(() -> {
                 adapter.setItems(sessions);
@@ -181,6 +177,7 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
+            historyManager.forcePersistNowSync();
             ChargeSession targetSession = historyManager.getLastSessionEndBefore(endOfDayMillis);
             if (targetSession == null) {
                 mainHandler.post(() -> {
@@ -236,7 +233,7 @@ public class ChargeHistoryFragment extends Fragment {
 
         new Thread(() -> {
             int offset = currentOffsetStart + adapter.getItemCount();
-            List<ChargeSession> sessions = historyManager.getSessions(offset, PAGE_SIZE);
+            List<ChargeSession> sessions = historyManager.getSessionsFresh(offset, PAGE_SIZE);
 
             if (sessions.isEmpty()) {
                 hasMore = false;
