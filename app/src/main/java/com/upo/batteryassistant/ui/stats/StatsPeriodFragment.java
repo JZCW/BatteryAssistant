@@ -69,6 +69,8 @@ public class StatsPeriodFragment extends Fragment {
     private TextView detailChargeCounter;
     private TextView detailEstimatedCapacity;
     private TextView detailCycleCount;
+    private TextView detailCapacity;
+    private TextView detailMaxLevelChange;
     private ScatterChart capacityChart;
     private TextView capacityDetailText;
     private MaterialButtonToggleGroup capacityRangeToggle;
@@ -142,6 +144,8 @@ public class StatsPeriodFragment extends Fragment {
         detailChargeCounter = view.findViewById(R.id.detail_charge_counter);
         detailEstimatedCapacity = view.findViewById(R.id.detail_estimated_capacity);
         detailCycleCount = view.findViewById(R.id.detail_cycle_count);
+        detailCapacity = view.findViewById(R.id.detail_capacity);
+        detailMaxLevelChange = view.findViewById(R.id.detail_max_level_change);
         capacityChart = view.findViewById(R.id.capacity_scatter_chart);
         capacityDetailText = view.findViewById(R.id.capacity_detail_text);
         capacityRangeToggle = view.findViewById(R.id.capacity_range_toggle);
@@ -191,6 +195,8 @@ public class StatsPeriodFragment extends Fragment {
         detailChargeCounter = null;
         detailEstimatedCapacity = null;
         detailCycleCount = null;
+        detailCapacity = null;
+        detailMaxLevelChange = null;
         swipeHelper = null;
     }
 
@@ -267,7 +273,7 @@ public class StatsPeriodFragment extends Fragment {
                     String label = stat.getWeekStart();
                     String desc = getString(R.string.stats_period_week_desc, stat.getWeekStart());
                     result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
-                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount()));
+                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), 0, 0));
                 }
                 break;
             case MONTHLY:
@@ -276,7 +282,7 @@ public class StatsPeriodFragment extends Fragment {
                     String label = stat.getYearMonth();
                     String desc = getString(R.string.stats_period_month_desc, stat.getYearMonth());
                     result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
-                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount()));
+                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), 0, 0));
                 }
                 break;
             case DAILY:
@@ -286,7 +292,7 @@ public class StatsPeriodFragment extends Fragment {
                     String label = stat.getDate();
                     String desc = getString(R.string.stats_period_daily_desc, stat.getDate());
                     result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
-                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount()));
+                        stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), stat.getCapacity(), stat.getMaxLevelChange()));
                 }
                 break;
         }
@@ -295,9 +301,10 @@ public class StatsPeriodFragment extends Fragment {
 
     private StatsEntry buildEntry(String label, String desc, int sessionCount,
                                   int totalLevelChange, int totalChargeCounterDiff,
-                                  int estimatedCapacity, int cycleCount) {
+                                  int estimatedCapacity, int cycleCount,
+                                  int capacity, int maxLevelChange) {
         return new StatsEntry(label, desc, sessionCount, totalLevelChange,
-            totalChargeCounterDiff, estimatedCapacity, cycleCount);
+            totalChargeCounterDiff, estimatedCapacity, cycleCount, capacity, maxLevelChange);
     }
 
     private void applyStatsResults(StatsPeriodType resultPeriod, List<StatsEntry> newEntries) {
@@ -525,7 +532,8 @@ public class StatsPeriodFragment extends Fragment {
     private void showDetail(@NonNull StatsEntry entry) {
         if (detailHint == null || detailCard == null || detailTitle == null || detailDescription == null
             || detailSessionCount == null || detailLevelChange == null || detailChargeCounter == null
-            || detailEstimatedCapacity == null || detailCycleCount == null) {
+            || detailEstimatedCapacity == null || detailCycleCount == null
+            || detailCapacity == null || detailMaxLevelChange == null) {
             return;
         }
         detailHint.setVisibility(View.GONE);
@@ -545,6 +553,8 @@ public class StatsPeriodFragment extends Fragment {
 
         detailEstimatedCapacity.setText(getString(R.string.stats_estimated_capacity_value, entry.getEstimatedCapacity()));
         detailCycleCount.setText(getString(R.string.stats_cycle_count_value, entry.getCycleCount()));
+        detailCapacity.setText(getString(R.string.stats_estimated_capacity_value, entry.getCapacity()));
+        detailMaxLevelChange.setText(getString(R.string.stats_level_change_value, entry.getMaxLevelChange()) + "%");
     }
 
     private void showLatestEntry() {
@@ -640,7 +650,7 @@ public class StatsPeriodFragment extends Fragment {
             StatsEntry entry = entryMap.get(label);
             if (entry == null) {
                 String description = buildDescription(type, label);
-                entry = buildEntry(label, description, 0, 0, 0, 0, 0);
+                entry = buildEntry(label, description, 0, 0, 0, 0, 0, 0, 0);
             }
             filled.add(entry);
             shiftCalendar(calendar, type, 1);

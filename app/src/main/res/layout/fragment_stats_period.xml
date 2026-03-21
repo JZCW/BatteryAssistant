@@ -108,6 +108,22 @@
                             android:layout_marginTop="8dp"
                             android:textColor="@color/stats_primary_text"
                             android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/detail_capacity"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textColor="@color/stats_primary_text"
+                            android:textSize="15sp" />
+
+                        <TextView
+                            android:id="@+id/detail_max_level_change"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:textColor="@color/stats_primary_text"
+                            android:textSize="15sp" />
                     </LinearLayout>
                 </androidx.cardview.widget.CardView>
 

@@ -11,6 +11,8 @@ public class StatsEntry {
     private final int totalChargeCounterDiff;
     private final int estimatedCapacity;
     private final int cycleCount;
+    private final int capacity;
+    private final int maxLevelChange;
 
     public StatsEntry(String periodLabel,
                       String periodDescription,
@@ -18,7 +20,9 @@ public class StatsEntry {
                       int totalLevelChange,
                       int totalChargeCounterDiff,
                       int estimatedCapacity,
-                      int cycleCount) {
+                      int cycleCount,
+                      int capacity,
+                      int maxLevelChange) {
         this.periodLabel = periodLabel;
         this.periodDescription = periodDescription;
         this.sessionCount = sessionCount;
@@ -26,6 +30,8 @@ public class StatsEntry {
         this.totalChargeCounterDiff = totalChargeCounterDiff;
         this.estimatedCapacity = estimatedCapacity;
         this.cycleCount = cycleCount;
+        this.capacity = capacity;
+        this.maxLevelChange = maxLevelChange;
     }
 
     public String getPeriodLabel() {
@@ -54,5 +60,13 @@ public class StatsEntry {
 
     public int getCycleCount() {
         return cycleCount;
+    }
+
+    public int getCapacity() {
+        return capacity;
+    }
+
+    public int getMaxLevelChange() {
+        return maxLevelChange;
     }
 }

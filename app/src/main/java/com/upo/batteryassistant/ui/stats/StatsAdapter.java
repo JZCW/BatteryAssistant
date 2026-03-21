@@ -72,6 +72,8 @@ public class StatsAdapter extends RecyclerView.Adapter<StatsAdapter.ViewHolder> 
         private final TextView chargeCounterDiff;
         private final TextView estimatedCapacity;
         private final TextView cycleCount;
+        private final TextView capacity;
+        private final TextView maxLevelChange;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -82,6 +84,8 @@ public class StatsAdapter extends RecyclerView.Adapter<StatsAdapter.ViewHolder> 
             chargeCounterDiff = itemView.findViewById(R.id.charge_counter_diff);
             estimatedCapacity = itemView.findViewById(R.id.estimated_capacity);
             cycleCount = itemView.findViewById(R.id.cycle_count);
+            capacity = itemView.findViewById(R.id.capacity);
+            maxLevelChange = itemView.findViewById(R.id.max_level_change);
         }
 
         void bind(StatsEntry entry, Resources resources) {
@@ -101,6 +105,8 @@ public class StatsAdapter extends RecyclerView.Adapter<StatsAdapter.ViewHolder> 
 
             estimatedCapacity.setText(resources.getString(R.string.stats_estimated_capacity_value, entry.getEstimatedCapacity()));
             cycleCount.setText(resources.getString(R.string.stats_cycle_count_value, entry.getCycleCount()));
+            capacity.setText(resources.getString(R.string.stats_estimated_capacity_value, entry.getCapacity()));
+            maxLevelChange.setText(resources.getString(R.string.stats_level_change_value, entry.getMaxLevelChange()) + "%");
         }
     }
 }
