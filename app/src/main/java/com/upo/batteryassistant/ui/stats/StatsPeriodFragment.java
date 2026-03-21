@@ -290,16 +290,22 @@ public class StatsPeriodFragment extends Fragment {
         }
         pendingReload = false;
         isLoading = true;
-        loadStats();
+        loadStatsWithPersist();
+    }
+
+    private void loadStatsWithPersist() {
+        new Thread(() -> {
+            // 进入页面或下拉刷新时强制持久化一次进行中会话
+            historyManager.forcePersistNow();
+            loadStats();
+        }).start();
     }
 
     private void loadStats() {
         final StatsPeriodType targetPeriod = periodType;
         final int limit = getMaxEntryCount(targetPeriod);
-        new Thread(() -> {
-            List<StatsEntry> entries = queryStats(targetPeriod, 0, limit);
-            mainHandler.post(() -> applyStatsResults(targetPeriod, entries));
-        }).start();
+        List<StatsEntry> entries = queryStats(targetPeriod, 0, limit);
+        mainHandler.post(() -> applyStatsResults(targetPeriod, entries));
     }
 
     private int getMaxEntryCount(@NonNull StatsPeriodType type) {

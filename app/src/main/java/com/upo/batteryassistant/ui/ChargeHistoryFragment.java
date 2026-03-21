@@ -123,8 +123,35 @@ public class ChargeHistoryFragment extends Fragment {
 
     private void setupSwipeRefresh() {
         if (swipeRefreshLayout != null) {
-            swipeRefreshLayout.setOnRefreshListener(this::refreshAll);
+            swipeRefreshLayout.setOnRefreshListener(this::onSwipeRefresh);
         }
+    }
+
+    private void onSwipeRefresh() {
+        if (isLoading) return;
+        isLoading = true;
+        if (swipeRefreshLayout != null && !swipeRefreshLayout.isRefreshing()) {
+            swipeRefreshLayout.setRefreshing(true);
+        }
+
+        new Thread(() -> {
+            Log.d("ChargeHistoryFragment", "Swipe refreshing with force persist");
+            // 下拉刷新时强制持久化一次进行中会话
+            historyManager.forcePersistNow();
+
+            // 拉取第一页数据
+            List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);
+
+            mainHandler.post(() -> {
+                adapter.setItems(sessions);
+                currentOffsetStart = 0;
+                hasMore = sessions.size() >= PAGE_SIZE;
+                isLoading = false;
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+            });
+        }).start();
     }
 
     private void refreshAll() {
@@ -136,8 +163,6 @@ public class ChargeHistoryFragment extends Fragment {
 
         new Thread(() -> {
             Log.d("ChargeHistoryFragment", "Refreshing all data");
-            // 刷新前先强制持久化一次进行中会话
-            historyManager.forcePersistNow();
 
             // 拉取第一页数据
             List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);

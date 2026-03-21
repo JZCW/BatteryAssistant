@@ -97,8 +97,6 @@ public class ChargeHistoryManager {
      * 获取每日统计数据
      */
     public List<DailyStats> getDailyStats(int offset, int limit) {
-        // 在读取前尝试将缓存持久化，保证拿到最新记录
-        try { forcePersistNow(); } catch (Exception ignore) {} //FIXME 不在此强制持久化 主动刷新触发
         return dbHelper.getDailyStats(offset, limit);
     }
 
@@ -106,7 +104,6 @@ public class ChargeHistoryManager {
      * 获取每周统计数据
      */
     public List<DailyStats> getWeeklyStats(int offset, int limit) {
-        try { forcePersistNow(); } catch (Exception ignore) {}
         return dbHelper.getWeeklyStats(offset, limit);
     }
 
@@ -114,7 +111,6 @@ public class ChargeHistoryManager {
      * 获取每月统计数据
      */
     public List<DailyStats> getMonthlyStats(int offset, int limit) {
-        try { forcePersistNow(); } catch (Exception ignore) {}
         return dbHelper.getMonthlyStats(offset, limit);
     }
 
