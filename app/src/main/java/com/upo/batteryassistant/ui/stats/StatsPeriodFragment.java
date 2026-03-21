@@ -268,19 +268,19 @@ public class StatsPeriodFragment extends Fragment {
         List<StatsEntry> result = new ArrayList<>();
         switch (targetPeriod) {
             case WEEKLY:
-                List<BatteryDatabaseHelper.WeeklyStats> weeklyStats = historyManager.getWeeklyStats(offset, limit);
-                for (BatteryDatabaseHelper.WeeklyStats stat : weeklyStats) {
-                    String label = stat.getWeekStart();
-                    String desc = getString(R.string.stats_period_week_desc, stat.getWeekStart());
+                List<DailyStats> weeklyStats = historyManager.getWeeklyStats(offset, limit);
+                for (DailyStats stat : weeklyStats) {
+                    String label = stat.getDate();
+                    String desc = getString(R.string.stats_period_week_desc, label);
                     result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
                         stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), 0, 0));
                 }
                 break;
             case MONTHLY:
-                List<BatteryDatabaseHelper.MonthlyStats> monthlyStats = historyManager.getMonthlyStats(offset, limit);
-                for (BatteryDatabaseHelper.MonthlyStats stat : monthlyStats) {
-                    String label = stat.getYearMonth();
-                    String desc = getString(R.string.stats_period_month_desc, stat.getYearMonth());
+                List<DailyStats> monthlyStats = historyManager.getMonthlyStats(offset, limit);
+                for (DailyStats stat : monthlyStats) {
+                    String label = stat.getDate();
+                    String desc = getString(R.string.stats_period_month_desc, label);
                     result.add(buildEntry(label, desc, stat.getSessionCount(), stat.getTotalLevelChange(),
                         stat.getTotalChargeCounterDiff(), stat.getEstimatedCapacity(), stat.getCycleCount(), 0, 0));
                 }

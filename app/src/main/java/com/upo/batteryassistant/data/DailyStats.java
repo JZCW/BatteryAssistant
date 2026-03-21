@@ -20,8 +20,21 @@ public class DailyStats {
         totalChargeCounterDiff = 0;
         estimatedCapacity = -1;
         cycleCount = -1;
-        cycleCount = -1;
+        capacity = -1;
         maxLevelChange = -1;
+    }
+
+    // 聚合数据
+    public void merge(DailyStats other) {
+        this.sessionCount += other.getSessionCount();
+        this.totalLevelChange += other.getTotalLevelChange();
+        this.totalChargeCounterDiff += other.getTotalChargeCounterDiff();
+        this.cycleCount = Math.max(this.cycleCount, other.getCycleCount());
+        this.capacity = Math.max(this.capacity, other.getCapacity());
+        if (other.getMaxLevelChange() >= this.maxLevelChange) {
+            this.estimatedCapacity = other.getEstimatedCapacity();
+            this.maxLevelChange = other.getMaxLevelChange();
+        }
     }
     
     public String getDate() { return date; }

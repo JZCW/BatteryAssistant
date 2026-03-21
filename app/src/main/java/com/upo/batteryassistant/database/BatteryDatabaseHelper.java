@@ -775,60 +775,31 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     /**
      * 获取每周统计数据
      */
-    public List<WeeklyStats> getWeeklyStats(int offset, int limit) {
-        // 从 daily_stats 动态聚合最近 15 周
-        SQLiteDatabase db = getReadableDatabase();
-        List<WeeklyStats> result = new ArrayList<>();
-        Cursor cursor = db.rawQuery(
-                "SELECT " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT +
-                        " FROM " + DatabaseContract.DailyStatsEntry.TABLE_NAME +
-                        " ORDER BY " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + " DESC LIMIT 120", null);
-        List<DailyStats> recent = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            DailyStats ds = new DailyStats();
-            ds.setDate(cursor.getString(0));
-            ds.setSessionCount(cursor.getInt(1));
-            ds.setTotalLevelChange(cursor.getInt(2));
-            ds.setTotalChargeCounterDiff(cursor.getInt(3));
-            ds.setEstimatedCapacity(cursor.getInt(4));
-            ds.setCycleCount(cursor.getInt(5));
-            recent.add(ds);
-        }
-        cursor.close();
-
-        Map<String, WeeklyStats> map = new LinkedHashMap<>();
+    public List<DailyStats> getWeeklyStats(int offset, int limit) {
+        List<DailyStats> recent = getDailyStats(offset, (limit+1)*7);
+        List<DailyStats> result = new ArrayList<>();
+        Map<String, DailyStats> map = new LinkedHashMap<>();
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+        SimpleDateFormat weekSdf = new SimpleDateFormat("YYww", Locale.getDefault());
         Calendar cal = Calendar.getInstance();
-        cal.setFirstDayOfWeek(Calendar.MONDAY);
+        cal.setFirstDayOfWeek(Calendar.SUNDAY);
         for (DailyStats ds : recent) {
             try {
                 cal.setTime(sdf.parse(ds.getDate()));
             } catch (Exception e) { continue; }
-            cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY);
-            String weekStart = sdf.format(cal.getTime());
-            WeeklyStats ws = map.get(weekStart);
+            cal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY);
+            String weekStart = weekSdf.format(cal.getTime());
+            DailyStats ws = map.get(weekStart);
             if (ws == null) {
-                ws = new WeeklyStats();
-                ws.setWeekStart(weekStart);
-                ws.setSessionCount(0);
-                ws.setTotalLevelChange(0);
-                ws.setTotalChargeCounterDiff(0);
-                ws.setEstimatedCapacity(ds.getEstimatedCapacity());
-                ws.setCycleCount(ds.getCycleCount());
+                ws = new DailyStats();
+                ws.setDate(weekStart);
                 map.put(weekStart, ws);
             }
-            ws.setSessionCount(ws.getSessionCount() + ds.getSessionCount());
-            ws.setTotalLevelChange(ws.getTotalLevelChange() + ds.getTotalLevelChange());
-            ws.setTotalChargeCounterDiff(ws.getTotalChargeCounterDiff() + ds.getTotalChargeCounterDiff());
+            ws.merge(ds);
         }
-        List<WeeklyStats> all = new ArrayList<>(map.values());
+        List<DailyStats> all = new ArrayList<>(map.values());
         int start = Math.min(offset, all.size());
-        int end = Math.min(start + limit, Math.min(all.size(), 15));
+        int end = Math.min(start + limit, all.size());
         for (int i = start; i < end; i++) {
             result.add(all.get(i));
         }
@@ -838,113 +809,27 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
     /**
      * 获取每月统计数据
      */
-    public List<MonthlyStats> getMonthlyStats(int offset, int limit) {
-        // 从 daily_stats 动态聚合最近 12 个月
-        SQLiteDatabase db = getReadableDatabase();
-        List<MonthlyStats> result = new ArrayList<>();
-        Cursor cursor = db.rawQuery(
-                "SELECT " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY + "," +
-                        DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT +
-                        " FROM " + DatabaseContract.DailyStatsEntry.TABLE_NAME +
-                        " ORDER BY " + DatabaseContract.DailyStatsEntry.COLUMN_DATE + " DESC LIMIT 400", null);
-        List<DailyStats> recent = new ArrayList<>();
-        while (cursor.moveToNext()) {
-            DailyStats ds = new DailyStats();
-            ds.setDate(cursor.getString(0));
-            ds.setSessionCount(cursor.getInt(1));
-            ds.setTotalLevelChange(cursor.getInt(2));
-            ds.setTotalChargeCounterDiff(cursor.getInt(3));
-            ds.setEstimatedCapacity(cursor.getInt(4));
-            ds.setCycleCount(cursor.getInt(5));
-            recent.add(ds);
-        }
-        cursor.close();
-
-        Map<String, MonthlyStats> map = new LinkedHashMap<>();
+    public List<DailyStats> getMonthlyStats(int offset, int limit) {
+        List<DailyStats> recent = getDailyStats(offset, (limit+1)*31);
+        List<DailyStats> result = new ArrayList<>();
+        Map<String, DailyStats> map = new LinkedHashMap<>();
         for (DailyStats ds : recent) {
             String ym = ds.getDate().substring(0, 7); // YYYY-MM
-            MonthlyStats ms = map.get(ym);
+            DailyStats ms = map.get(ym);
             if (ms == null) {
-                ms = new MonthlyStats();
-                ms.setYearMonth(ym);
-                ms.setSessionCount(0);
-                ms.setTotalLevelChange(0);
-                ms.setTotalChargeCounterDiff(0);
-                ms.setEstimatedCapacity(ds.getEstimatedCapacity());
-                ms.setCycleCount(ds.getCycleCount());
+                ms = new DailyStats();
+                ms.setDate(ym);
                 map.put(ym, ms);
             }
-            ms.setSessionCount(ms.getSessionCount() + ds.getSessionCount());
-            ms.setTotalLevelChange(ms.getTotalLevelChange() + ds.getTotalLevelChange());
-            ms.setTotalChargeCounterDiff(ms.getTotalChargeCounterDiff() + ds.getTotalChargeCounterDiff());
+            ms.merge(ds);
         }
-        List<MonthlyStats> all = new ArrayList<>(map.values());
+        List<DailyStats> all = new ArrayList<>(map.values());
         int start = Math.min(offset, all.size());
-        int end = Math.min(start + limit, Math.min(all.size(), 12));
+        int end = Math.min(start + limit, all.size());
         for (int i = start; i < end; i++) {
             result.add(all.get(i));
         }
         return result;
-    }
-    
-    // ==================== 聚合数据类 ====================
-    
-
-    
-    //TODO 统一用DailyStats
-    /**
-     * 每周统计数据类
-     */
-    public static class WeeklyStats {
-        private String weekStart;
-        private int sessionCount;
-        private int totalLevelChange;
-        private int totalChargeCounterDiff;
-        private int estimatedCapacity;
-        private int cycleCount;
-        
-        public String getWeekStart() { return weekStart; }
-        public void setWeekStart(String weekStart) { this.weekStart = weekStart; }
-        public int getSessionCount() { return sessionCount; }
-        public void setSessionCount(int sessionCount) { this.sessionCount = sessionCount; }
-        public int getTotalLevelChange() { return totalLevelChange; }
-        public void setTotalLevelChange(int totalLevelChange) { this.totalLevelChange = totalLevelChange; }
-        public int getTotalChargeCounterDiff() { return totalChargeCounterDiff; }
-        public void setTotalChargeCounterDiff(int totalChargeCounterDiff) { this.totalChargeCounterDiff = totalChargeCounterDiff; }
-        public int getEstimatedCapacity() { return estimatedCapacity; }
-        public void setEstimatedCapacity(int estimatedCapacity) { this.estimatedCapacity = estimatedCapacity; }
-        public int getCycleCount() { return cycleCount; }
-        public void setCycleCount(int cycleCount) { this.cycleCount = cycleCount; }
-    }
-    
-    //TODO 统一用DailyStats
-    /**
-     * 每月统计数据类
-     */
-    public static class MonthlyStats {
-        private String yearMonth;
-        private int sessionCount;
-        private int totalLevelChange;
-        private int totalChargeCounterDiff;
-        private int estimatedCapacity;
-        private int cycleCount;
-        
-        public String getYearMonth() { return yearMonth; }
-        public void setYearMonth(String yearMonth) { this.yearMonth = yearMonth; }
-        public int getSessionCount() { return sessionCount; }
-        public void setSessionCount(int sessionCount) { this.sessionCount = sessionCount; }
-        public int getTotalLevelChange() { return totalLevelChange; }
-        public void setTotalLevelChange(int totalLevelChange) { this.totalLevelChange = totalLevelChange; }
-        public int getTotalChargeCounterDiff() { return totalChargeCounterDiff; }
-        public void setTotalChargeCounterDiff(int totalChargeCounterDiff) { this.totalChargeCounterDiff = totalChargeCounterDiff; }
-        public int getEstimatedCapacity() { return estimatedCapacity; }
-        public void setEstimatedCapacity(int estimatedCapacity) { this.estimatedCapacity = estimatedCapacity; }
-        public int getCycleCount() { return cycleCount; }
-        public void setCycleCount(int cycleCount) { this.cycleCount = cycleCount; }
     }
 }
 

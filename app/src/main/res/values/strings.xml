@@ -17,7 +17,7 @@
     <string name="stats_chart_dataset_label">电量变化趋势</string>
     <string name="stats_load_failed">统计数据加载失败</string>
     <string name="stats_period_daily_desc">日期：%1$s</string>
-    <string name="stats_period_week_desc">周起始：%1$s</string>
+    <string name="stats_period_week_desc">周数：%1$s</string>
     <string name="stats_period_month_desc">月份：%1$s</string>
     <string name="stats_detail_hint">点击图表节点查看详细信息</string>
     <string name="stats_detail_title">%1$s</string>
