@@ -25,4 +25,9 @@
     <string name="stats_detail_level_change_value">%1$s</string>
     <string name="stats_detail_charge_counter_value">%1$s</string>
     <string name="btn_charge_history">查看充放电历史</string>
+    <string name="charge_history_jump_to_date">按日期定位</string>
+    <string name="charge_history_select_date">选择日期</string>
+    <string name="charge_history_jump_failed">定位失败，请重试</string>
+    <string name="charge_history_jump_no_result">该日期没有会话记录</string>
+    <string name="charge_history_highlight_today">定位到：%1$s</string>
 </resources>

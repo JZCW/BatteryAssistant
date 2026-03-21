@@ -80,6 +80,20 @@ public class ChargeHistoryManager {
     }
 
     /**
+     * 获取指定结束时间之前的最新一条会话
+     */
+    public ChargeSession getLastSessionEndBefore(long endTimestampInclusive) {
+        return dbHelper.getLastSessionEndBefore(endTimestampInclusive);
+    }
+
+    /**
+     * 统计开始时间大于指定值的会话数量
+     */
+    public int countSessionsStartAfter(long startTimestamp) {
+        return dbHelper.countSessionsStartAfter(startTimestamp);
+    }
+
+    /**
      * 获取每日统计数据
      */
     public List<DailyStats> getDailyStats(int offset, int limit) {

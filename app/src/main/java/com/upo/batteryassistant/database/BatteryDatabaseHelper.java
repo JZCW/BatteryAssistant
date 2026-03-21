@@ -266,6 +266,45 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
+    /**
+     * 获取指定结束时间之前（包含）的最新一条会话
+     */
+    public ChargeSession getLastSessionEndBefore(long endTimestampInclusive) {
+        SQLiteDatabase db = getReadableDatabase();
+        ChargeSession session = null;
+
+        String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + " <= ?" +
+                " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_END_TIMESTAMP + " DESC" +
+                " LIMIT 1";
+
+        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(endTimestampInclusive)});
+        if (cursor.moveToFirst()) {
+            session = parseSessionFromCursor(cursor);
+        }
+        cursor.close();
+
+        return session;
+    }
+
+    /**
+     * 统计开始时间大于指定时间戳的会话数量（用于定位全局偏移）
+     */
+    public int countSessionsStartAfter(long startTimestamp) {
+        SQLiteDatabase db = getReadableDatabase();
+        String query = "SELECT COUNT(*) FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
+                " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " > ?";
+        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(startTimestamp)});
+
+        int count = 0;
+        if (cursor.moveToFirst()) {
+            count = cursor.getInt(0);
+        }
+        cursor.close();
+
+        return count;
+    }
+
     //TODO 更新散点图需要的数据
     /**
      * 查询 daily_stats 中指定日期范围内的 estimated_capacity
