@@ -71,10 +71,7 @@ public class ChargeHistoryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // 进入页面时刷新一次（强制持久化后拉取首页）
-        if (!isLoading) {
-            refreshAll();
-        }
+        loadMoreData();
     }
 
     @Override
@@ -138,31 +135,6 @@ public class ChargeHistoryFragment extends Fragment {
             Log.d("ChargeHistoryFragment", "Swipe refreshing with force persist");
             // 下拉刷新时强制持久化一次进行中会话
             historyManager.forcePersistNow();
-
-            // 拉取第一页数据
-            List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);
-
-            mainHandler.post(() -> {
-                adapter.setItems(sessions);
-                currentOffsetStart = 0;
-                hasMore = sessions.size() >= PAGE_SIZE;
-                isLoading = false;
-                if (swipeRefreshLayout != null) {
-                    swipeRefreshLayout.setRefreshing(false);
-                }
-            });
-        }).start();
-    }
-
-    private void refreshAll() {
-        if (isLoading) return;
-        isLoading = true;
-        if (swipeRefreshLayout != null && !swipeRefreshLayout.isRefreshing()) {
-            swipeRefreshLayout.setRefreshing(true);
-        }
-
-        new Thread(() -> {
-            Log.d("ChargeHistoryFragment", "Refreshing all data");
 
             // 拉取第一页数据
             List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);
