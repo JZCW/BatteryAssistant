@@ -24,4 +24,5 @@
     <string name="stats_detail_description">%1$s</string>
     <string name="stats_detail_level_change_value">%1$s</string>
     <string name="stats_detail_charge_counter_value">%1$s</string>
+    <string name="btn_charge_history">查看充放电历史</string>
 </resources>

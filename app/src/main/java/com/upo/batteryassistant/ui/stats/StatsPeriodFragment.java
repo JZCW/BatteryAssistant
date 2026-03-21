@@ -58,6 +58,10 @@ public class StatsPeriodFragment extends Fragment {
     private Handler mainHandler;
 
     private SwipeRefreshHelper swipeHelper;
+    private MaterialButtonToggleGroup periodToggle;
+    private MaterialButton btnDaily;
+    private MaterialButton btnWeekly;
+    private MaterialButton btnMonthly;
     private BarChart statsChart;
     private TextView emptyView;
     private TextView detailHint;
@@ -75,6 +79,7 @@ public class StatsPeriodFragment extends Fragment {
     private TextView capacityDetailText;
     private MaterialButtonToggleGroup capacityRangeToggle;
     private MaterialButton btnCap3m, btnCap12m, btnCapAll;
+    private MaterialButton btnChargeHistory;
     private BatteryDatabaseHelper dbHelper;
     private SimpleDateFormat dayFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     private enum CapacityRange { M3, M12, ALL }
@@ -133,6 +138,10 @@ public class StatsPeriodFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         swipeHelper = new SwipeRefreshHelper(view.findViewById(R.id.swipe_refresh));
+        periodToggle = view.findViewById(R.id.stats_period_toggle);
+        btnDaily = view.findViewById(R.id.btn_daily);
+        btnWeekly = view.findViewById(R.id.btn_weekly);
+        btnMonthly = view.findViewById(R.id.btn_monthly);
         statsChart = view.findViewById(R.id.stats_chart);
         emptyView = view.findViewById(R.id.empty_view);
         detailHint = view.findViewById(R.id.detail_hint);
@@ -152,8 +161,10 @@ public class StatsPeriodFragment extends Fragment {
         btnCap3m = view.findViewById(R.id.btn_capacity_3m);
         btnCap12m = view.findViewById(R.id.btn_capacity_12m);
         btnCapAll = view.findViewById(R.id.btn_capacity_all);
+        btnChargeHistory = view.findViewById(R.id.btn_charge_history);
         dbHelper = new BatteryDatabaseHelper(requireContext());
 
+        setupPeriodToggle();
         setupChart();
         setupCapacityChart();
         if (capacityRangeToggle != null && btnCap3m != null) {
@@ -172,6 +183,15 @@ public class StatsPeriodFragment extends Fragment {
                 }
             });
         }
+        if (btnChargeHistory != null) {
+            btnChargeHistory.setOnClickListener(v -> {
+                com.upo.batteryassistant.ui.ChargeHistoryFragment chargeHistoryFragment = new com.upo.batteryassistant.ui.ChargeHistoryFragment();
+                requireActivity().getSupportFragmentManager().beginTransaction()
+                    .replace(R.id.fragment_container, chargeHistoryFragment)
+                    .addToBackStack(null)
+                    .commit();
+            });
+        }
         swipeHelper.setOnRefreshListener(this::refreshData);
 
         isViewReady = true;
@@ -184,6 +204,10 @@ public class StatsPeriodFragment extends Fragment {
         super.onDestroyView();
         isViewReady = false;
         mainHandler.removeCallbacksAndMessages(null);
+        periodToggle = null;
+        btnDaily = null;
+        btnWeekly = null;
+        btnMonthly = null;
         statsChart = null;
         emptyView = null;
         detailHint = null;
@@ -198,6 +222,32 @@ public class StatsPeriodFragment extends Fragment {
         detailCapacity = null;
         detailMaxLevelChange = null;
         swipeHelper = null;
+    }
+
+    private void setupPeriodToggle() {
+        if (periodToggle == null) {
+            return;
+        }
+        periodToggle.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) {
+                return;
+            }
+            StatsPeriodType type = null;
+            if (checkedId == R.id.btn_daily) {
+                type = StatsPeriodType.DAILY;
+            } else if (checkedId == R.id.btn_weekly) {
+                type = StatsPeriodType.WEEKLY;
+            } else if (checkedId == R.id.btn_monthly) {
+                type = StatsPeriodType.MONTHLY;
+            }
+            if (type != null && periodType != type) {
+                setPeriodType(type);
+            }
+        });
+
+        if (btnDaily != null) {
+            btnDaily.setChecked(true);
+        }
     }
 
     private void setupChart() {

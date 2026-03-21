@@ -6,18 +6,7 @@
     android:orientation="vertical"
     android:background="@color/stats_background">
 
-    <com.google.android.material.tabs.TabLayout
-        android:id="@+id/stats_tab_layout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/stats_card_background"
-        app:tabMode="fixed"
-        app:tabGravity="fill"
-        app:tabTextColor="@color/stats_secondary_text"
-        app:tabSelectedTextColor="@color/stats_primary_text"
-        app:tabIndicatorColor="@color/stats_accent"
-        app:tabRippleColor="@android:color/transparent" />
-
+    
     <FrameLayout
         android:id="@+id/stats_content_container"
         android:layout_width="match_parent"

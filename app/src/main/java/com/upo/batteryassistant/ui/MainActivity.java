@@ -58,7 +58,6 @@ public class MainActivity extends AppCompatActivity {
         
         // 添加标签
         tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_battery_info));
-        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_charge_history));
         tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_stats));
         
         // 设置标签选择监听
@@ -82,6 +81,13 @@ public class MainActivity extends AppCompatActivity {
      * 显示指定位置的Fragment
      */
     private void showFragment(int position) {
+        // 检查并弹出 ChargeHistoryFragment（如果它在栈顶）
+        androidx.fragment.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        if (fragmentManager.getBackStackEntryCount() > 0) {
+            fragmentManager.popBackStack();
+            fragmentManager.executePendingTransactions();
+        }
+        
         // 确保Fragment已创建
         if (batteryInfoFragment == null) {
             batteryInfoFragment = new BatteryInfoFragment();
@@ -103,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 transaction.show(batteryInfoFragment);
             }
-            // 隐藏充放电历史Fragment
+            // 隐藏其他Fragment
             if (chargeHistoryFragment.isAdded()) {
                 transaction.hide(chargeHistoryFragment);
             }
@@ -111,25 +117,13 @@ public class MainActivity extends AppCompatActivity {
                 transaction.hide(statsFragment);
             }
         } else if (position == 1) {
-            // 显示充放电历史Fragment
-            if (!chargeHistoryFragment.isAdded()) {
-                transaction.add(R.id.fragment_container, chargeHistoryFragment);
-            } else {
-                transaction.show(chargeHistoryFragment);
-            }
-            // 隐藏电池信息Fragment
-            if (batteryInfoFragment.isAdded()) {
-                transaction.hide(batteryInfoFragment);
-            }
-            if (statsFragment.isAdded()) {
-                transaction.hide(statsFragment);
-            }
-        } else if (position == 2) {
+            // 显示统计Fragment
             if (!statsFragment.isAdded()) {
                 transaction.add(R.id.fragment_container, statsFragment);
             } else {
                 transaction.show(statsFragment);
             }
+            // 隐藏其他Fragment
             if (batteryInfoFragment.isAdded()) {
                 transaction.hide(batteryInfoFragment);
             }
