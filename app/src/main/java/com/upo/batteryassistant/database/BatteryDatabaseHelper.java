@@ -570,6 +570,82 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         return sdf.format(timestamp);
     }
 
+    /**
+     * 获取指定日期的daily_stats，如果不存在则新建
+     * @param date 日期字符串，格式 yyyy-MM-dd
+     * @return DailyStats对象
+     */
+    public DailyStats getDailyStats(String date) {
+        if (!isValidDateFormat(date)) {
+            return null;
+        }
+        SQLiteDatabase db = getReadableDatabase();
+        Cursor cursor = db.query(DatabaseContract.DailyStatsEntry.TABLE_NAME, null,
+                DatabaseContract.DailyStatsEntry.COLUMN_DATE + " = ?",
+                new String[]{date}, null, null, null);
+        DailyStats stats = new DailyStats();
+        if (cursor.moveToFirst()) {
+            stats.setDate(cursor.getString(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_DATE)));
+            stats.setSessionCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT)));
+            stats.setTotalLevelChange(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE)));
+            stats.setTotalChargeCounterDiff(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF)));
+            stats.setEstimatedCapacity(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY)));
+            stats.setCycleCount(cursor.getInt(cursor.getColumnIndexOrThrow(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT)));
+        } else {
+            stats.setDate(date);
+            stats.setSessionCount(0);
+            stats.setTotalLevelChange(0);
+            stats.setTotalChargeCounterDiff(0);
+            stats.setEstimatedCapacity(0);
+            stats.setCycleCount(0);
+        }
+        cursor.close();
+        return stats;
+    }
+
+    /**
+     * 传入一个DailyStats，更新对应日期的数据(覆盖)，如不存在则新建
+     * @param stats DailyStats对象
+     * @return 是否成功
+     */
+    public boolean updateDailyStats(DailyStats stats) {
+        if (stats == null || stats.getDate() == null) {
+            return false;
+        }
+        String date = stats.getDate();
+        if (!isValidDateFormat(date)) {
+            return false;
+        }
+        SQLiteDatabase db = getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_DATE, date);
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_SESSION_COUNT, stats.getSessionCount());
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_LEVEL_CHANGE, stats.getTotalLevelChange());
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_TOTAL_CHARGE_COUNTER_DIFF, stats.getTotalChargeCounterDiff());
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_ESTIMATED_CAPACITY, stats.getEstimatedCapacity());
+        values.put(DatabaseContract.DailyStatsEntry.COLUMN_CYCLE_COUNT, stats.getCycleCount());
+        int rowsAffected = db.update(DatabaseContract.DailyStatsEntry.TABLE_NAME, values,
+                DatabaseContract.DailyStatsEntry.COLUMN_DATE + " = ?",
+                new String[]{date});
+        if (rowsAffected == 0) {
+            long result = db.insert(DatabaseContract.DailyStatsEntry.TABLE_NAME, null, values);
+            return result != -1;
+        }
+        return true;
+    }
+
+    /**
+     * 验证日期格式是否为 yyyy-MM-dd
+     * @param date 日期字符串
+     * @return 是否有效
+     */
+    private boolean isValidDateFormat(String date) {
+        if (date == null || date.length() != 10) {
+            return false;
+        }
+        return date.matches("\\d{4}-\\d{2}-\\d{2}");
+    }
+
     //TODO 在缓存中做增量更新
     /**
      * 基于样本对增量，按当前样本日期（本地时区）更新 daily_stats。
