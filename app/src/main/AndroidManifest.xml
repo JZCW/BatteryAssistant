@@ -59,6 +59,11 @@
                 <data android:scheme="package" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".receiver.ServiceRecoveryReceiver"
+            android:enabled="true"
+            android:exported="false" />
     </application>
 
 </manifest>

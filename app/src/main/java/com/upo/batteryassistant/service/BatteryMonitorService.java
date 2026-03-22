@@ -1,5 +1,6 @@
 package com.upo.batteryassistant.service;
 
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,12 +10,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.PowerManager;
 import android.os.BatteryManager;
+import android.os.SystemClock;
 import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import com.upo.batteryassistant.R;
@@ -33,6 +36,23 @@ public class BatteryMonitorService extends Service {
     private static final String TAG = "BatteryMonitorService";
     private static final String CHANNEL_ID = "BatteryMonitorChannel";
     private static final int NOTIFICATION_ID = 1;
+    private static final String PREFS_NAME = "battery_monitor_service_state";
+    private static final String KEY_LAST_HEARTBEAT = "last_heartbeat";
+    private static final String KEY_LAST_SCREEN_ON = "last_screen_on";
+    private static final String KEY_LAST_IDLE = "last_idle";
+    private static final String KEY_LAST_CHARGING = "last_charging";
+    private static final String KEY_LAST_STATE_UPDATE = "last_state_update";
+    private static final String KEY_LAST_START_SOURCE = "last_start_source";
+    private static final String KEY_SERVICE_RUNNING = "service_running";
+    private static final String KEY_LAST_ALARM_AT = "last_alarm_at";
+    public static final String ACTION_RECOVERY_CHECK = "com.upo.batteryassistant.action.RECOVERY_CHECK";
+    public static final String EXTRA_START_SOURCE = "start_source";
+    public static final String START_SOURCE_APP = "app_launch";
+    public static final String START_SOURCE_BOOT = "boot_receiver";
+    public static final String START_SOURCE_ALARM = "recovery_alarm";
+    public static final String START_SOURCE_TASK_REMOVED = "task_removed";
+    private static final long RECOVERY_CHECK_INTERVAL_MS = 15 * 60 * 1000L;
+    private static final long HEARTBEAT_STALE_THRESHOLD_MS = 20 * 60 * 1000L;
 
     private BatteryInfoManager batteryInfoManager;
     private ChargeHistoryManager chargeHistoryManager;
@@ -42,6 +62,8 @@ public class BatteryMonitorService extends Service {
     private BroadcastReceiver dozeReceiver;
     private NotificationManager notificationManager;
     private PowerManager powerManager;
+    private AlarmManager alarmManager;
+    private SharedPreferences servicePrefs;
     private Handler updateHandler;
     private Runnable updateRunnable;
 
@@ -64,7 +86,12 @@ public class BatteryMonitorService extends Service {
         chargeHistoryManager = ChargeHistoryManager.getInstance(this);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
+        alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        servicePrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         updateHandler = new Handler(Looper.getMainLooper());
+
+        markServiceRunning(true);
+        Log.i(TAG, "Service onCreate, last heartbeat=" + servicePrefs.getLong(KEY_LAST_HEARTBEAT, -1));
 
         // 创建通知渠道（Android 8.0+）
         createNotificationChannel();
@@ -86,18 +113,37 @@ public class BatteryMonitorService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        String startSource = getStartSource(intent);
+        persistStartSource(startSource);
+        Log.i(TAG, "onStartCommand source=" + startSource + ", startId=" + startId + ", flags=" + flags);
+
         // 启动前台服务
         startForeground(NOTIFICATION_ID, createNotification(null));
+        persistCurrentState("onStartCommand");
+        persistHeartbeat("onStartCommand");
+        scheduleRecoveryCheck("onStartCommand");
         return START_STICKY; // 服务被杀死后自动重启
     }
 
     @Override
     public void onDestroy() {
+        Log.w(TAG, "Service onDestroy");
         super.onDestroy();
         unregisterPowerReceiver();
         unregisterScreenStateReceiver();
         unregisterDozeReceiver();
         stopNotificationUpdate();
+        markServiceRunning(false);
+        persistCurrentState("onDestroy");
+        scheduleRecoveryCheck("onDestroy");
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        Log.w(TAG, "Service onTaskRemoved");
+        persistCurrentState("onTaskRemoved");
+        scheduleRecoveryCheck("onTaskRemoved");
+        super.onTaskRemoved(rootIntent);
     }
 
     @Override
@@ -140,6 +186,7 @@ public class BatteryMonitorService extends Service {
                 } else if (Intent.ACTION_POWER_DISCONNECTED.equals(action)) {
                     stateInfo.setCharging(false);
                 }
+                persistCurrentState("power:" + action);
                 // 充电状态变化时重新调度更新任务
                 restartPeriodicUpdate();
             }
@@ -182,6 +229,7 @@ public class BatteryMonitorService extends Service {
                 } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
                     stateInfo.setScreenOn(false);
                 }
+                persistCurrentState("screen:" + action);
                 // 屏幕状态变化时重新调度更新任务
                 restartPeriodicUpdate();
             }
@@ -220,8 +268,9 @@ public class BatteryMonitorService extends Service {
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 if (PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED.equals(action)) {
-                    restartPeriodicUpdate(); // 先触发任务再更新doze状态
                     stateInfo.setIdle(powerManager.isDeviceIdleMode());
+                    persistCurrentState("doze:" + action);
+                    restartPeriodicUpdate();
                 }
             }
         };
@@ -306,14 +355,17 @@ public class BatteryMonitorService extends Service {
             stateInfo.setScreenOn(powerManager.isInteractive());
             Log.d(TAG, "初始屏幕状态: " + (powerManager.isInteractive() ? "亮屏" : "灭屏"));
         }
-        
+
         // 获取当前Doze状态
         if (powerManager != null) {
             stateInfo.setIdle(powerManager.isDeviceIdleMode());
             Log.d(TAG, "初始Doze状态: " + (powerManager.isDeviceIdleMode() ? "Doze模式" : "正常模式"));
         }
-        
-        Log.d(TAG, "状态信息初始化完成: " + stateInfo.toString());
+
+        logRecoveredState();
+        persistCurrentState("initializeStateInfo");
+
+        Log.d(TAG, "状态信息初始化完成: " + stateInfo);
     }
 
     /**
@@ -341,11 +393,17 @@ public class BatteryMonitorService extends Service {
 
         BatteryInfo currentInfo = batteryInfoManager.getCurrentBatteryInfo();
         if (currentInfo == null) {
+            persistHeartbeat("batteryInfo:null");
+            scheduleRecoveryCheck("batteryInfo:null");
             return nextUpdateInterval;
         }
 
         // 更新当前会话缓存
         chargeHistoryManager.updateCurrentSession(currentInfo, stateInfo);
+
+        persistCurrentState("updateBatteryInfo");
+        persistHeartbeat("updateBatteryInfo");
+        scheduleRecoveryCheck("updateBatteryInfo");
 
         // 根据策略决定是否更新通知
         if (shouldUpdateNotification) {
@@ -404,6 +462,128 @@ public class BatteryMonitorService extends Service {
         }
 
         return builder.build();
+    }
+
+    public static Intent createStartIntent(Context context, String startSource) {
+        Intent intent = new Intent(context, BatteryMonitorService.class);
+        intent.putExtra(EXTRA_START_SOURCE, startSource);
+        return intent;
+    }
+
+    public static void startServiceCompat(Context context, String startSource) {
+        Intent serviceIntent = createStartIntent(context, startSource);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent);
+        } else {
+            context.startService(serviceIntent);
+        }
+    }
+
+    public static long getLastHeartbeat(Context context) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        return preferences.getLong(KEY_LAST_HEARTBEAT, -1L);
+    }
+
+    public static boolean isServiceConsideredHealthy(Context context) {
+        SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        long lastHeartbeat = preferences.getLong(KEY_LAST_HEARTBEAT, -1L);
+        boolean running = preferences.getBoolean(KEY_SERVICE_RUNNING, false);
+        long age = lastHeartbeat > 0 ? System.currentTimeMillis() - lastHeartbeat : Long.MAX_VALUE;
+        return running && age <= HEARTBEAT_STALE_THRESHOLD_MS;
+    }
+
+    private String getStartSource(Intent intent) {
+        if (intent == null) {
+            return "system_restart";
+        }
+        String startSource = intent.getStringExtra(EXTRA_START_SOURCE);
+        return startSource != null ? startSource : "unknown";
+    }
+
+    private void persistStartSource(String startSource) {
+        servicePrefs.edit()
+            .putString(KEY_LAST_START_SOURCE, startSource)
+            .apply();
+    }
+
+    private void markServiceRunning(boolean running) {
+        servicePrefs.edit()
+            .putBoolean(KEY_SERVICE_RUNNING, running)
+            .apply();
+    }
+
+    private void persistHeartbeat(String reason) {
+        long now = System.currentTimeMillis();
+        servicePrefs.edit()
+            .putLong(KEY_LAST_HEARTBEAT, now)
+            .putBoolean(KEY_SERVICE_RUNNING, true)
+            .apply();
+        Log.d(TAG, "Persist heartbeat, reason=" + reason + ", ts=" + now);
+    }
+
+    private void persistCurrentState(String reason) {
+        if (stateInfo == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        servicePrefs.edit()
+            .putBoolean(KEY_LAST_SCREEN_ON, stateInfo.isScreenOn())
+            .putBoolean(KEY_LAST_IDLE, stateInfo.isIdle())
+            .putBoolean(KEY_LAST_CHARGING, stateInfo.isCharging())
+            .putLong(KEY_LAST_STATE_UPDATE, now)
+            .apply();
+        Log.d(TAG, "Persist state, reason=" + reason + ", state=" + stateInfo);
+    }
+
+    private void logRecoveredState() {
+        boolean hasLastState = servicePrefs.contains(KEY_LAST_STATE_UPDATE);
+        if (!hasLastState) {
+            Log.d(TAG, "No persisted state found for recovery");
+            return;
+        }
+
+        long lastHeartbeat = servicePrefs.getLong(KEY_LAST_HEARTBEAT, -1L);
+        long heartbeatAge = lastHeartbeat > 0 ? System.currentTimeMillis() - lastHeartbeat : -1L;
+        boolean lastScreenOn = servicePrefs.getBoolean(KEY_LAST_SCREEN_ON, stateInfo.isScreenOn());
+        boolean lastIdle = servicePrefs.getBoolean(KEY_LAST_IDLE, stateInfo.isIdle());
+        boolean lastCharging = servicePrefs.getBoolean(KEY_LAST_CHARGING, stateInfo.isCharging());
+        String lastStartSource = servicePrefs.getString(KEY_LAST_START_SOURCE, "unknown");
+
+        Log.i(TAG, "Recovered persisted state: heartbeatAge=" + heartbeatAge
+            + ", lastScreenOn=" + lastScreenOn
+            + ", lastIdle=" + lastIdle
+            + ", lastCharging=" + lastCharging
+            + ", lastStartSource=" + lastStartSource
+            + ", currentState=" + stateInfo);
+    }
+
+    private void scheduleRecoveryCheck(String reason) {
+        if (alarmManager == null) {
+            return;
+        }
+
+        long triggerAtMillis = SystemClock.elapsedRealtime() + RECOVERY_CHECK_INTERVAL_MS;
+        PendingIntent pendingIntent = createRecoveryPendingIntent();
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis, pendingIntent);
+        } else {
+            alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAtMillis, pendingIntent);
+        }
+
+        servicePrefs.edit().putLong(KEY_LAST_ALARM_AT, System.currentTimeMillis()).apply();
+        Log.d(TAG, "Schedule recovery check, reason=" + reason + ", triggerAt=" + triggerAtMillis);
+    }
+
+    private PendingIntent createRecoveryPendingIntent() {
+        Intent recoveryIntent = new Intent(this, com.upo.batteryassistant.receiver.ServiceRecoveryReceiver.class);
+        recoveryIntent.setAction(ACTION_RECOVERY_CHECK);
+        return PendingIntent.getBroadcast(
+            this,
+            1001,
+            recoveryIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
     }
 }
 
