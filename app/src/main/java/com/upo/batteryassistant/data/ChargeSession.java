@@ -1,31 +1,50 @@
 package com.upo.batteryassistant.data;
 
+import java.io.Serializable;
+
 /**
  * 充放电阶段数据类
  */
-public class ChargeSession {
+public class ChargeSession implements Serializable {
     private long id;
+    private int sessionType;  // 0=充电, 1=放电
     private long startTimestamp;
     private long endTimestamp;
-    private int sessionType;  // 0=充电, 1=放电
-    private long duration;    // 持续时间（毫秒）
+    private long pauseTimestamp;
     
-    // 开始状态
-    private int startLevel;
-    private int startTemperature;
-    private int startVoltage;
-    private int startCurrent;
+    // 电量信息
+    private int startLevel;           // 开始电量百分比
+    private int endLevel;             // 结束电量百分比
+    private int startChargeCounter;   // 开始电量(mAh)
+    private int endChargeCounter;      // 结束电量(mAh)
     
-    // 结束状态
-    private int endLevel;
-    private int endTemperature;
-    private int endVoltage;
-    private int endCurrent;
+    // 温度信息
+    private int maxTemperature;  // 最高温度(0.1°C)
+    private int minTemperature;  // 最低温度(0.1°C)
     
-    // 统计信息
-    private int levelChange;  // 电量变化（百分比）
+    // 分状态信息
+    private long screenOnDuration;         // 屏幕开启时长
+    private int screenOnChargeCounterDiff; // 屏幕开启电量变化(mAh,正数为充电,负数为放电)
+    private long dozeDuration;          // Doze时长(仅放电)
+    private int dozeChargeCounterDiff;  // Doze使用电量(仅放电)
+    
+    // 估计容量和周期计数（仅充电）
+    private int estimatedCapacity;  // 估计容量
+    private int cycleCount;         // 周期计数
+
+    // 进行中状态
+    private boolean isOngoing;      // 是否进行中
+    
+    // 更新计数
+    private int counter;            // 被updateCurrentSession()更新的次数
     
     public ChargeSession() {
+        // 初始化默认值
+        screenOnDuration = 0;
+        screenOnChargeCounterDiff = 0;
+        dozeDuration = 0;
+        dozeChargeCounterDiff = 0;
+        counter = 0;
     }
     
     // Getters and Setters
@@ -35,6 +54,14 @@ public class ChargeSession {
     
     public void setId(long id) {
         this.id = id;
+    }
+    
+    public int getSessionType() {
+        return sessionType;
+    }
+    
+    public void setSessionType(int sessionType) {
+        this.sessionType = sessionType;
     }
     
     public long getStartTimestamp() {
@@ -53,20 +80,12 @@ public class ChargeSession {
         this.endTimestamp = endTimestamp;
     }
     
-    public int getSessionType() {
-        return sessionType;
+    public long getPauseTimestamp() {
+        return pauseTimestamp;
     }
     
-    public void setSessionType(int sessionType) {
-        this.sessionType = sessionType;
-    }
-    
-    public long getDuration() {
-        return duration;
-    }
-    
-    public void setDuration(long duration) {
-        this.duration = duration;
+    public void setPauseTimestamp(long pauseTimestamp) {
+        this.pauseTimestamp = pauseTimestamp;
     }
     
     public int getStartLevel() {
@@ -77,30 +96,6 @@ public class ChargeSession {
         this.startLevel = startLevel;
     }
     
-    public int getStartTemperature() {
-        return startTemperature;
-    }
-    
-    public void setStartTemperature(int startTemperature) {
-        this.startTemperature = startTemperature;
-    }
-    
-    public int getStartVoltage() {
-        return startVoltage;
-    }
-    
-    public void setStartVoltage(int startVoltage) {
-        this.startVoltage = startVoltage;
-    }
-    
-    public int getStartCurrent() {
-        return startCurrent;
-    }
-    
-    public void setStartCurrent(int startCurrent) {
-        this.startCurrent = startCurrent;
-    }
-    
     public int getEndLevel() {
         return endLevel;
     }
@@ -109,36 +104,124 @@ public class ChargeSession {
         this.endLevel = endLevel;
     }
     
-    public int getEndTemperature() {
-        return endTemperature;
+    public int getStartChargeCounter() {
+        return startChargeCounter;
     }
     
-    public void setEndTemperature(int endTemperature) {
-        this.endTemperature = endTemperature;
+    public void setStartChargeCounter(int startChargeCounter) {
+        this.startChargeCounter = startChargeCounter;
     }
     
-    public int getEndVoltage() {
-        return endVoltage;
+    public int getEndChargeCounter() {
+        return endChargeCounter;
     }
     
-    public void setEndVoltage(int endVoltage) {
-        this.endVoltage = endVoltage;
+    public void setEndChargeCounter(int endChargeCounter) {
+        this.endChargeCounter = endChargeCounter;
     }
     
-    public int getEndCurrent() {
-        return endCurrent;
+    public int getMaxTemperature() {
+        return maxTemperature;
     }
     
-    public void setEndCurrent(int endCurrent) {
-        this.endCurrent = endCurrent;
+    public void setMaxTemperature(int maxTemperature) {
+        this.maxTemperature = maxTemperature;
     }
     
+    public int getMinTemperature() {
+        return minTemperature;
+    }
+    
+    public void setMinTemperature(int minTemperature) {
+        this.minTemperature = minTemperature;
+    }
+    
+    public long getScreenOnDuration() {
+        return screenOnDuration;
+    }
+    
+    public void setScreenOnDuration(long screenOnDuration) {
+        this.screenOnDuration = screenOnDuration;
+    }
+    
+    public int getScreenOnChargeCounterDiff() {
+        return screenOnChargeCounterDiff;
+    }
+    
+    public void setScreenOnChargeCounterDiff(int screenOnChargeCounterDiff) {
+        this.screenOnChargeCounterDiff = screenOnChargeCounterDiff;
+    }
+    
+    public long getDozeDuration() {
+        return dozeDuration;
+    }
+    
+    public void setDozeDuration(long dozeDuration) {
+        this.dozeDuration = dozeDuration;
+    }
+    
+    public int getDozeChargeCounterDiff() {
+        return dozeChargeCounterDiff;
+    }
+    
+    public void setDozeChargeCounterDiff(int dozeChargeCounterDiff) {
+        this.dozeChargeCounterDiff = dozeChargeCounterDiff;
+    }
+    
+    public int getEstimatedCapacity() {
+        return estimatedCapacity;
+    }
+    
+    public void setEstimatedCapacity(int estimatedCapacity) {
+        this.estimatedCapacity = estimatedCapacity;
+    }
+    
+    public int getCycleCount() {
+        return cycleCount;
+    }
+
+    public void setCycleCount(int cycleCount) {
+        this.cycleCount = cycleCount;
+    }
+
+    public boolean isOngoing() {
+        return isOngoing;
+    }
+
+    public void setOngoing(boolean ongoing) {
+        isOngoing = ongoing;
+    }
+    
+    public int getCounter() {
+        return counter;
+    }
+    
+    public void setCounter(int counter) {
+        this.counter = counter;
+    }
+    
+    /**
+     * 增加更新计数
+     */
+    public void incrementCounter() {
+        this.counter++;
+    }
+    
+    /**
+     * 获取电量变化（百分比）
+     */
     public int getLevelChange() {
-        return levelChange;
+        return endLevel - startLevel;
     }
     
-    public void setLevelChange(int levelChange) {
-        this.levelChange = levelChange;
+    /**
+     * 获取电量变化（mAh）
+     */
+    public int getChargeCounterDiff() {
+        if (startChargeCounter < 0 || endChargeCounter < 0) {
+            return 0;
+        }
+        return endChargeCounter - startChargeCounter;
     }
     
     /**
@@ -149,44 +232,37 @@ public class ChargeSession {
     }
     
     /**
-     * 获取持续时间文本（小时:分钟）
+     * 获取最高温度（摄氏度）
      */
-    public String getDurationText() {
-        long hours = duration / (60 * 60 * 1000);
-        long minutes = (duration % (60 * 60 * 1000)) / (60 * 1000);
-        if (hours > 0) {
-            return String.format("%d小时%d分钟", hours, minutes);
-        } else {
-            return String.format("%d分钟", minutes);
-        }
+    public float getMaxTemperatureCelsius() {
+        return maxTemperature / 10.0f;
     }
     
     /**
-     * 获取开始温度（摄氏度）
+     * 获取最低温度（摄氏度）
      */
-    public float getStartTemperatureCelsius() {
-        return startTemperature / 10.0f;
+    public float getMinTemperatureCelsius() {
+        return minTemperature / 10.0f;
     }
-    
+
     /**
-     * 获取结束温度（摄氏度）
+     * 标记分状态数据无效
      */
-    public float getEndTemperatureCelsius() {
-        return endTemperature / 10.0f;
+    public void markInvalid() {
+        this.setScreenOnDuration(-1);
+        this.setScreenOnChargeCounterDiff(-1);
+        this.setDozeDuration(-1);
+        this.setDozeChargeCounterDiff(-1);
     }
-    
+
     /**
-     * 获取开始电压（伏特）
+     * 判断分状态数据是否无效
      */
-    public float getStartVoltageVolts() {
-        return startVoltage / 1000.0f;
-    }
-    
-    /**
-     * 获取结束电压（伏特）
-     */
-    public float getEndVoltageVolts() {
-        return endVoltage / 1000.0f;
+    public boolean isSessionInvalid() {
+        return this.getScreenOnDuration() == -1 ||
+               this.getScreenOnChargeCounterDiff() == -1 ||
+               this.getDozeDuration() == -1 ||
+               this.getDozeChargeCounterDiff() == -1;
     }
 }
 

@@ -13,9 +13,14 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
+import android.os.BatteryManager;
+import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
+import com.upo.batteryassistant.data.StateInfo;
+
 import com.upo.batteryassistant.manager.BatteryInfoManager;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
 import com.upo.batteryassistant.ui.MainActivity;
@@ -25,20 +30,24 @@ import com.upo.batteryassistant.ui.MainActivity;
  * 负责在后台持续监控电池状态并显示通知
  */
 public class BatteryMonitorService extends Service {
+    private static final String TAG = "BatteryMonitorService";
     private static final String CHANNEL_ID = "BatteryMonitorChannel";
     private static final int NOTIFICATION_ID = 1;
-    
+
     private BatteryInfoManager batteryInfoManager;
     private ChargeHistoryManager chargeHistoryManager;
+
     private BroadcastReceiver powerReceiver;
     private BroadcastReceiver screenStateReceiver;
+    private BroadcastReceiver dozeReceiver;
     private NotificationManager notificationManager;
-    private BatteryInfo currentBatteryInfo;
+    private PowerManager powerManager;
     private Handler updateHandler;
     private Runnable updateRunnable;
-    private boolean isScreenOn = true;
-    private boolean isCharging = false;
-    
+
+    // 当前状态
+    private StateInfo stateInfo;
+
     // 更新间隔配置（单位：毫秒）
     // 非充电时
     private static final long DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON = 10000; // 10秒
@@ -50,24 +59,27 @@ public class BatteryMonitorService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        
+
         batteryInfoManager = BatteryInfoManager.getInstance(this);
         chargeHistoryManager = ChargeHistoryManager.getInstance(this);
         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         updateHandler = new Handler(Looper.getMainLooper());
-        
+
         // 创建通知渠道（Android 8.0+）
         createNotificationChannel();
-        
+
         // 初始化充放电历史管理器
         chargeHistoryManager.init();
-        
-        // 注册充电器事件监听
+
+        // 初始化状态信息
+        initializeStateInfo();
+
+        // 注册事件监听
         registerPowerReceiver();
-        
-        // 注册屏幕状态监听
         registerScreenStateReceiver();
-        
+        registerDozeReceiver();
+
         // 启动定时更新任务
         startPeriodicUpdate();
     }
@@ -75,7 +87,7 @@ public class BatteryMonitorService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // 启动前台服务
-        startForeground(NOTIFICATION_ID, createNotification());
+        startForeground(NOTIFICATION_ID, createNotification(null));
         return START_STICKY; // 服务被杀死后自动重启
     }
 
@@ -84,6 +96,7 @@ public class BatteryMonitorService extends Service {
         super.onDestroy();
         unregisterPowerReceiver();
         unregisterScreenStateReceiver();
+        unregisterDozeReceiver();
         stopNotificationUpdate();
     }
 
@@ -110,7 +123,6 @@ public class BatteryMonitorService extends Service {
         }
     }
 
-        
     /**
      * 注册充电器事件广播接收器
      */
@@ -118,23 +130,21 @@ public class BatteryMonitorService extends Service {
         if (powerReceiver != null) {
             return;
         }
-        
+
         powerReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 if (Intent.ACTION_POWER_CONNECTED.equals(action)) {
-                    isCharging = true;
-                    chargeHistoryManager.onPowerConnected();
+                    stateInfo.setCharging(true);
                 } else if (Intent.ACTION_POWER_DISCONNECTED.equals(action)) {
-                    isCharging = false;
-                    chargeHistoryManager.onPowerDisconnected();
+                    stateInfo.setCharging(false);
                 }
                 // 充电状态变化时重新调度更新任务
                 restartPeriodicUpdate();
             }
         };
-        
+
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_POWER_CONNECTED);
         filter.addAction(Intent.ACTION_POWER_DISCONNECTED);
@@ -168,9 +178,9 @@ public class BatteryMonitorService extends Service {
             public void onReceive(Context context, Intent intent) {
                 String action = intent.getAction();
                 if (Intent.ACTION_SCREEN_ON.equals(action)) {
-                    isScreenOn = true;
+                    stateInfo.setScreenOn(true);
                 } else if (Intent.ACTION_SCREEN_OFF.equals(action)) {
-                    isScreenOn = false;
+                    stateInfo.setScreenOn(false);
                 }
                 // 屏幕状态变化时重新调度更新任务
                 restartPeriodicUpdate();
@@ -198,6 +208,44 @@ public class BatteryMonitorService extends Service {
     }
 
     /**
+     * 注册 Doze 状态监听
+     */
+    private void registerDozeReceiver() {
+        if (dozeReceiver != null) {
+            return;
+        }
+
+        dozeReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+                if (PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED.equals(action)) {
+                    restartPeriodicUpdate(); // 先触发任务再更新doze状态
+                    stateInfo.setIdle(powerManager.isDeviceIdleMode());
+                }
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED);
+        registerReceiver(dozeReceiver, filter);
+    }
+
+    /**
+     * 注销 Doze 状态监听
+     */
+    private void unregisterDozeReceiver() {
+        if (dozeReceiver != null) {
+            try {
+                unregisterReceiver(dozeReceiver);
+                dozeReceiver = null;
+            } catch (IllegalArgumentException e) {
+                // 接收器未注册，忽略
+            }
+        }
+    }
+
+    /**
      * 停止通知更新
      */
     private void stopNotificationUpdate() {
@@ -218,7 +266,8 @@ public class BatteryMonitorService extends Service {
         updateRunnable = new Runnable() {
             @Override
             public void run() {
-                long nextUpdateInterval = updateBatteryInfo();;
+                long nextUpdateInterval = updateBatteryInfo();
+                Log.d(TAG, "下次更新间隔: " + nextUpdateInterval + "ms");
                 updateHandler.postDelayed(this, nextUpdateInterval);
             }
         };
@@ -236,6 +285,38 @@ public class BatteryMonitorService extends Service {
     }
 
     /**
+     * 初始化状态信息
+     */
+    private void initializeStateInfo() {
+        stateInfo = new StateInfo();
+        
+        // 获取当前充电状态
+        IntentFilter batteryFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent batteryStatus = registerReceiver(null, batteryFilter);
+        if (batteryStatus != null) {
+            int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            boolean isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || 
+                               status == BatteryManager.BATTERY_STATUS_FULL;
+            stateInfo.setCharging(isCharging);
+            Log.d(TAG, "初始充电状态: " + (isCharging ? "充电中" : "未充电"));
+        }
+        
+        // 获取当前屏幕状态
+        if (powerManager != null) {
+            stateInfo.setScreenOn(powerManager.isInteractive());
+            Log.d(TAG, "初始屏幕状态: " + (powerManager.isInteractive() ? "亮屏" : "灭屏"));
+        }
+        
+        // 获取当前Doze状态
+        if (powerManager != null) {
+            stateInfo.setIdle(powerManager.isDeviceIdleMode());
+            Log.d(TAG, "初始Doze状态: " + (powerManager.isDeviceIdleMode() ? "Doze模式" : "正常模式"));
+        }
+        
+        Log.d(TAG, "状态信息初始化完成: " + stateInfo.toString());
+    }
+
+    /**
      * 更新电池信息并刷新通知
      * @return 下次更新间隔
      */
@@ -243,14 +324,14 @@ public class BatteryMonitorService extends Service {
         boolean shouldUpdateNotification = true;
         long nextUpdateInterval;
 
-        if (isCharging) {
-            if (isScreenOn) {
+        if (stateInfo.isCharging()) {
+            if (stateInfo.isScreenOn()) {
                 nextUpdateInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_ON;
             } else {
                 nextUpdateInterval = DATA_FETCH_INTERVAL_CHARGING_SCREEN_OFF;
             }
         } else {
-            if (isScreenOn) {
+            if (stateInfo.isScreenOn()) {
                 nextUpdateInterval = DATA_FETCH_INTERVAL_NOT_CHARGING_SCREEN_ON;
             } else {
                 shouldUpdateNotification = false; // 非充电 + 关屏 获取数据但不更新通知
@@ -258,11 +339,17 @@ public class BatteryMonitorService extends Service {
             }
         }
 
-        currentBatteryInfo = batteryInfoManager.getCurrentBatteryInfo();
+        BatteryInfo currentInfo = batteryInfoManager.getCurrentBatteryInfo();
+        if (currentInfo == null) {
+            return nextUpdateInterval;
+        }
+
+        // 更新当前会话缓存
+        chargeHistoryManager.updateCurrentSession(currentInfo, stateInfo);
 
         // 根据策略决定是否更新通知
-        if (shouldUpdateNotification && currentBatteryInfo != null) {
-            notificationManager.notify(NOTIFICATION_ID, createNotification());
+        if (shouldUpdateNotification) {
+            notificationManager.notify(NOTIFICATION_ID, createNotification(currentInfo));
         }
 
         return nextUpdateInterval;
@@ -271,7 +358,7 @@ public class BatteryMonitorService extends Service {
     /**
      * 创建通知
      */
-    private Notification createNotification() {
+    private Notification createNotification(BatteryInfo batteryInfo) {
         Intent intent = new Intent(this, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             this, 0, intent,
@@ -287,27 +374,27 @@ public class BatteryMonitorService extends Service {
             .setShowWhen(false)
             .setAutoCancel(false); // 不自动取消
 
-        if (currentBatteryInfo != null) {
+        if (batteryInfo != null) {
             // 通知标题
-            String title = String.format("电池: %d%%", currentBatteryInfo.getLevel());
-            
+            String title = String.format("电池: %d%%", batteryInfo.getLevel());
+
             // 通知内容
             StringBuilder content = new StringBuilder();
-            content.append(currentBatteryInfo.getStatusText());
-            
-            if (currentBatteryInfo.getVoltage() > 0) {
-                content.append(" | ").append(String.format("%.2fV", currentBatteryInfo.getVoltageVolts()));
+            content.append(batteryInfo.getStatusText());
+
+            if (batteryInfo.getVoltage() > 0) {
+                content.append(" | ").append(String.format("%.2fV", batteryInfo.getVoltageVolts()));
             }
-            
-            if (currentBatteryInfo.getTemperature() > 0) {
-                content.append(" | ").append(String.format("%.1f°C", currentBatteryInfo.getTemperatureCelsius()));
+
+            if (batteryInfo.getTemperature() > 0) {
+                content.append(" | ").append(String.format("%.1f°C", batteryInfo.getTemperatureCelsius()));
             }
-            
+
             // 如果正在充电，显示剩余充电时间
-            if (currentBatteryInfo.isCharging() && currentBatteryInfo.getChargeTimeRemaining() >= 0) {
-                content.append("\n").append("预计充满: ").append(currentBatteryInfo.getChargeTimeRemainingText());
+            if (batteryInfo.isCharging() && batteryInfo.getChargeTimeRemaining() >= 0) {
+                content.append("\n").append("预计充满: ").append(batteryInfo.getChargeTimeRemainingText());
             }
-            
+
             builder.setContentTitle(title)
                    .setContentText(content.toString())
                    .setStyle(new NotificationCompat.BigTextStyle().bigText(content.toString()));

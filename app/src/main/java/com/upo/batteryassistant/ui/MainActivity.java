@@ -25,6 +25,7 @@ public class MainActivity extends AppCompatActivity {
     private TabLayout tabLayout;
     private BatteryInfoFragment batteryInfoFragment;
     private ChargeHistoryFragment chargeHistoryFragment;
+    private com.upo.batteryassistant.ui.stats.StatsFragment statsFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,8 +57,8 @@ public class MainActivity extends AppCompatActivity {
         tabLayout = findViewById(R.id.tab_layout);
         
         // 添加标签
-        tabLayout.addTab(tabLayout.newTab().setText("电池信息"));
-        tabLayout.addTab(tabLayout.newTab().setText("充放电历史"));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_battery_info));
+        tabLayout.addTab(tabLayout.newTab().setText(R.string.tab_stats));
         
         // 设置标签选择监听
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
@@ -80,12 +81,22 @@ public class MainActivity extends AppCompatActivity {
      * 显示指定位置的Fragment
      */
     private void showFragment(int position) {
+        // 检查并弹出 ChargeHistoryFragment（如果它在栈顶）
+        androidx.fragment.app.FragmentManager fragmentManager = getSupportFragmentManager();
+        if (fragmentManager.getBackStackEntryCount() > 0) {
+            fragmentManager.popBackStack();
+            fragmentManager.executePendingTransactions();
+        }
+        
         // 确保Fragment已创建
         if (batteryInfoFragment == null) {
             batteryInfoFragment = new BatteryInfoFragment();
         }
         if (chargeHistoryFragment == null) {
             chargeHistoryFragment = new ChargeHistoryFragment();
+        }
+        if (statsFragment == null) {
+            statsFragment = new com.upo.batteryassistant.ui.stats.StatsFragment();
         }
         
         // 使用show/hide而不是replace，保持Fragment状态
@@ -98,20 +109,26 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 transaction.show(batteryInfoFragment);
             }
-            // 隐藏充放电历史Fragment
+            // 隐藏其他Fragment
             if (chargeHistoryFragment.isAdded()) {
                 transaction.hide(chargeHistoryFragment);
             }
-        } else if (position == 1) {
-            // 显示充放电历史Fragment
-            if (!chargeHistoryFragment.isAdded()) {
-                transaction.add(R.id.fragment_container, chargeHistoryFragment);
-            } else {
-                transaction.show(chargeHistoryFragment);
+            if (statsFragment.isAdded()) {
+                transaction.hide(statsFragment);
             }
-            // 隐藏电池信息Fragment
+        } else if (position == 1) {
+            // 显示统计Fragment
+            if (!statsFragment.isAdded()) {
+                transaction.add(R.id.fragment_container, statsFragment);
+            } else {
+                transaction.show(statsFragment);
+            }
+            // 隐藏其他Fragment
             if (batteryInfoFragment.isAdded()) {
                 transaction.hide(batteryInfoFragment);
+            }
+            if (chargeHistoryFragment.isAdded()) {
+                transaction.hide(chargeHistoryFragment);
             }
         }
         
