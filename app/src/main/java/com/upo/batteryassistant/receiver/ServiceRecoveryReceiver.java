@@ -13,18 +13,18 @@ public class ServiceRecoveryReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent != null ? intent.getAction() : null;
-        Log.i(TAG, "onReceive action=" + action + ", lastHeartbeat=" + BatteryMonitorService.getLastHeartbeat(context));
-
         if (!BatteryMonitorService.ACTION_RECOVERY_CHECK.equals(action)) {
             return;
         }
 
+        BatteryMonitorService.scheduleRecoveryCheckCompat(context, "receiver:onReceive");
+
         if (BatteryMonitorService.isServiceConsideredHealthy(context)) {
-            Log.d(TAG, "Service is healthy, skip recovery start");
             return;
         }
 
-        Log.w(TAG, "Service heartbeat stale or not running, starting recovery");
+        Log.w(TAG, "Service heartbeat stale or not running, starting recovery, lastHeartbeat="
+            + BatteryMonitorService.getLastHeartbeat(context));
         BatteryMonitorService.startServiceCompat(context, BatteryMonitorService.START_SOURCE_ALARM);
     }
 }
