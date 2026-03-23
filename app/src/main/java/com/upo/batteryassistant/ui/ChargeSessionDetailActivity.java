@@ -20,6 +20,8 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setTheme(ThemeHelper.getThemeResId(this));
+        ThemeHelper.applySavedTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_charge_session_detail);
         

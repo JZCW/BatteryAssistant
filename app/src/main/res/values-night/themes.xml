@@ -19,6 +19,13 @@
         <item name="baColorStatsPrimaryText">@color/stats_primary_text</item>
         <item name="baColorStatsSecondaryText">@color/stats_secondary_text</item>
         <item name="baColorStatsAccent">@color/stats_accent</item>
+        <item name="baColorAppBackground">?attr/colorBackgroundFloating</item>
+        <item name="baColorSurface">?attr/colorSurface</item>
+        <item name="baColorPrimaryText">?android:textColorPrimary</item>
+        <item name="baColorSecondaryText">?android:textColorSecondary</item>
+        <item name="baTextStrokeEnabled">false</item>
+        <item name="baTextStrokeColor">@color/black</item>
+        <item name="baTextStrokeWidth">0</item>
         <!-- Customize your theme here. -->
     </style>
 </resources>

@@ -11,4 +11,15 @@
     <attr name="baColorStatsPrimaryText" format="color" />
     <attr name="baColorStatsSecondaryText" format="color" />
     <attr name="baColorStatsAccent" format="color" />
+
+    <!-- 全局表面与文本语义属性 -->
+    <attr name="baColorAppBackground" format="color" />
+    <attr name="baColorSurface" format="color" />
+    <attr name="baColorPrimaryText" format="color" />
+    <attr name="baColorSecondaryText" format="color" />
+
+    <!-- E-Ink 主题文字描边控制 -->
+    <attr name="baTextStrokeEnabled" format="boolean" />
+    <attr name="baTextStrokeColor" format="color" />
+    <attr name="baTextStrokeWidth" format="float" />
 </resources>

@@ -32,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setTheme(ThemeHelper.getThemeResId(this));
         // 在 Activity 创建前根据用户设置应用主题模式
         ThemeHelper.applySavedTheme(this);
         super.onCreate(savedInstanceState);
@@ -222,7 +223,11 @@ public class MainActivity extends AppCompatActivity {
         final String[] items = new String[]{
             getString(R.string.theme_follow_system),
             getString(R.string.theme_light),
-            getString(R.string.theme_dark)
+            getString(R.string.theme_dark),
+            getString(R.string.theme_light_classic),
+            getString(R.string.theme_oled_black),
+            getString(R.string.theme_eink_light),
+            getString(R.string.theme_eink_dark)
         };
         int currentMode = ThemeHelper.getSavedThemeMode(this);
         int checkedItem;
@@ -232,6 +237,18 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case ThemeHelper.MODE_DARK:
                 checkedItem = 2;
+                break;
+            case ThemeHelper.MODE_LIGHT_CLASSIC:
+                checkedItem = 3;
+                break;
+            case ThemeHelper.MODE_OLED:
+                checkedItem = 4;
+                break;
+            case ThemeHelper.MODE_EINK_LIGHT:
+                checkedItem = 5;
+                break;
+            case ThemeHelper.MODE_EINK_DARK:
+                checkedItem = 6;
                 break;
             case ThemeHelper.MODE_FOLLOW_SYSTEM:
             default:
@@ -247,6 +264,14 @@ public class MainActivity extends AppCompatActivity {
                     mode = ThemeHelper.MODE_LIGHT;
                 } else if (which == 2) {
                     mode = ThemeHelper.MODE_DARK;
+                } else if (which == 3) {
+                    mode = ThemeHelper.MODE_LIGHT_CLASSIC;
+                } else if (which == 4) {
+                    mode = ThemeHelper.MODE_OLED;
+                } else if (which == 5) {
+                    mode = ThemeHelper.MODE_EINK_LIGHT;
+                } else if (which == 6) {
+                    mode = ThemeHelper.MODE_EINK_DARK;
                 } else {
                     mode = ThemeHelper.MODE_FOLLOW_SYSTEM;
                 }
