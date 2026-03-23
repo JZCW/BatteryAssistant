@@ -7,9 +7,13 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <!-- 列表条目高亮背景（沿用橙色半透明，供 attrs / 多主题使用） -->
+    <color name="list_item_highlight">#33FF9800</color>
+    <!-- 图表高亮颜色（默认使用白色，可按主题定制） -->
+    <color name="chart_highlight">#FFFFFFFF</color>
     <color name="stats_background">#130A1F</color>
     <color name="stats_card_background">#1E1230</color>
-    <color name="stats_primary_text">#FFFFFF</color>
+    <color name="stats_primary_text">@color/white</color>
     <color name="stats_secondary_text">#CABAF0</color>
     <color name="stats_accent">@color/purple_500</color>
 </resources>

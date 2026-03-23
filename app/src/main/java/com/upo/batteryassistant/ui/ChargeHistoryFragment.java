@@ -3,6 +3,7 @@ package com.upo.batteryassistant.ui;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.util.TypedValue;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -364,12 +365,28 @@ public class ChargeHistoryFragment extends Fragment {
                 });
 
                 if (session.getId() == highlightedSessionId) {
-                    itemView.setBackgroundColor(0x33FF9800);
+                    // 使用主题语义色，而不是硬编码橙色，便于多主题定制
+                    itemView.setBackgroundColor(resolveThemeColor(itemView, R.attr.baColorListItemHighlight));
                 } else {
                     itemView.setBackgroundColor(Color.TRANSPARENT);
                 }
             }
         }
+    }
+
+    /**
+     * 从当前 View 所在的主题解析颜色属性，如果解析失败则回退为透明。
+     */
+    private static int resolveThemeColor(@NonNull View view, int attrResId) {
+        TypedValue typedValue = new TypedValue();
+        if (view.getContext().getTheme().resolveAttribute(attrResId, typedValue, true)) {
+            if (typedValue.resourceId != 0) {
+                return view.getContext().getColor(typedValue.resourceId);
+            } else {
+                return typedValue.data;
+            }
+        }
+        return Color.TRANSPARENT;
     }
 }
 

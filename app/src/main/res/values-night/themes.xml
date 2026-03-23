@@ -11,6 +11,14 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- App custom semantic colors -->
+        <item name="baColorListItemHighlight">@color/list_item_highlight</item>
+        <item name="baColorChartHighlight">@color/chart_highlight</item>
+        <item name="baColorStatsBackground">@color/stats_background</item>
+        <item name="baColorStatsCardBackground">@color/stats_card_background</item>
+        <item name="baColorStatsPrimaryText">@color/stats_primary_text</item>
+        <item name="baColorStatsSecondaryText">@color/stats_secondary_text</item>
+        <item name="baColorStatsAccent">@color/stats_accent</item>
         <!-- Customize your theme here. -->
     </style>
 </resources>

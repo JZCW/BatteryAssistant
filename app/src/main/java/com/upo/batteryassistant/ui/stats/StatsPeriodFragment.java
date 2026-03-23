@@ -3,6 +3,7 @@ package com.upo.batteryassistant.ui.stats;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -256,14 +257,14 @@ public class StatsPeriodFragment extends Fragment {
         }
         statsChart.getDescription().setEnabled(false);
         statsChart.setNoDataText(getString(R.string.stats_chart_no_data));
-        statsChart.setNoDataTextColor(ContextCompat.getColor(requireContext(), R.color.stats_secondary_text));
+        statsChart.setNoDataTextColor(resolveThemeColor(requireView(), R.attr.baColorStatsSecondaryText));
         statsChart.setTouchEnabled(true);
         statsChart.setHighlightPerTapEnabled(true);
         statsChart.setDragEnabled(true);
         statsChart.setScaleEnabled(false);
 
-        int primaryText = ContextCompat.getColor(requireContext(), R.color.stats_primary_text);
-        int secondaryText = ContextCompat.getColor(requireContext(), R.color.stats_secondary_text);
+        int primaryText = resolveThemeColor(requireView(), R.attr.baColorStatsPrimaryText);
+        int secondaryText = resolveThemeColor(requireView(), R.attr.baColorStatsSecondaryText);
 
         XAxis xAxis = statsChart.getXAxis();
         xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
@@ -419,7 +420,8 @@ public class StatsPeriodFragment extends Fragment {
         int accentColor = ContextCompat.getColor(requireContext(), R.color.stats_accent);
         dataSet.setColor(accentColor);
         dataSet.setDrawValues(false);
-        dataSet.setHighLightColor(Color.WHITE);
+        // 使用主题语义色作为高亮颜色，避免硬编码白色，便于多主题适配
+        dataSet.setHighLightColor(resolveThemeColor(requireView(), R.attr.baColorChartHighlight));
         dataSet.setHighLightAlpha(200);
         dataSet.setHighlightEnabled(true);
 
@@ -558,13 +560,14 @@ public class StatsPeriodFragment extends Fragment {
         left.setAxisMaximum(maxY + padding);
 
         ScatterDataSet dataSet = new ScatterDataSet(entries, "Estimated Capacity");
-        int accentColor = ContextCompat.getColor(requireContext(), R.color.stats_accent);
+        int accentColor = resolveThemeColor(requireView(), R.attr.baColorStatsAccent);
         dataSet.setColor(accentColor);
         dataSet.setDrawValues(false);
         dataSet.setScatterShape(ScatterChart.ScatterShape.CIRCLE);
         dataSet.setScatterShapeSize(6f);
         dataSet.setHighlightEnabled(true);
-        dataSet.setHighLightColor(Color.WHITE);
+        // 与柱状图保持一致，使用主题定义的图表高亮颜色
+        dataSet.setHighLightColor(resolveThemeColor(requireView(), R.attr.baColorChartHighlight));
         dataSet.setHighlightLineWidth(1.2f);
         dataSet.setDrawHorizontalHighlightIndicator(true);
         dataSet.setDrawVerticalHighlightIndicator(true);
@@ -787,5 +790,20 @@ public class StatsPeriodFragment extends Fragment {
                 layout.setRefreshing(refreshing);
             }
         }
+    }
+
+    /**
+     * 从当前 Fragment 视图的主题解析颜色属性，如果失败则回退为白色，保证图表高亮可见。
+     */
+    private int resolveThemeColor(@NonNull View view, int attrResId) {
+        TypedValue typedValue = new TypedValue();
+        if (view.getContext().getTheme().resolveAttribute(attrResId, typedValue, true)) {
+            if (typedValue.resourceId != 0) {
+                return view.getContext().getColor(typedValue.resourceId);
+            } else {
+                return typedValue.data;
+            }
+        }
+        return Color.WHITE;
     }
 }
