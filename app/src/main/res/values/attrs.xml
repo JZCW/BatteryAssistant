@@ -12,9 +12,18 @@
     <attr name="baColorStatsSecondaryText" format="color" />
     <attr name="baColorStatsAccent" format="color" />
 
-    <!-- 全局表面与文本语义属性 -->
+    <!-- 全局品牌、表面与文本语义属性 -->
+    <attr name="baColorBrand" format="color" />
+    <attr name="baColorBrandVariant" format="color" />
+    <attr name="baColorOnBrand" format="color" />
+    <attr name="baColorSupport" format="color" />
+    <attr name="baColorSupportVariant" format="color" />
+    <attr name="baColorOnSupport" format="color" />
+    <attr name="baColorStatusBar" format="color" />
     <attr name="baColorAppBackground" format="color" />
     <attr name="baColorSurface" format="color" />
+    <attr name="baColorAccent" format="color" />
+    <attr name="baColorDivider" format="color" />
     <attr name="baColorPrimaryText" format="color" />
     <attr name="baColorSecondaryText" format="color" />
 

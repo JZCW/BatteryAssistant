@@ -224,7 +224,6 @@ public class MainActivity extends AppCompatActivity {
             getString(R.string.theme_follow_system),
             getString(R.string.theme_light),
             getString(R.string.theme_dark),
-            getString(R.string.theme_light_classic),
             getString(R.string.theme_oled_black),
             getString(R.string.theme_eink_light),
             getString(R.string.theme_eink_dark)
@@ -238,17 +237,14 @@ public class MainActivity extends AppCompatActivity {
             case ThemeHelper.MODE_DARK:
                 checkedItem = 2;
                 break;
-            case ThemeHelper.MODE_LIGHT_CLASSIC:
+            case ThemeHelper.MODE_OLED:
                 checkedItem = 3;
                 break;
-            case ThemeHelper.MODE_OLED:
+            case ThemeHelper.MODE_EINK_LIGHT:
                 checkedItem = 4;
                 break;
-            case ThemeHelper.MODE_EINK_LIGHT:
-                checkedItem = 5;
-                break;
             case ThemeHelper.MODE_EINK_DARK:
-                checkedItem = 6;
+                checkedItem = 5;
                 break;
             case ThemeHelper.MODE_FOLLOW_SYSTEM:
             default:
@@ -265,12 +261,10 @@ public class MainActivity extends AppCompatActivity {
                 } else if (which == 2) {
                     mode = ThemeHelper.MODE_DARK;
                 } else if (which == 3) {
-                    mode = ThemeHelper.MODE_LIGHT_CLASSIC;
-                } else if (which == 4) {
                     mode = ThemeHelper.MODE_OLED;
-                } else if (which == 5) {
+                } else if (which == 4) {
                     mode = ThemeHelper.MODE_EINK_LIGHT;
-                } else if (which == 6) {
+                } else if (which == 5) {
                     mode = ThemeHelper.MODE_EINK_DARK;
                 } else {
                     mode = ThemeHelper.MODE_FOLLOW_SYSTEM;

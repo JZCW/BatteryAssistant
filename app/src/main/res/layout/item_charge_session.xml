@@ -19,7 +19,7 @@
             android:layout_height="wrap_content"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:textColor="?attr/colorPrimary" />
+            android:textColor="?attr/baColorPrimaryText" />
 
         <TextView
             android:id="@+id/time_text"
@@ -27,7 +27,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textSize="14sp"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:textColor="?attr/baColorSecondaryText" />
 
         <TextView
             android:id="@+id/duration_text"
@@ -55,7 +55,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:textColor="?attr/baColorSecondaryText" />
 
         <TextView
             android:id="@+id/end_info_text"
@@ -63,7 +63,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textSize="12sp"
-            android:textColor="?android:attr/textColorSecondary" />
+            android:textColor="?attr/baColorSecondaryText" />
 
     </LinearLayout>
 

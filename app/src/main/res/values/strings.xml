@@ -34,9 +34,8 @@
     <!-- 主题相关 -->
     <string name="action_theme">主题</string>
     <string name="theme_follow_system">跟随系统</string>
-    <string name="theme_light">浅色</string>
+    <string name="theme_light">常规浅色</string>
     <string name="theme_dark">深色</string>
-    <string name="theme_light_classic">常规浅色</string>
     <string name="theme_oled_black">OLED 黑</string>
     <string name="theme_eink_light">E-Ink 浅色</string>
     <string name="theme_eink_dark">E-Ink 深色</string>

@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatDelegate;
 import com.upo.batteryassistant.R;
 
 /**
- * 统一管理应用主题模式（跟随系统 / 浅色 / 深色），便于以后扩展更多主题。
+ * 统一管理应用主题模式（跟随系统 / 常规浅色 / 深色），便于以后扩展更多主题。
  */
 public class ThemeHelper {
     private static final String PREF_NAME = "ba_theme_prefs";
@@ -18,7 +18,6 @@ public class ThemeHelper {
     public static final int MODE_FOLLOW_SYSTEM = 0;
     public static final int MODE_LIGHT = 1;
     public static final int MODE_DARK = 2;
-    public static final int MODE_LIGHT_CLASSIC = 3;
     public static final int MODE_OLED = 4;
     public static final int MODE_EINK_LIGHT = 5;
     public static final int MODE_EINK_DARK = 6;
@@ -36,13 +35,14 @@ public class ThemeHelper {
 
     public static int getSavedThemeMode(@NonNull Context context) {
         SharedPreferences sp = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        return sp.getInt(KEY_THEME_MODE, MODE_FOLLOW_SYSTEM);
+        int savedMode = sp.getInt(KEY_THEME_MODE, MODE_FOLLOW_SYSTEM);
+        return savedMode == 3 ? MODE_LIGHT : savedMode;
     }
 
     public static int getThemeResId(@NonNull Context context) {
         int mode = getSavedThemeMode(context);
         switch (mode) {
-            case MODE_LIGHT_CLASSIC:
+            case MODE_LIGHT:
                 return R.style.Theme_BatteryAssistant_Light;
             case MODE_OLED:
                 return R.style.Theme_BatteryAssistant_Oled;
@@ -51,7 +51,6 @@ public class ThemeHelper {
             case MODE_EINK_DARK:
                 return R.style.Theme_BatteryAssistant_EinkDark;
             case MODE_DARK:
-            case MODE_LIGHT:
             case MODE_FOLLOW_SYSTEM:
             default:
                 return R.style.Theme_BatteryAssistant;
@@ -61,7 +60,6 @@ public class ThemeHelper {
     private static void applyThemeMode(int mode) {
         switch (mode) {
             case MODE_LIGHT:
-            case MODE_LIGHT_CLASSIC:
             case MODE_EINK_LIGHT:
                 AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
                 break;
