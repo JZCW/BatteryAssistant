@@ -66,6 +66,7 @@ public class BatteryMonitorService extends Service {
     private SharedPreferences servicePrefs;
     private Handler updateHandler;
     private Runnable updateRunnable;
+    private boolean foregroundStarted;
     private long lastScreenOffTimestamp = -1L;
 
     // 当前状态
@@ -119,8 +120,15 @@ public class BatteryMonitorService extends Service {
         persistStartSource(startSource);
         Log.i(TAG, "onStartCommand source=" + startSource + ", startId=" + startId + ", flags=" + flags);
 
-        // 启动前台服务
-        startForeground(NOTIFICATION_ID, createNotification(null));
+        if (!foregroundStarted) {
+            startForeground(NOTIFICATION_ID, createNotification(null));
+            foregroundStarted = true;
+        } else {
+            BatteryInfo currentInfo = batteryInfoManager.getCurrentBatteryInfo();
+            if (currentInfo != null) {
+                notificationManager.notify(NOTIFICATION_ID, createNotification(currentInfo));
+            }
+        }
         persistCurrentState("onStartCommand");
         persistHeartbeat("onStartCommand");
         scheduleRecoveryCheck("onStartCommand");
@@ -136,6 +144,7 @@ public class BatteryMonitorService extends Service {
         unregisterDozeReceiver();
         stopNotificationUpdate();
         markServiceRunning(false);
+        foregroundStarted = false;
         persistCurrentState("onDestroy");
         scheduleRecoveryCheck("onDestroy");
     }
