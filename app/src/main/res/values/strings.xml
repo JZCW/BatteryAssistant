@@ -30,4 +30,10 @@
     <string name="charge_history_jump_failed">定位失败，请重试</string>
     <string name="charge_history_jump_no_result">该日期没有会话记录</string>
     <string name="charge_history_highlight_today">定位到：%1$s</string>
+
+    <!-- 主题相关 -->
+    <string name="action_theme">主题</string>
+    <string name="theme_follow_system">跟随系统</string>
+    <string name="theme_light">浅色</string>
+    <string name="theme_dark">深色</string>
 </resources>

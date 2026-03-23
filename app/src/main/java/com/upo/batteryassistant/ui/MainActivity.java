@@ -1,8 +1,11 @@
 package com.upo.batteryassistant.ui;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
@@ -29,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 在 Activity 创建前根据用户设置应用主题模式
+        ThemeHelper.applySavedTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -195,6 +200,63 @@ public class MainActivity extends AppCompatActivity {
             
             return insets;
         });
+    }
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_theme) {
+            showThemeChooser();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void showThemeChooser() {
+        final String[] items = new String[]{
+            getString(R.string.theme_follow_system),
+            getString(R.string.theme_light),
+            getString(R.string.theme_dark)
+        };
+        int currentMode = ThemeHelper.getSavedThemeMode(this);
+        int checkedItem;
+        switch (currentMode) {
+            case ThemeHelper.MODE_LIGHT:
+                checkedItem = 1;
+                break;
+            case ThemeHelper.MODE_DARK:
+                checkedItem = 2;
+                break;
+            case ThemeHelper.MODE_FOLLOW_SYSTEM:
+            default:
+                checkedItem = 0;
+                break;
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.action_theme)
+            .setSingleChoiceItems(items, checkedItem, (dialog, which) -> {
+                int mode;
+                if (which == 1) {
+                    mode = ThemeHelper.MODE_LIGHT;
+                } else if (which == 2) {
+                    mode = ThemeHelper.MODE_DARK;
+                } else {
+                    mode = ThemeHelper.MODE_FOLLOW_SYSTEM;
+                }
+                ThemeHelper.saveThemeMode(this, mode);
+                dialog.dismiss();
+                // 重新创建 Activity 以应用新的主题
+                recreate();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
     }
 
     /**
