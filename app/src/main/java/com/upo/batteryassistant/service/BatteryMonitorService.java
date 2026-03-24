@@ -384,6 +384,8 @@ public class BatteryMonitorService extends Service {
      * @return 下次更新间隔
      */
     private long updateBatteryInfo() {
+        refreshStateInfoFromSystem("updateBatteryInfo");
+
         boolean shouldUpdateNotification = true;
         long nextUpdateInterval;
 
@@ -442,6 +444,58 @@ public class BatteryMonitorService extends Service {
             return -1L;
         }
         return System.currentTimeMillis() - lastScreenOffTimestamp;
+    }
+
+    private void refreshStateInfoFromSystem(String reason) {
+        if (stateInfo == null) {
+            return;
+        }
+
+        boolean changed = false;
+        boolean oldScreenOn = stateInfo.isScreenOn();
+        boolean oldIdle = stateInfo.isIdle();
+        boolean oldCharging = stateInfo.isCharging();
+
+        if (powerManager != null) {
+            boolean currentScreenOn = powerManager.isInteractive();
+            boolean currentIdle = powerManager.isDeviceIdleMode();
+
+            if (currentScreenOn != oldScreenOn) {
+                stateInfo.setScreenOn(currentScreenOn);
+                if (currentScreenOn) {
+                    lastScreenOffTimestamp = -1L;
+                } else if (lastScreenOffTimestamp <= 0L) {
+                    lastScreenOffTimestamp = System.currentTimeMillis();
+                }
+                changed = true;
+            } else if (!currentScreenOn && lastScreenOffTimestamp <= 0L) {
+                lastScreenOffTimestamp = System.currentTimeMillis();
+            }
+
+            if (currentIdle != oldIdle) {
+                stateInfo.setIdle(currentIdle);
+                changed = true;
+            }
+        }
+
+        Intent batteryStatus = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (batteryStatus != null) {
+            int status = batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+            boolean currentCharging = status == BatteryManager.BATTERY_STATUS_CHARGING
+                || status == BatteryManager.BATTERY_STATUS_FULL;
+            if (currentCharging != oldCharging) {
+                stateInfo.setCharging(currentCharging);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            Log.w(TAG, "State resampled, reason=" + reason + ", oldScreenOn=" + oldScreenOn
+                + ", newScreenOn=" + stateInfo.isScreenOn() + ", oldIdle=" + oldIdle
+                + ", newIdle=" + stateInfo.isIdle() + ", oldCharging=" + oldCharging
+                + ", newCharging=" + stateInfo.isCharging());
+            persistCurrentState("resample:" + reason);
+        }
     }
 
     /**
