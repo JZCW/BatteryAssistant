@@ -45,6 +45,7 @@ public class BatteryMonitorService extends Service {
     public static final String START_SOURCE_APP = "app_launch";
     public static final String START_SOURCE_BOOT = "boot_receiver";
     public static final String START_SOURCE_ALARM = "recovery_alarm";
+    public static final String START_SOURCE_BRIDGE = "bridge_watchdog";
     private static final int RECOVERY_REQUEST_CODE = 1001;
     private static final long RECOVERY_CHECK_INTERVAL_MS = 15 * 60 * 1000L;
     private static final long HEARTBEAT_STALE_THRESHOLD_MS = 20 * 60 * 1000L;
@@ -109,6 +110,13 @@ public class BatteryMonitorService extends Service {
 
         // 启动定时更新任务
         startPeriodicUpdate();
+
+        // 尝试启动 bridge 守护进程（无 root 环境会静默跳过）
+        try {
+            batteryInfoManager.ensureBridgeStarted();
+        } catch (Exception e) {
+            Log.w(TAG, "Failed to start bridge, ignored", e);
+        }
     }
 
     @Override
@@ -396,6 +404,7 @@ public class BatteryMonitorService extends Service {
         stateInfo.setIdle(newState.isIdle()); // 先触发任务再更新doze状态
 
         persistHeartbeat("updateBatteryInfo");
+        Log.d(TAG, "更新电池信息 " + stateInfo.toString());
 
         // 根据策略决定是否更新通知
         if (shouldUpdateNotification) {

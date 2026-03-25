@@ -195,6 +195,16 @@ public class BatteryInfoManager {
     }
     
     /**
+     * 确保 bridge 守护进程已启动
+     * 无 root 环境会静默跳过
+     */
+    public void ensureBridgeStarted() {
+        if (serviceConnector != null) {
+            serviceConnector.ensureBridgeStarted();
+        }
+    }
+
+    /**
      * 设置充电限制
      */
     public CompletableFuture<Boolean> setChargeLimit(int limit) {
