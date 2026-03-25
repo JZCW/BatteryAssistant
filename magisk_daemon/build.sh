@@ -45,15 +45,16 @@ make -j$(nproc)
 
 echo ""
 echo "编译完成："
-file "$BUILD_DIR/$id"
 
 cd $PROJECT_ROOT
-cp build/$id magiskModule/$id
+cp build/batteryAssistant magiskModule/batteryAssistant
+cp build/batteryProxy magiskModule/batteryProxy
 
 7z a $zipFile ./magiskModule/* > /dev/null
 echo "构建完成!"
 
-rm -f magiskModule/$id
+rm -f magiskModule/batteryAssistant
+rm -f magiskModule/batteryProxy
 
 
 
