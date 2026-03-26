@@ -5,6 +5,7 @@
 #include <thread>
 #include <atomic>
 #include <vector>
+#include <ctime>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -26,6 +27,7 @@ private:
     int appSocketFd;                 // App socket文件描述符
     int daemonSocketFd;              // Daemon socket文件描述符
     std::atomic<bool> running;      // 运行状态
+    std::atomic<time_t> lastAppActivityTime; // 最后一次收到 app 数据的时间
     std::thread proxyThread;         // 代理线程
     
     void runProxy();
@@ -41,6 +43,7 @@ public:
     bool start();                    // 启动代理
     void stop();                     // 停止代理
     bool isRunning() const { return running; }
+    time_t getLastAppActivityTime() const { return lastAppActivityTime.load(); }
 };
 
 #endif // SOCKET_PROXY_H

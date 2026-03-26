@@ -9,7 +9,7 @@
 
 SocketProxy::SocketProxy(const std::string& appSocketName, const std::string& daemonSocketName)
     : appSocketName(appSocketName), daemonSocketName(daemonSocketName),
-      appSocketFd(-1), daemonSocketFd(-1), running(false) {
+      appSocketFd(-1), daemonSocketFd(-1), running(false), lastAppActivityTime(time(nullptr)) {
 }
 
 SocketProxy::~SocketProxy() {
@@ -253,6 +253,8 @@ void SocketProxy::runProxy() {
                 running = false;
                 break;
             }
+            
+            lastAppActivityTime.store(time(nullptr));
             
             // 如果Daemon未连接，尝试连接
             if (daemonSocketFd < 0) {

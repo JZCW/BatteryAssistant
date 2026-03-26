@@ -128,15 +128,25 @@ static bool wakeUpApp() {
 
 // Watchdog 检查（在主循环中被周期性调用）
 // 返回 false 表示应退出
-static bool watchdogCheck(int& consecutiveFailures) {
+static bool watchdogCheck(int& consecutiveFailures, time_t lastAppActivity) {
     // 检查 app 是否被用户强行停止
     if (isAppForceStopped()) {
         LOG_INFO("[Watchdog] App is force-stopped by user, bridge should exit");
         return false;
     }
 
+    // 检查距离最后一次 app 通信是否超过阈值
+    time_t now = time(nullptr);
+    long idleSec = static_cast<long>(now - lastAppActivity);
+    if (idleSec < WATCHDOG_INTERVAL_SEC) {
+        LOG_INFO("[Watchdog] App communicated " + std::to_string(idleSec) + "s ago, skip wake-up");
+        consecutiveFailures = 0;
+        return true;
+    }
+
     bool processAlive = isAppProcessAlive();
-    LOG_INFO("[Watchdog] Check: processAlive=" + std::string(processAlive ? "true" : "false"));
+    LOG_INFO("[Watchdog] App idle for " + std::to_string(idleSec) + "s, processAlive="
+        + std::string(processAlive ? "true" : "false") + ", attempting wake-up");
 
     // 尝试唤醒 app
     if (wakeUpApp()) {
@@ -212,7 +222,7 @@ int main(int argc, char* argv[]) {
             if (now - lastWatchdogCheck >= WATCHDOG_INTERVAL_SEC) {
                 lastWatchdogCheck = now;
                 LOG_INFO("[Watchdog] Periodic check triggered");
-                if (!watchdogCheck(watchdogFailures)) {
+                if (!watchdogCheck(watchdogFailures, proxy.getLastAppActivityTime())) {
                     // app 被 force-stop 或连续失败过多，退出
                     g_running = 0;
                     break;
