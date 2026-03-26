@@ -126,42 +126,31 @@ static bool wakeUpApp() {
     return true;
 }
 
-// 守护模式主循环
-static void runWatchdog() {
-    LOG_INFO("[Watchdog] Entering watchdog mode, interval=" + std::to_string(WATCHDOG_INTERVAL_SEC) + "s");
-    int consecutiveFailures = 0;
-
-    while (g_running) {
-        // 等待指定间隔，但每秒检查一次 g_running 以便及时响应信号
-        for (int i = 0; i < WATCHDOG_INTERVAL_SEC && g_running; ++i) {
-            sleep(1);
-        }
-        if (!g_running) break;
-
-        // 检查 app 是否被用户强行停止
-        if (isAppForceStopped()) {
-            LOG_INFO("[Watchdog] App is force-stopped by user, exiting watchdog");
-            break;
-        }
-
-        bool processAlive = isAppProcessAlive();
-        LOG_INFO("[Watchdog] Check: processAlive=" + std::string(processAlive ? "true" : "false"));
-
-        // 尝试唤醒 app
-        if (wakeUpApp()) {
-            LOG_INFO("[Watchdog] Wake-up succeeded");
-            consecutiveFailures = 0;
-        } else {
-            consecutiveFailures++;
-            LOG_WARN("[Watchdog] Wake-up failed, consecutiveFailures=" + std::to_string(consecutiveFailures));
-            if (consecutiveFailures >= WATCHDOG_MAX_FAILURES) {
-                LOG_ERROR("[Watchdog] Too many consecutive failures, exiting watchdog");
-                break;
-            }
-        }
+// Watchdog 检查（在主循环中被周期性调用）
+// 返回 false 表示应退出
+static bool watchdogCheck(int& consecutiveFailures) {
+    // 检查 app 是否被用户强行停止
+    if (isAppForceStopped()) {
+        LOG_INFO("[Watchdog] App is force-stopped by user, bridge should exit");
+        return false;
     }
 
-    LOG_INFO("[Watchdog] Watchdog mode exited");
+    bool processAlive = isAppProcessAlive();
+    LOG_INFO("[Watchdog] Check: processAlive=" + std::string(processAlive ? "true" : "false"));
+
+    // 尝试唤醒 app
+    if (wakeUpApp()) {
+        LOG_INFO("[Watchdog] Wake-up succeeded");
+        consecutiveFailures = 0;
+    } else {
+        consecutiveFailures++;
+        LOG_WARN("[Watchdog] Wake-up failed, consecutiveFailures=" + std::to_string(consecutiveFailures));
+        if (consecutiveFailures >= WATCHDOG_MAX_FAILURES) {
+            LOG_ERROR("[Watchdog] Too many consecutive failures, bridge should exit");
+            return false;
+        }
+    }
+    return true;
 }
 
 int main(int argc, char* argv[]) {
@@ -203,23 +192,38 @@ int main(int argc, char* argv[]) {
         }
         
         std::cout << "Proxy started successfully, waiting for connections..." << std::endl;
-        LOG_INFO("Proxy started, entering proxy mode");
+        LOG_INFO("Proxy started, entering main loop with integrated watchdog");
         
-        // 主循环 - 等待代理停止
-        while (proxy.isRunning() && g_running) {
+        // 主循环 - proxy 运行的同时，定期执行 watchdog 检查
+        // 这样即使 app 被 freezer 冻结（socket 不断开），bridge 仍能定期唤醒 app
+        int watchdogFailures = 0;
+        time_t lastWatchdogCheck = time(nullptr);
+        
+        while (g_running) {
+            if (!proxy.isRunning()) {
+                LOG_INFO("Proxy stopped running");
+                break;
+            }
+            
             sleep(1);
+            
+            // 检查是否到了 watchdog 检查时间
+            time_t now = time(nullptr);
+            if (now - lastWatchdogCheck >= WATCHDOG_INTERVAL_SEC) {
+                lastWatchdogCheck = now;
+                LOG_INFO("[Watchdog] Periodic check triggered");
+                if (!watchdogCheck(watchdogFailures)) {
+                    // app 被 force-stop 或连续失败过多，退出
+                    g_running = 0;
+                    break;
+                }
+            }
         }
         
         // 停止代理
         proxy.stop();
-        
         std::cout << "Proxy stopped" << std::endl;
-        LOG_INFO("Proxy stopped, checking whether to enter watchdog mode");
-        
-        // 代理停止后，进入守护模式
-        if (g_running) {
-            runWatchdog();
-        }
+        LOG_INFO("Main loop exited");
         
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << std::endl;
