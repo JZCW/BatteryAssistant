@@ -431,7 +431,7 @@ public class BatteryServiceConnector {
     /**
      * 测试连接
      */
-    private boolean testConnection() {
+    public boolean testConnection() {
         try {
             // 发送轻量级测试请求
             CompletableFuture<Boolean> testResult = ping();
