@@ -77,11 +77,11 @@ public class MainActivity extends AppCompatActivity {
      * 显示指定位置的Fragment
      */
     private void showFragment(int position) {
-        // 检查并弹出 ChargeHistoryFragment（如果它在栈顶）
+        // 同步弹出回退栈（popBackStack 是异步的，必须用 popBackStackImmediate 保证执行完毕
+        // 再进行 show/hide，否则 replace 恢复的 Fragment 会与新添加的 Fragment 叠加）
         androidx.fragment.app.FragmentManager fragmentManager = getSupportFragmentManager();
         if (fragmentManager.getBackStackEntryCount() > 0) {
-            fragmentManager.popBackStack();
-            fragmentManager.executePendingTransactions();
+            fragmentManager.popBackStackImmediate();
         }
         
         // 确保Fragment已创建
