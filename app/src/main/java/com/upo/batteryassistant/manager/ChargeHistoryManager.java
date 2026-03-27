@@ -612,8 +612,13 @@ public class ChargeHistoryManager {
             }
         }
 
-        // 当且仅当充电状态下会话更新一次时计数
-        if ((currentSessionCache.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) && (currentSessionCache.getCounter() == 1)) {
+        // 仅当充电时更新统计信息
+        if (currentSessionCache.getSessionType() != DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE) {
+            return;
+        }
+
+        // 且仅当会话更新一次时计数
+        if (currentSessionCache.getCounter() == 1) {
             dailyStatsCache.setSessionCount(dailyStatsCache.getSessionCount() + 1);
         }
 
