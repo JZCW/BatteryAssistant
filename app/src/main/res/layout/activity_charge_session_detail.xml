@@ -9,26 +9,26 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="@dimen/spacing_lg">
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            android:layout_marginBottom="@dimen/spacing_md"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="基础信息"
-                    android:textSize="16sp"
+                    android:text="@string/detail_section_basic_info"
+                    android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
                     android:textColor="?attr/baColorPrimaryText" />
 
@@ -36,121 +36,121 @@
                     android:id="@+id/detail_type_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="类型"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_type"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_type_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="16sp" />
+                    android:textSize="@dimen/text_size_section" />
 
                 <TextView
                     android:id="@+id/detail_start_time_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="开始时间"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_start_time"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_time_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_end_time_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="结束时间"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_end_time"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_time_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_duration_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="持续时间"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_duration"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_pause_time_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="暂停时间"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_pause_time"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_pause_time_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_ongoing_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="状态"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_status"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_ongoing_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
-                    android:id="@+id/detail_id_text_label"
+                    android:id="@+id/detail_counter_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="更新计数"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_counter"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_counter_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_id_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="记录ID"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_record_id"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_id_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
             </LinearLayout>
 
@@ -159,21 +159,21 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            android:layout_marginBottom="@dimen/spacing_md"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="电量信息"
-                    android:textSize="16sp"
+                    android:text="@string/detail_section_level_info"
+                    android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
                     android:textColor="?attr/baColorPrimaryText" />
 
@@ -181,91 +181,91 @@
                     android:id="@+id/detail_start_level_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="开始电量"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_start_level"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_level_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_end_level_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="结束电量"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_end_level"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_level_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_level_change_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="电量变化"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_level_change"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_level_change_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_start_charge_counter_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="开始电量计数器"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_start_charge_counter"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_charge_counter_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_end_charge_counter_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="结束电量计数器"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_end_charge_counter"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_charge_counter_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_charge_counter_diff_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="电量计数器变化"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_charge_counter_diff"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
             </LinearLayout>
 
@@ -274,21 +274,21 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            android:layout_marginBottom="@dimen/spacing_md"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="温度信息"
-                    android:textSize="16sp"
+                    android:text="@string/detail_section_temperature_info"
+                    android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
                     android:textColor="?attr/baColorPrimaryText" />
 
@@ -296,31 +296,31 @@
                     android:id="@+id/detail_max_temp_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="最高温度"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_max_temperature"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_max_temp_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_min_temp_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="最低温度"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_min_temperature"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_min_temp_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
             </LinearLayout>
 
@@ -329,21 +329,21 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            android:layout_marginBottom="@dimen/spacing_md"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="屏幕信息"
-                    android:textSize="16sp"
+                    android:text="@string/detail_section_screen_info"
+                    android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
                     android:textColor="?attr/baColorPrimaryText" />
 
@@ -351,32 +351,32 @@
                     android:id="@+id/detail_screen_on_duration_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="屏幕开启时长"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_screen_on_duration"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_screen_on_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
 
                 <TextView
                     android:id="@+id/detail_screen_on_charge_counter_diff_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="屏幕开启电量变化(±mAh)"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_screen_on_counter_diff"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_screen_on_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
             </LinearLayout>
 
@@ -385,21 +385,21 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            android:layout_marginBottom="@dimen/spacing_md"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Doze信息"
-                    android:textSize="16sp"
+                    android:text="@string/detail_section_doze_info"
+                    android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
                     android:textColor="?attr/baColorPrimaryText" />
 
@@ -407,31 +407,31 @@
                     android:id="@+id/detail_doze_duration_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Doze时长"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_doze_duration"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_doze_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_doze_charge_counter_diff_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Doze使用电量"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_doze_counter_diff"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_doze_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
             </LinearLayout>
 
@@ -440,21 +440,21 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            android:layout_marginBottom="@dimen/spacing_md"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="息屏非Doze信息"
-                    android:textSize="16sp"
+                    android:text="@string/detail_section_nondoze_info"
+                    android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
                     android:textColor="?attr/baColorPrimaryText" />
 
@@ -462,31 +462,31 @@
                     android:id="@+id/detail_nondoze_duration_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="息屏非Doze时长"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_nondoze_duration"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_nondoze_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_nondoze_charge_counter_diff_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="息屏非Doze电量变化(±mAh)"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_nondoze_counter_diff"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_nondoze_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
             </LinearLayout>
 
@@ -495,21 +495,21 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="2dp">
+            android:layout_marginBottom="@dimen/spacing_md"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="容量和周期信息"
-                    android:textSize="16sp"
+                    android:text="@string/detail_section_capacity_cycle"
+                    android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
                     android:textColor="?attr/baColorPrimaryText" />
 
@@ -517,31 +517,31 @@
                     android:id="@+id/detail_estimated_capacity_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="估计容量"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_estimated_capacity"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_estimated_capacity_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
                 <TextView
                     android:id="@+id/detail_cycle_count_text_label"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="周期计数"
-                    android:textSize="14sp"
+                    android:layout_marginTop="@dimen/spacing_sm"
+                    android:text="@string/detail_label_cycle_count"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_cycle_count_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="14sp" />
+                    android:textSize="@dimen/text_size_body" />
 
             </LinearLayout>
 

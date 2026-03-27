@@ -25,6 +25,7 @@
                     android:id="@+id/stats_period_toggle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:contentDescription="@string/a11y_stats_period_toggle"
                     android:layout_gravity="center"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="16dp"
@@ -56,7 +57,8 @@
                 <com.github.mikephil.charting.charts.BarChart
                     android:id="@+id/stats_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="240dp"
+                    android:layout_height="@dimen/stats_chart_height"
+                    android:contentDescription="@string/a11y_stats_bar_chart"
                     android:layout_marginBottom="16dp" />
 
                 
@@ -70,7 +72,7 @@
                     android:textSize="14sp"
                     android:layout_marginBottom="12dp" />
 
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/detail_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -157,12 +159,12 @@
                             android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
 
                 <com.upo.batteryassistant.ui.StrokeTextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="容量散点图（estimated_capacity）"
+                    android:text="@string/stats_capacity_chart_title"
                     android:textColor="?attr/baColorStatsPrimaryText"
                     android:textSize="16sp"
                     android:textStyle="bold"
@@ -173,6 +175,7 @@
                     android:id="@+id/capacity_range_toggle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:contentDescription="@string/a11y_stats_capacity_toggle"
                     android:layout_marginBottom="8dp"
                     app:singleSelection="true">
 
@@ -181,28 +184,29 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="最近3个月" />
+                        android:text="@string/stats_capacity_range_3m" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_capacity_12m"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="最近12个月" />
+                        android:text="@string/stats_capacity_range_12m" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_capacity_all"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="全部时间" />
+                        android:text="@string/stats_capacity_range_all" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
                 <com.github.mikephil.charting.charts.ScatterChart
                     android:id="@+id/capacity_scatter_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="260dp"
+                    android:layout_height="@dimen/stats_capacity_chart_height"
+                    android:contentDescription="@string/a11y_stats_capacity_chart"
                     android:layout_marginBottom="8dp" />
 
                 <com.upo.batteryassistant.ui.StrokeTextView
@@ -218,6 +222,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
+                    android:contentDescription="@string/a11y_view_charge_history"
                     android:text="@string/btn_charge_history"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 

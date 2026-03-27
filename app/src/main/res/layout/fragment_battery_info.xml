@@ -4,7 +4,7 @@
     android:id="@+id/scroll_view"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
+    android:padding="@dimen/spacing_lg"
     android:paddingTop="0dp"
     android:fitsSystemWindows="false">
 
@@ -12,37 +12,37 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingTop="16dp">
+        android:paddingTop="@dimen/spacing_lg">
 
         <!-- 标题 -->
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="电池信息"
-            android:textSize="24sp"
+            android:text="@string/battery_info_title"
+            android:textSize="@dimen/text_size_display"
             android:textStyle="bold"
-            android:paddingTop="16dp"
-            android:paddingBottom="24dp" />
+            android:paddingTop="@dimen/spacing_lg"
+            android:paddingBottom="@dimen/spacing_xl" />
 
         <!-- 电量卡片 -->
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp">
+            android:layout_marginBottom="@dimen/spacing_lg"
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="电量"
-                    android:textSize="14sp"
+                    android:text="@string/battery_info_level_label"
+                    android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorSecondaryText"
                     android:alpha="0.6" />
 
@@ -51,9 +51,9 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="--"
-                    android:textSize="32sp"
+                    android:textSize="@dimen/text_size_hero"
                     android:textStyle="bold"
-                    android:paddingTop="8dp" />
+                    android:paddingTop="@dimen/spacing_sm" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
@@ -61,43 +61,43 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:cardCornerRadius="8dp"
-            app:cardElevation="4dp">
+            app:cardCornerRadius="@dimen/spacing_sm"
+            app:cardElevation="@dimen/spacing_xs">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:padding="@dimen/spacing_lg">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="详细信息"
-                    android:textSize="18sp"
+                    android:text="@string/battery_info_detail_title"
+                    android:textSize="@dimen/text_size_title"
                     android:textStyle="bold"
-                    android:paddingBottom="16dp" />
+                    android:paddingBottom="@dimen/spacing_lg" />
 
                 <!-- 充电状态 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="充电状态"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_status_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_status"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -112,21 +112,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="电压"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_voltage_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_voltage"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -141,21 +141,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="温度"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_temperature_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_temperature"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -170,21 +170,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="电流"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_current_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_current"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -199,21 +199,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="平均电流"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_current_average_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_current_average"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -228,21 +228,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="健康度"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_health_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_health"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -257,21 +257,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="健康状态"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_health_api_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_health_api"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -286,21 +286,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="插电方式"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_plugged_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_plugged"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -315,21 +315,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="剩余充电时间"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_charge_time_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_charge_time"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -344,21 +344,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="充电计数器"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_charge_counter_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_charge_counter"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -373,21 +373,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="循环次数"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_cycle_count_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_cycle_count"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -402,21 +402,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="满电容量"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_full_capacity_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_full_capacity"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 
@@ -431,21 +431,21 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="horizontal"
-                    android:paddingVertical="8dp">
+                    android:paddingVertical="@dimen/spacing_sm">
 
                     <TextView
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="设计容量"
-                        android:textSize="14sp" />
+                        android:text="@string/battery_info_design_capacity_label"
+                        android:textSize="@dimen/text_size_body" />
 
                     <TextView
                         android:id="@+id/tv_design_capacity"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
-                        android:textSize="14sp"
+                        android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
 

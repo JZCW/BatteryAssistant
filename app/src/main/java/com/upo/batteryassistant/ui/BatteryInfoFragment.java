@@ -110,9 +110,9 @@ public class BatteryInfoFragment extends Fragment {
             public void run() {
                 // 电量百分比
                 if (info.getLevel() != -1) {
-                    tvLevel.setText(String.format("%d%%", info.getLevel()));
+                    tvLevel.setText(getString(R.string.battery_percent_value, info.getLevel()));
                 } else {
-                    tvLevel.setText("不可用");
+                    tvLevel.setText(R.string.common_unavailable);
                 }
 
                 // 充电状态
@@ -120,30 +120,30 @@ public class BatteryInfoFragment extends Fragment {
 
                 // 电压
                 if (info.getVoltage() != -1) {
-                    tvVoltage.setText(String.format("%.2f V", info.getVoltageVolts()));
+                    tvVoltage.setText(getString(R.string.battery_voltage_value, info.getVoltageVolts()));
                 } else {
-                    tvVoltage.setText("不可用");
+                    tvVoltage.setText(R.string.common_unavailable);
                 }
 
                 // 温度
                 if (info.getTemperature() != -1) {
-                    tvTemperature.setText(String.format("%.1f °C", info.getTemperatureCelsius()));
+                    tvTemperature.setText(getString(R.string.battery_temperature_value, info.getTemperatureCelsius()));
                 } else {
-                    tvTemperature.setText("不可用");
+                    tvTemperature.setText(R.string.common_unavailable);
                 }
 
                 // 电流（微安转毫安）
                 if (info.getCurrent() != Integer.MIN_VALUE) {
-                    tvCurrent.setText(String.format("%d mA", info.getCurrent()));
+                    tvCurrent.setText(getString(R.string.battery_current_value, info.getCurrent()));
                 } else {
-                    tvCurrent.setText("不可用");
+                    tvCurrent.setText(R.string.common_unavailable);
                 }
 
                 // 健康度
                 if (info.getHealth() != -1) {
-                    tvHealth.setText(String.format("%d", info.getHealth()));
+                    tvHealth.setText(getString(R.string.battery_int_value, info.getHealth()));
                 } else {
-                    tvHealth.setText("不可用");
+                    tvHealth.setText(R.string.common_unavailable);
                 }
 
                 // 健康状态
@@ -154,9 +154,9 @@ public class BatteryInfoFragment extends Fragment {
 
                 // 平均电流
                 if (info.getCurrentAverage() != Integer.MIN_VALUE) {
-                    tvCurrentAverage.setText(String.format("%d mA", info.getCurrentAverage()));
+                    tvCurrentAverage.setText(getString(R.string.battery_current_value, info.getCurrentAverage()));
                 } else {
-                    tvCurrentAverage.setText("不可用");
+                    tvCurrentAverage.setText(R.string.common_unavailable);
                 }
 
                 // 剩余充电时间
@@ -164,31 +164,39 @@ public class BatteryInfoFragment extends Fragment {
 
                 // 充电计数器
                 if (info.getChargeCounter() != -1) {
-                    tvChargeCounter.setText(String.format("%d mAh", info.getChargeCounter()));
+                    tvChargeCounter.setText(getString(R.string.battery_charge_counter_value, info.getChargeCounter()));
                 } else {
-                    tvChargeCounter.setText("不可用");
+                    tvChargeCounter.setText(R.string.common_unavailable);
                 }
 
                 // 循环次数
                 if (info.getCycleCount() != -1) {
-                    tvCycleCount.setText(String.format("%d 次", info.getCycleCount()));
+                    tvCycleCount.setText(getString(R.string.battery_cycle_count_value, info.getCycleCount()));
                 } else {
-                    tvCycleCount.setText("不可用");
+                    tvCycleCount.setText(R.string.common_unavailable);
                 }
 
                 // 满电容量
                 if (info.getFullCapacity() != -1) {
-                    tvFullCapacity.setText(String.format("%d mAh", info.getFullCapacity()));
+                    tvFullCapacity.setText(getString(R.string.battery_charge_counter_value, info.getFullCapacity()));
                 } else {
-                    tvFullCapacity.setText("不可用");
+                    tvFullCapacity.setText(R.string.common_unavailable);
                 }
 
                 // 设计容量
                 if (info.getDesignCapacity() != -1) {
-                    tvDesignCapacity.setText(String.format("%d mAh", info.getDesignCapacity()));
+                    tvDesignCapacity.setText(getString(R.string.battery_charge_counter_value, info.getDesignCapacity()));
                 } else {
-                    tvDesignCapacity.setText("不可用");
+                    tvDesignCapacity.setText(R.string.common_unavailable);
                 }
+
+                // 同步更新关键字段可访问性描述，确保读屏可读到当前值
+                tvLevel.setContentDescription(getString(R.string.a11y_battery_level, tvLevel.getText()));
+                tvStatus.setContentDescription(getString(R.string.a11y_battery_status, tvStatus.getText()));
+                tvVoltage.setContentDescription(getString(R.string.a11y_battery_voltage, tvVoltage.getText()));
+                tvTemperature.setContentDescription(getString(R.string.a11y_battery_temperature, tvTemperature.getText()));
+                tvCurrent.setContentDescription(getString(R.string.a11y_battery_current, tvCurrent.getText()));
+                tvHealth.setContentDescription(getString(R.string.a11y_battery_health, tvHealth.getText()));
             }
         });
     }

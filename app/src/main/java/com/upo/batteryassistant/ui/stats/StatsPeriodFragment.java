@@ -505,7 +505,7 @@ public class StatsPeriodFragment extends Fragment {
                 String date = dayFormat.format(new java.util.Date((long) e.getX()));
                 int cap = (int) e.getY();
                 if (capacityDetailText != null) {
-                    capacityDetailText.setText(date + "  估计容量: " + cap + " mAh");
+                    capacityDetailText.setText(getString(R.string.stats_capacity_detail, date, cap));
                 }
             }
 

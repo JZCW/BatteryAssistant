@@ -3,21 +3,22 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
-    app:cardCornerRadius="8dp"
+    android:layout_margin="@dimen/spacing_sm"
+    android:minHeight="@dimen/list_item_min_height"
+    app:cardCornerRadius="@dimen/spacing_sm"
     app:cardElevation="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="12dp">
+        android:padding="@dimen/spacing_md">
 
         <TextView
             android:id="@+id/type_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="18sp"
+            android:textSize="@dimen/text_size_title"
             android:textStyle="bold"
             android:textColor="?attr/baColorPrimaryText" />
 
@@ -25,44 +26,45 @@
             android:id="@+id/time_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="14sp"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:textSize="@dimen/text_size_body"
             android:textColor="?attr/baColorSecondaryText" />
 
         <TextView
             android:id="@+id/duration_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="14sp" />
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:textSize="@dimen/text_size_body" />
 
         <TextView
             android:id="@+id/level_change_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="14sp" />
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:textSize="@dimen/text_size_body" />
 
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginTop="@dimen/spacing_sm"
+            android:layout_marginBottom="@dimen/spacing_sm"
+            android:importantForAccessibility="no"
             android:background="?android:attr/listDivider" />
 
         <TextView
             android:id="@+id/start_info_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="12sp"
+            android:textSize="@dimen/text_size_caption"
             android:textColor="?attr/baColorSecondaryText" />
 
         <TextView
             android:id="@+id/end_info_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:textSize="12sp"
+            android:layout_marginTop="@dimen/spacing_xs"
+            android:textSize="@dimen/text_size_caption"
             android:textColor="?attr/baColorSecondaryText" />
 
     </LinearLayout>
