@@ -162,7 +162,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
         List<ChargeSession> sessions = new ArrayList<>();
 
         String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
-                      " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC" +
+                      " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_ID + " DESC" +
                       " LIMIT ? OFFSET ?";
 
         Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(limit), String.valueOf(offset)});
@@ -185,7 +185,7 @@ public class BatteryDatabaseHelper extends SQLiteOpenHelper {
 
         String query = "SELECT * FROM " + DatabaseContract.ChargeSessionEntry.TABLE_NAME +
                       " WHERE " + DatabaseContract.ChargeSessionEntry.COLUMN_IS_ONGOING + " = 1" +
-                      " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_START_TIMESTAMP + " DESC";
+                      " ORDER BY " + DatabaseContract.ChargeSessionEntry.COLUMN_ID + " DESC";
 
         Cursor cursor = db.rawQuery(query, null);
 
