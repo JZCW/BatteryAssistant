@@ -71,7 +71,7 @@ public class ChargeHistoryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        loadMoreData();
+        reloadFirstPage(true);
     }
 
     @Override
@@ -125,6 +125,10 @@ public class ChargeHistoryFragment extends Fragment {
     }
 
     private void onSwipeRefresh() {
+        reloadFirstPage(true);
+    }
+
+    private void reloadFirstPage(boolean forcePersist) {
         if (isLoading) return;
         isLoading = true;
         if (swipeRefreshLayout != null && !swipeRefreshLayout.isRefreshing()) {
@@ -132,8 +136,10 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
-            Log.d("ChargeHistoryFragment", "Swipe refreshing with fresh query");
-            List<ChargeSession> sessions = historyManager.getSessionsFresh(0, PAGE_SIZE);
+            if (forcePersist) {
+                historyManager.forcePersistNowSync();
+            }
+            List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);
 
             mainHandler.post(() -> {
                 adapter.setItems(sessions);
@@ -177,7 +183,6 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
-            historyManager.forcePersistNowSync();
             ChargeSession targetSession = historyManager.getLastSessionEndBefore(endOfDayMillis);
             if (targetSession == null) {
                 mainHandler.post(() -> {
@@ -233,7 +238,7 @@ public class ChargeHistoryFragment extends Fragment {
 
         new Thread(() -> {
             int offset = currentOffsetStart + adapter.getItemCount();
-            List<ChargeSession> sessions = historyManager.getSessionsFresh(offset, PAGE_SIZE);
+            List<ChargeSession> sessions = historyManager.getSessions(offset, PAGE_SIZE);
 
             if (sessions.isEmpty()) {
                 hasMore = false;

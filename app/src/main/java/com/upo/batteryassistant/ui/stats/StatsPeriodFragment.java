@@ -88,6 +88,7 @@ public class StatsPeriodFragment extends Fragment {
     private final List<StatsEntry> chartOrderedEntries = new ArrayList<>();
     private boolean isLoading = false;
     private boolean pendingReload = false;
+    private boolean pendingReloadForcePersist = false;
     private boolean isViewReady = false;
     private int highlightedIndex = -1;
     private boolean suppressSelectionCallback = false;
@@ -115,7 +116,7 @@ public class StatsPeriodFragment extends Fragment {
         if (swipeHelper != null) {
             swipeHelper.showRefreshing(true);
         }
-        refreshData();
+        refreshData(false);
     }
 
     @Override
@@ -192,11 +193,21 @@ public class StatsPeriodFragment extends Fragment {
                     .commit();
             });
         }
-        swipeHelper.setOnRefreshListener(this::refreshData);
+        swipeHelper.setOnRefreshListener(() -> refreshData(true));
 
         isViewReady = true;
-        swipeHelper.showRefreshing(true);
-        refreshData();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (!isViewReady) {
+            return;
+        }
+        if (swipeHelper != null) {
+            swipeHelper.showRefreshing(true);
+        }
+        refreshData(true);
     }
 
     @Override
@@ -280,26 +291,31 @@ public class StatsPeriodFragment extends Fragment {
         statsChart.getLegend().setEnabled(false);
     }
 
-    private void refreshData() {
+    private void refreshData(boolean forcePersist) {
         if (!isViewReady) {
             return;
         }
         if (isLoading) {
             pendingReload = true;
+            pendingReloadForcePersist = pendingReloadForcePersist || forcePersist;
             return;
         }
         pendingReload = false;
+        pendingReloadForcePersist = false;
         isLoading = true;
-        loadStatsWithPersist();
+        loadStats(forcePersist);
     }
 
-    private void loadStatsWithPersist() {
+    private void loadStats(boolean forcePersist) {
         new Thread(() -> {
-            loadStats();
+            loadStatsInternal(forcePersist);
         }).start();
     }
 
-    private void loadStats() {
+    private void loadStatsInternal(boolean forcePersist) {
+        if (forcePersist) {
+            historyManager.forcePersistNowSync();
+        }
         final StatsPeriodType targetPeriod = periodType;
         final int limit = getMaxEntryCount(targetPeriod);
         List<StatsEntry> entries = queryStats(targetPeriod, 0, limit);
@@ -322,14 +338,14 @@ public class StatsPeriodFragment extends Fragment {
         List<StatsEntry> result = new ArrayList<>();
         switch (targetPeriod) {
             case WEEKLY:
-                List<DailyStats> weeklyStats = historyManager.getWeeklyStatsFresh(offset, limit);
+                List<DailyStats> weeklyStats = historyManager.getWeeklyStats(offset, limit);
                 for (DailyStats stat : weeklyStats) {
                     String desc = getString(R.string.stats_period_week_desc, stat.getDate());
                     result.add(buildEntry(stat, desc));
                 }
                 break;
             case MONTHLY:
-                List<DailyStats> monthlyStats = historyManager.getMonthlyStatsFresh(offset, limit);
+                List<DailyStats> monthlyStats = historyManager.getMonthlyStats(offset, limit);
                 for (DailyStats stat : monthlyStats) {
                     String desc = getString(R.string.stats_period_month_desc, stat.getDate());
                     result.add(buildEntry(stat, desc));
@@ -337,7 +353,7 @@ public class StatsPeriodFragment extends Fragment {
                 break;
             case DAILY:
             default:
-                List<DailyStats> dailyStats = historyManager.getDailyStatsFresh(offset, limit);
+                List<DailyStats> dailyStats = historyManager.getDailyStats(offset, limit);
                 for (DailyStats stat : dailyStats) {
                     String desc = getString(R.string.stats_period_daily_desc, stat.getDate());
                     result.add(buildEntry(stat, desc));
@@ -363,8 +379,10 @@ public class StatsPeriodFragment extends Fragment {
                 swipeHelper.showRefreshing(false);
             }
             if (pendingReload) {
+                boolean forcePersist = pendingReloadForcePersist;
                 pendingReload = false;
-                refreshData();
+                pendingReloadForcePersist = false;
+                refreshData(forcePersist);
             }
             return;
         }
@@ -377,8 +395,10 @@ public class StatsPeriodFragment extends Fragment {
         updateChart();
 
         if (pendingReload) {
+            boolean forcePersist = pendingReloadForcePersist;
             pendingReload = false;
-            refreshData();
+            pendingReloadForcePersist = false;
+            refreshData(forcePersist);
         }
     }
 
