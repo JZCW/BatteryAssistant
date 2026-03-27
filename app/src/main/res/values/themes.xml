@@ -152,7 +152,7 @@
     </style>
 
     <style name="Theme.BatteryAssistant.EinkDark" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <item name="baColorBrand">@color/white</item>
+        <item name="baColorBrand">@color/black</item>
         <item name="baColorBrandVariant">@color/white</item>
         <item name="baColorOnBrand">@color/black</item>
         <item name="baColorSupport">@color/white</item>
