@@ -2,18 +2,11 @@ package com.upo.batteryassistant.ui;
 
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.WindowInsets;
-import android.view.WindowInsetsController;
-import android.view.WindowManager;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import com.google.android.material.tabs.TabLayout;
 import com.upo.batteryassistant.R;
@@ -37,9 +30,6 @@ public class MainActivity extends AppCompatActivity {
         ThemeHelper.applySavedTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        // 设置沉浸式布局
-        setupImmersiveLayout();
 
         // 初始化电池信息管理器
         batteryInfoManager = BatteryInfoManager.getInstance(this);
@@ -152,57 +142,6 @@ public class MainActivity extends AppCompatActivity {
             startService(serviceIntent);
         }
     }
-
-    /**
-     * 设置沉浸式布局
-     */
-    private void setupImmersiveLayout() {
-        WindowInsetsController controller = getWindow().getInsetsController();
-        if (controller != null) {
-            controller.setSystemBarsAppearance(
-                0, // 浅色字
-                WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
-            );
-            // 处理WindowInsets，确保整个Activity内容适应状态栏和导航栏
-            controller.setSystemBarsBehavior(
-                WindowInsetsController.BEHAVIOR_DEFAULT
-            );
-        }
-
-        // 设置WindowInsets监听器
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (v, insets) -> {
-            // 让内容延伸到系统栏下方
-            ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.fragment_container), (view, windowInsets) -> {
-                // 获取系统栏的insets
-                Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                
-                // 设置padding以避免内容被系统栏遮挡
-                view.setPadding(
-                    systemBars.left,
-                    systemBars.top,
-                    systemBars.right,
-                    0  // 底部不需要padding，因为TabLayout在底部
-                );
-                
-                return windowInsets;
-            });
-            
-            // 为TabLayout设置底部padding，避开导航栏
-            ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.tab_layout), (view, windowInsets) -> {
-                Insets systemBars = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
-                view.setPadding(
-                    view.getPaddingLeft(),
-                    view.getPaddingTop(),
-                    view.getPaddingRight(),
-                    systemBars.bottom
-                );
-                return windowInsets;
-            });
-            
-            return insets;
-        });
-    }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
