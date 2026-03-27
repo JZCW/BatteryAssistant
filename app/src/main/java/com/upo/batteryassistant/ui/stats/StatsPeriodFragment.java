@@ -413,7 +413,12 @@ public class StatsPeriodFragment extends Fragment {
 
         List<BarEntry> chartEntries = new ArrayList<>();
         for (int i = 0; i < chartOrderedEntries.size(); i++) {
-            chartEntries.add(new BarEntry(i, chartOrderedEntries.get(i).getTotalLevelChange()));
+            int levelChange = chartOrderedEntries.get(i).getTotalLevelChange();
+            if (levelChange > 0) { // 仅展示正值柱
+                chartEntries.add(new BarEntry(i, levelChange));
+            } else {
+                chartEntries.add(new BarEntry(i, 0f));
+            }
         }
         BarDataSet dataSet = new BarDataSet(chartEntries, getString(R.string.stats_chart_dataset_label));
         int accentColor = ContextCompat.getColor(requireContext(), R.color.stats_accent);
