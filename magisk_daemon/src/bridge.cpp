@@ -12,6 +12,7 @@
 #include <sys/file.h>
 
 static const char* PID_FILE = "/data/local/tmp/batteryProxy.pid";
+static const char* DAEMON_BINARY = "/data/adb/modules/batteryAssistant/batteryAssistant";
 static int g_pidFileFd = -1;
 
 volatile sig_atomic_t g_running = 1;
@@ -193,7 +194,7 @@ int main(int argc, char* argv[]) {
     
     try {
         // 创建代理
-        SocketProxy proxy(appSocketPath, daemonSocketName);
+        SocketProxy proxy(appSocketPath, daemonSocketName, DAEMON_BINARY);
         
         // 启动代理
         if (!proxy.start()) {
