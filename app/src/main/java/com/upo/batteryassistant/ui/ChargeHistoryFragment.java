@@ -75,7 +75,7 @@ public class ChargeHistoryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        loadMoreData();
+        reloadFirstPage(true);
     }
 
     @Override
@@ -129,6 +129,10 @@ public class ChargeHistoryFragment extends Fragment {
     }
 
     private void onSwipeRefresh() {
+        reloadFirstPage(true);
+    }
+
+    private void reloadFirstPage(boolean forcePersist) {
         if (isLoading) return;
         isLoading = true;
         if (swipeRefreshLayout != null && !swipeRefreshLayout.isRefreshing()) {
@@ -136,30 +140,20 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
-            try {
-                Log.d("ChargeHistoryFragment", "Swipe refreshing with fresh query");
-                List<ChargeSession> sessions = historyManager.getSessionsFresh(0, PAGE_SIZE);
-
-                mainHandler.post(() -> {
-                    adapter.setItems(sessions);
-                    currentOffsetStart = 0;
-                    hasMore = sessions.size() >= PAGE_SIZE;
-                    isLoading = false;
-                    updateEmptyState();
-                    if (swipeRefreshLayout != null) {
-                        swipeRefreshLayout.setRefreshing(false);
-                    }
-                });
-            } catch (Exception e) {
-                Log.e("ChargeHistoryFragment", "Failed to refresh history", e);
-                mainHandler.post(() -> {
-                    isLoading = false;
-                    if (swipeRefreshLayout != null) {
-                        swipeRefreshLayout.setRefreshing(false);
-                    }
-                    Toast.makeText(requireContext(), R.string.charge_history_load_failed, Toast.LENGTH_SHORT).show();
-                });
+            if (forcePersist) {
+                historyManager.forcePersistNowSync();
             }
+            List<ChargeSession> sessions = historyManager.getSessions(0, PAGE_SIZE);
+
+            mainHandler.post(() -> {
+                adapter.setItems(sessions);
+                currentOffsetStart = 0;
+                hasMore = sessions.size() >= PAGE_SIZE;
+                isLoading = false;
+                if (swipeRefreshLayout != null) {
+                    swipeRefreshLayout.setRefreshing(false);
+                }
+            });
         }).start();
     }
 
@@ -193,7 +187,6 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
-            historyManager.forcePersistNowSync();
             ChargeSession targetSession = historyManager.getLastSessionEndBefore(endOfDayMillis);
             if (targetSession == null) {
                 mainHandler.post(() -> {
@@ -249,29 +242,20 @@ public class ChargeHistoryFragment extends Fragment {
         isLoading = true;
 
         new Thread(() -> {
-            try {
-                int offset = currentOffsetStart + adapter.getItemCount();
-                List<ChargeSession> sessions = historyManager.getSessionsFresh(offset, PAGE_SIZE);
+            int offset = currentOffsetStart + adapter.getItemCount();
+            List<ChargeSession> sessions = historyManager.getSessions(offset, PAGE_SIZE);
 
-                if (sessions.isEmpty()) {
+            if (sessions.isEmpty()) {
+                hasMore = false;
+            }
+
+            mainHandler.post(() -> {
+                adapter.addItems(sessions);
+                isLoading = false;
+                if (sessions.size() < PAGE_SIZE) {
                     hasMore = false;
                 }
-
-                mainHandler.post(() -> {
-                    adapter.addItems(sessions);
-                    isLoading = false;
-                    if (sessions.size() < PAGE_SIZE) {
-                        hasMore = false;
-                    }
-                    updateEmptyState();
-                });
-            } catch (Exception e) {
-                Log.e("ChargeHistoryFragment", "Failed to load history page", e);
-                mainHandler.post(() -> {
-                    isLoading = false;
-                    Toast.makeText(requireContext(), R.string.charge_history_load_failed, Toast.LENGTH_SHORT).show();
-                });
-            }
+            });
         }).start();
     }
 
