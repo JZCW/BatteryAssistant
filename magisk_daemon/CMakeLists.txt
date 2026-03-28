@@ -113,4 +113,5 @@ add_custom_target(distclean
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/Makefile
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/batteryAssistant
     COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/batteryAssistant_debug
+    COMMAND ${CMAKE_COMMAND} -E remove ${CMAKE_BINARY_DIR}/batteryProxy
 )
