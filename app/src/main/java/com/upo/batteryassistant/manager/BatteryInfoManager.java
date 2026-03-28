@@ -57,6 +57,14 @@ public class BatteryInfoManager {
         // ========== Magisk Service 高级信息填充 ==========
         // fillAdvancedInfoIfRootAvailable(info);
 
+        new Thread(() -> {
+            try {
+                serviceConnector.testConnection(); // 保持连接活跃（在子线程中执行，以免阻塞UI）
+            } catch (Exception ignored) {
+                // 忽略任何测试连接时抛出的异常
+            }
+        }).start();
+
         cache = info;
         return info;
     }
@@ -194,6 +202,16 @@ public class BatteryInfoManager {
         return false;
     }
     
+    /**
+     * 确保 bridge 守护进程已启动
+     * 无 root 环境会静默跳过
+     */
+    public void ensureBridgeStarted() {
+        if (serviceConnector != null) {
+            serviceConnector.ensureBridgeStarted();
+        }
+    }
+
     /**
      * 设置充电限制
      */

@@ -57,6 +57,48 @@ public class BatteryServiceConnector {
     }
     
     /**
+     * 确保 bridge 进程已启动（用于服务保活守护）
+     * 只启动 socket server 和 proxy，不等待连接测试
+     * 如果 proxy 可执行文件不存在（无 root 环境），静默跳过
+     */
+    public synchronized void ensureBridgeStarted() {
+        // 检查 proxy 可执行文件是否存在（需要 root 权限才能访问该路径）
+        try {
+            Process checkProcess = Runtime.getRuntime().exec(new String[]{"su", "-c", "test -f " + PROXY_EXECUTABLE});
+            boolean finished = checkProcess.waitFor(CONNECT_TIMEOUT, TimeUnit.MILLISECONDS);
+            if (!finished || checkProcess.exitValue() != 0) {
+                Log.d(TAG, "Proxy executable not found or no root, skipping bridge start");
+                return;
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "Root check failed, skipping bridge start: " + e.getMessage());
+            return;
+        }
+
+        // 启动 socket server
+        int serverStatus = startSocketServer();
+        if (serverStatus == 1) {
+            Log.e(TAG, "ensureBridgeStarted: failed to start socket server");
+            stopSocketServer();
+            return;
+        }
+
+        // 启动 proxy
+        int proxyStatus = startProxy();
+        if (proxyStatus == 1) {
+            Log.e(TAG, "ensureBridgeStarted: failed to start proxy");
+            stopProxy();
+            return;
+        }
+
+        if (serverStatus == 2 && proxyStatus == 2) {
+            Log.d(TAG, "ensureBridgeStarted: bridge already running");
+        } else {
+            Log.i(TAG, "ensureBridgeStarted: bridge started successfully");
+        }
+    }
+
+    /**
      * 连接到Magic Service
      * socket服务器和proxy只启动一次
      */
@@ -389,7 +431,7 @@ public class BatteryServiceConnector {
     /**
      * 测试连接
      */
-    private boolean testConnection() {
+    public boolean testConnection() {
         try {
             // 发送轻量级测试请求
             CompletableFuture<Boolean> testResult = ping();

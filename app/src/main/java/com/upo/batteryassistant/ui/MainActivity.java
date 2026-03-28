@@ -1,7 +1,5 @@
 package com.upo.batteryassistant.ui;
 
-import android.content.Intent;
-import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowInsets;
@@ -139,12 +137,7 @@ public class MainActivity extends AppCompatActivity {
      * 启动电池监控服务
      */
     private void startBatteryMonitorService() {
-        Intent serviceIntent = new Intent(this, BatteryMonitorService.class);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent);
-        } else {
-            startService(serviceIntent);
-        }
+        BatteryMonitorService.startServiceCompat(this, BatteryMonitorService.START_SOURCE_APP);
     }
 
     /**
