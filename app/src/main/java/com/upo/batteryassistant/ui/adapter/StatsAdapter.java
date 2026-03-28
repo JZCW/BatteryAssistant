@@ -1,4 +1,4 @@
-package com.upo.batteryassistant.ui.stats;
+package com.upo.batteryassistant.ui.adapter;
 
 import android.content.res.Resources;
 import android.view.LayoutInflater;
@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.upo.batteryassistant.R;
+import com.upo.batteryassistant.ui.stats.StatsEntry;
 
 import java.util.ArrayList;
 import java.util.List;

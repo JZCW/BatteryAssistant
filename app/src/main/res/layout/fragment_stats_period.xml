@@ -63,7 +63,7 @@
 
                 
 
-                <com.upo.batteryassistant.ui.StrokeTextView
+                <com.upo.batteryassistant.ui.widget.StrokeTextView
                     android:id="@+id/detail_hint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -87,7 +87,7 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_title"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -95,7 +95,7 @@
                             android:textSize="18sp"
                             android:textStyle="bold" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_description"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -103,7 +103,7 @@
                             android:textColor="?attr/baColorStatsSecondaryText"
                             android:textSize="14sp" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_session_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -111,7 +111,7 @@
                             android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_level_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -119,7 +119,7 @@
                             android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_charge_counter"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -127,7 +127,7 @@
                             android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_estimated_capacity"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -135,7 +135,7 @@
                             android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_cycle_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -143,7 +143,7 @@
                             android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_capacity"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -151,7 +151,7 @@
                             android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <com.upo.batteryassistant.ui.StrokeTextView
+                        <com.upo.batteryassistant.ui.widget.StrokeTextView
                             android:id="@+id/detail_max_level_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
@@ -161,7 +161,7 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
-                <com.upo.batteryassistant.ui.StrokeTextView
+                <com.upo.batteryassistant.ui.widget.StrokeTextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/stats_capacity_chart_title"
@@ -209,7 +209,7 @@
                     android:contentDescription="@string/a11y_stats_capacity_chart"
                     android:layout_marginBottom="8dp" />
 
-                <com.upo.batteryassistant.ui.StrokeTextView
+                <com.upo.batteryassistant.ui.widget.StrokeTextView
                     android:id="@+id/capacity_detail_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -230,7 +230,7 @@
         </ScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <com.upo.batteryassistant.ui.StrokeTextView
+    <com.upo.batteryassistant.ui.widget.StrokeTextView
         android:id="@+id/empty_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

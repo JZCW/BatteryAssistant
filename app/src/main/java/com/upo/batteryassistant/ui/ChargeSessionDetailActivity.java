@@ -5,6 +5,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.ChargeSession;
+import com.upo.batteryassistant.ui.util.ThemeHelper;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;

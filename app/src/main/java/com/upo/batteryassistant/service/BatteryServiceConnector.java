@@ -4,6 +4,7 @@ import android.util.Log;
 import android.net.LocalSocket;
 import android.net.LocalSocketAddress;
 import android.net.LocalServerSocket;
+import com.upo.batteryassistant.data.BatteryData;
 import org.json.JSONException;
 import org.json.JSONObject;
 import java.io.DataInputStream;

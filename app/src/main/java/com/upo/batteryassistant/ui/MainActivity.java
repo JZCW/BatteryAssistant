@@ -8,6 +8,7 @@ import com.google.android.material.tabs.TabLayout;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.manager.BatteryInfoManager;
 import com.upo.batteryassistant.service.BatteryMonitorService;
+import com.upo.batteryassistant.ui.util.ThemeHelper;
 
 /**
  * 主界面Activity

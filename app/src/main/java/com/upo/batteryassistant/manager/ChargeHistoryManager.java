@@ -14,6 +14,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -154,6 +155,11 @@ public class ChargeHistoryManager {
     public List<DailyStats> getMonthlyStatsFresh(int offset, int limit) {
         forcePersistNowSync();
         return getMonthlyStats(offset, limit);
+    }
+
+    public LinkedHashMap<String, Integer> getDailyEstimatedCapacities(String startDate, String endDate) {
+        LinkedHashMap<String, Integer> capacities = runDbTask(() -> dbHelper.getDailyEstimatedCapacities(startDate, endDate));
+        return capacities == null ? new LinkedHashMap<>() : capacities;
     }
 
     /**

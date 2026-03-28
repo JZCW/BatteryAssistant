@@ -1,8 +1,6 @@
 package com.upo.batteryassistant.ui;
 
 import android.app.DatePickerDialog;
-import android.content.Intent;
-import android.graphics.Color;
 import android.util.TypedValue;
 import android.os.Bundle;
 import android.os.Handler;
@@ -23,13 +21,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import com.upo.batteryassistant.R;
+import com.upo.batteryassistant.ui.adapter.ChargeSessionAdapter;
 import com.upo.batteryassistant.data.ChargeSession;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
 
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
@@ -266,179 +263,6 @@ public class ChargeHistoryFragment extends Fragment {
         boolean empty = adapter.getItemCount() == 0;
         emptyView.setVisibility(empty ? View.VISIBLE : View.GONE);
         recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
-    }
-    
-    /**
-     * 充放电阶段适配器
-     */
-    private static class ChargeSessionAdapter extends RecyclerView.Adapter<ChargeSessionAdapter.ViewHolder> {
-        private List<ChargeSession> sessions = new ArrayList<>();
-        private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault());
-        private long highlightedSessionId = -1;
-
-        
-        @NonNull
-        @Override
-        public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_charge_session, parent, false);
-            return new ViewHolder(view);
-        }
-        
-        @Override
-        public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-            ChargeSession session = sessions.get(position);
-            holder.bind(session);
-        }
-        
-        @Override
-        public int getItemCount() {
-            return sessions.size();
-        }
-        
-        public void addItems(List<ChargeSession> newSessions) {
-            int startPosition = sessions.size();
-            sessions.addAll(newSessions);
-            notifyItemRangeInserted(startPosition, newSessions.size());
-        }
-
-        public void setItems(List<ChargeSession> newSessions) {
-            sessions.clear();
-            sessions.addAll(newSessions);
-            notifyDataSetChanged();
-        }
-
-        public void highlightSession(long sessionId) {
-            long previousSessionId = highlightedSessionId;
-            highlightedSessionId = sessionId;
-            notifyHighlightChanged(previousSessionId);
-            notifyHighlightChanged(highlightedSessionId);
-        }
-
-        public void clearHighlight() {
-            long previousSessionId = highlightedSessionId;
-            highlightedSessionId = -1;
-            notifyHighlightChanged(previousSessionId);
-        }
-
-        private void notifyHighlightChanged(long sessionId) {
-            if (sessionId < 0) {
-                return;
-            }
-            int position = findPositionById(sessionId);
-            if (position >= 0) {
-                notifyItemChanged(position);
-            }
-        }
-
-        private int findPositionById(long sessionId) {
-            for (int i = 0; i < sessions.size(); i++) {
-                if (sessions.get(i).getId() == sessionId) {
-                    return i;
-                }
-            }
-            return -1;
-        }
-        
-        class ViewHolder extends RecyclerView.ViewHolder {
-            private android.widget.TextView typeText;
-            private android.widget.TextView timeText;
-            private android.widget.TextView durationText;
-            private android.widget.TextView levelChangeText;
-            private android.widget.TextView startInfoText;
-            private android.widget.TextView endInfoText;
-            
-            ViewHolder(@NonNull View itemView) {
-                super(itemView);
-                typeText = itemView.findViewById(R.id.type_text);
-                timeText = itemView.findViewById(R.id.time_text);
-                durationText = itemView.findViewById(R.id.duration_text);
-                levelChangeText = itemView.findViewById(R.id.level_change_text);
-                startInfoText = itemView.findViewById(R.id.start_info_text);
-                endInfoText = itemView.findViewById(R.id.end_info_text);
-            }
-            
-            void bind(ChargeSession session) {
-                android.content.Context context = itemView.getContext();
-
-                // 阶段类型
-                typeText.setText(session.getSessionTypeText());
-                
-                // 开始时间
-                String startTime = dateFormat.format(new Date(session.getStartTimestamp()));
-                String endTime = dateFormat.format(new Date(session.getEndTimestamp()));
-                String timeRange = context.getString(R.string.charge_history_time_range, startTime, endTime);
-                timeText.setText(timeRange);
-                
-                // 持续时间
-                long duration = session.getEndTimestamp() - session.getStartTimestamp();
-                long hours = duration / (60 * 60 * 1000);
-                long minutes = (duration % (60 * 60 * 1000)) / (60 * 1000);
-                String durationStr;
-                if (hours > 0) {
-                    durationStr = context.getString(R.string.charge_history_duration_hours_minutes, hours, minutes);
-                } else {
-                    durationStr = context.getString(R.string.charge_history_duration_minutes, minutes);
-                }
-                String durationLabel = context.getString(R.string.charge_history_duration_label, durationStr);
-                durationText.setText(durationLabel);
-                
-                // 电量变化
-                int levelChange = session.getLevelChange();
-                String levelChangeStr = levelChange > 0 ? 
-                    String.format("+%d%%", levelChange) : 
-                    String.format("%d%%", levelChange);
-                String levelChangeLabel = context.getString(R.string.charge_history_level_change_label, levelChangeStr);
-                levelChangeText.setText(levelChangeLabel);
-                
-                // 开始状态（使用新的字段）
-                String startInfo = context.getString(R.string.charge_history_start_level, session.getStartLevel());
-                startInfoText.setText(startInfo);
-                
-                // 结束状态（使用新的字段）
-                String endInfo = context.getString(R.string.charge_history_end_info,
-                    session.getEndLevel(),
-                    session.getMaxTemperatureCelsius(),
-                    session.getMinTemperatureCelsius());
-                endInfoText.setText(endInfo);
-
-                itemView.setContentDescription(context.getString(
-                    R.string.charge_history_item_cd,
-                    session.getSessionTypeText(),
-                    timeRange,
-                    durationLabel,
-                    levelChangeLabel));
-                
-                // 点击跳转到详情页面
-                itemView.setOnClickListener(v -> {
-                    Intent intent = new Intent(itemView.getContext(), ChargeSessionDetailActivity.class);
-                    intent.putExtra(ChargeSessionDetailActivity.EXTRA_SESSION, session);
-                    itemView.getContext().startActivity(intent);
-                });
-
-                if (session.getId() == highlightedSessionId) {
-                    // 使用主题语义色，而不是硬编码橙色，便于多主题定制
-                    itemView.setBackgroundColor(resolveThemeColor(itemView, R.attr.baColorListItemHighlight));
-                } else {
-                    itemView.setBackgroundColor(Color.TRANSPARENT);
-                }
-            }
-        }
-    }
-
-    /**
-     * 从当前 View 所在的主题解析颜色属性，如果解析失败则回退为透明。
-     */
-    private static int resolveThemeColor(@NonNull View view, int attrResId) {
-        TypedValue typedValue = new TypedValue();
-        if (view.getContext().getTheme().resolveAttribute(attrResId, typedValue, true)) {
-            if (typedValue.resourceId != 0) {
-                return view.getContext().getColor(typedValue.resourceId);
-            } else {
-                return typedValue.data;
-            }
-        }
-        return Color.TRANSPARENT;
     }
 }
 

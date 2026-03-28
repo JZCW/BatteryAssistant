@@ -1,4 +1,4 @@
-package com.upo.batteryassistant.ui;
+package com.upo.batteryassistant.ui.widget;
 
 import android.content.Context;
 import android.graphics.Canvas;

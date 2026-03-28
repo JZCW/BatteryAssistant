@@ -1,4 +1,4 @@
-package com.upo.batteryassistant.service;
+package com.upo.batteryassistant.data;
 
 import org.json.JSONException;
 import org.json.JSONObject;

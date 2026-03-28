@@ -29,7 +29,6 @@ import com.github.mikephil.charting.components.YAxis;
 import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.DailyStats;
-import com.upo.batteryassistant.database.BatteryDatabaseHelper;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
@@ -80,7 +79,6 @@ public class StatsPeriodFragment extends Fragment {
     private MaterialButtonToggleGroup capacityRangeToggle;
     private MaterialButton btnCap3m, btnCap12m, btnCapAll;
     private MaterialButton btnChargeHistory;
-    private BatteryDatabaseHelper dbHelper;
     private SimpleDateFormat dayFormat = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
     private enum CapacityRange { M3, M12, ALL }
 
@@ -163,7 +161,6 @@ public class StatsPeriodFragment extends Fragment {
         btnCap12m = view.findViewById(R.id.btn_capacity_12m);
         btnCapAll = view.findViewById(R.id.btn_capacity_all);
         btnChargeHistory = view.findViewById(R.id.btn_charge_history);
-        dbHelper = new BatteryDatabaseHelper(requireContext());
 
         setupPeriodToggle();
         setupChart();
@@ -542,7 +539,7 @@ public class StatsPeriodFragment extends Fragment {
     }
 
     private void loadCapacityData(CapacityRange range) {
-        if (dbHelper == null || capacityChart == null) return;
+        if (capacityChart == null) return;
 
         String start = null;
         String end = dayFormat.format(new java.util.Date());
@@ -555,7 +552,7 @@ public class StatsPeriodFragment extends Fragment {
             start = dayFormat.format(cal.getTime());
         }
 
-        java.util.LinkedHashMap<String, Integer> map = dbHelper.getDailyEstimatedCapacities(start, range == CapacityRange.ALL ? null : end);
+        java.util.LinkedHashMap<String, Integer> map = historyManager.getDailyEstimatedCapacities(start, range == CapacityRange.ALL ? null : end);
         List<Entry> entries = new ArrayList<>();
         float minY = Float.MAX_VALUE;
         float maxY = -Float.MAX_VALUE;

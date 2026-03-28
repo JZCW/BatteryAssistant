@@ -7,9 +7,9 @@ import android.content.IntentFilter;
 import android.os.BatteryManager;
 import android.os.Handler;
 import android.os.Looper;
+import com.upo.batteryassistant.data.BatteryData;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.service.BatteryServiceConnector;
-import com.upo.batteryassistant.service.BatteryData;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
