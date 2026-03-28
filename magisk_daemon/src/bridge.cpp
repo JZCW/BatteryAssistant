@@ -22,7 +22,7 @@ void signalHandler(int signal) {
 }
 
 // 守护模式配置
-static const int WATCHDOG_INTERVAL_SEC = 10 * 60; // 10分钟
+static const int WATCHDOG_INTERVAL_SEC = 2903;    // 48'23" 一个质数
 static const int WATCHDOG_MAX_FAILURES = 3;       // 连续失败次数上限
 static const char* APP_PACKAGE = "com.upo.batteryassistant";
 static const char* APP_SERVICE = "com.upo.batteryassistant/.service.BatteryMonitorService";
