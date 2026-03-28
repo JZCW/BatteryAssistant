@@ -4,12 +4,31 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recycler_view"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="8dp"
-        android:clipToPadding="false" />
+        android:layout_height="match_parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@string/a11y_charge_history_list"
+            android:padding="@dimen/spacing_sm"
+            android:clipToPadding="false" />
+
+        <TextView
+            android:id="@+id/empty_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:contentDescription="@string/charge_history_empty_state"
+            android:gravity="center"
+            android:padding="@dimen/spacing_lg"
+            android:text="@string/charge_history_empty_state"
+            android:textColor="?attr/baColorSecondaryText"
+            android:textSize="@dimen/text_size_section"
+            android:visibility="gone" />
+    </FrameLayout>
 
 </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 

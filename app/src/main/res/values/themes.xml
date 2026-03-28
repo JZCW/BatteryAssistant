@@ -1,16 +1,195 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Theme.BatteryAssistant" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
-        <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/purple_500</item>
-        <item name="colorPrimaryVariant">@color/purple_700</item>
-        <item name="colorOnPrimary">@color/white</item>
-        <!-- Secondary brand color. -->
-        <item name="colorSecondary">@color/teal_200</item>
-        <item name="colorSecondaryVariant">@color/teal_700</item>
-        <item name="colorOnSecondary">@color/black</item>
-        <!-- Status bar color. -->
-        <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <!-- App custom semantic colors -->
+        <item name="baColorBrand">@color/purple_500</item>
+        <item name="baColorBrandVariant">@color/purple_700</item>
+        <item name="baColorOnBrand">@color/white</item>
+        <item name="baColorSupport">@color/teal_200</item>
+        <item name="baColorSupportVariant">@color/teal_700</item>
+        <item name="baColorOnSupport">@color/black</item>
+        <item name="baColorStatusBar">?attr/baColorBrand</item>
+        <item name="baColorListItemHighlight">@color/list_item_highlight</item>
+        <item name="baColorChartHighlight">@color/chart_highlight</item>
+        <item name="baColorStatsBackground">@color/stats_background</item>
+        <item name="baColorStatsCardBackground">@color/stats_card_background</item>
+        <item name="baColorStatsPrimaryText">@color/stats_primary_text</item>
+        <item name="baColorStatsSecondaryText">@color/stats_secondary_text</item>
+        <item name="baColorStatsAccent">@color/stats_accent</item>
+        <item name="baColorAppBackground">?attr/colorBackgroundFloating</item>
+        <item name="baColorSurface">?attr/colorSurface</item>
+        <item name="baColorAccent">?attr/baColorBrand</item>
+        <item name="baColorDivider">?android:textColorSecondary</item>
+        <item name="baColorPrimaryText">?android:textColorPrimary</item>
+        <item name="baColorSecondaryText">?android:textColorSecondary</item>
+        <item name="colorPrimary">?attr/baColorBrand</item>
+        <item name="colorPrimaryVariant">?attr/baColorBrandVariant</item>
+        <item name="colorOnPrimary">?attr/baColorOnBrand</item>
+        <item name="colorSecondary">?attr/baColorSupport</item>
+        <item name="colorSecondaryVariant">?attr/baColorSupportVariant</item>
+        <item name="colorOnSecondary">?attr/baColorOnSupport</item>
+        <item name="android:statusBarColor">?attr/baColorStatusBar</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="actionBarStyle">@style/Widget.BatteryAssistant.ActionBar</item>
+        <item name="baTextStrokeEnabled">false</item>
+        <item name="baTextStrokeColor">@color/white</item>
+        <item name="baTextStrokeWidth">0</item>
         <!-- Customize your theme here. -->
+    </style>
+
+    <style name="Theme.BatteryAssistant.Light" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <item name="baColorBrand">@color/purple_500</item>
+        <item name="baColorBrandVariant">@color/purple_700</item>
+        <item name="baColorOnBrand">@color/white</item>
+        <item name="baColorSupport">@color/teal_700</item>
+        <item name="baColorSupportVariant">@color/teal_700</item>
+        <item name="baColorOnSupport">@color/white</item>
+        <item name="baColorStatusBar">?attr/baColorBrand</item>
+        <item name="android:windowBackground">@color/theme_light_background</item>
+        <item name="colorSurface">@color/theme_light_surface</item>
+        <item name="colorBackgroundFloating">@color/theme_light_background</item>
+        <item name="baColorListItemHighlight">@color/list_item_highlight</item>
+        <item name="baColorChartHighlight">@color/theme_light_chart_highlight</item>
+        <item name="baColorStatsBackground">@color/theme_light_stats_background</item>
+        <item name="baColorStatsCardBackground">@color/theme_light_stats_card_background</item>
+        <item name="baColorStatsPrimaryText">@color/theme_light_primary_text</item>
+        <item name="baColorStatsSecondaryText">@color/theme_light_secondary_text</item>
+        <item name="baColorStatsAccent">@color/purple_500</item>
+        <item name="baColorAppBackground">@color/theme_light_background</item>
+        <item name="baColorSurface">@color/theme_light_surface</item>
+        <item name="baColorAccent">@color/purple_500</item>
+        <item name="baColorDivider">@color/theme_light_secondary_text</item>
+        <item name="baColorPrimaryText">@color/theme_light_primary_text</item>
+        <item name="baColorSecondaryText">@color/theme_light_secondary_text</item>
+        <item name="colorPrimary">?attr/baColorBrand</item>
+        <item name="colorPrimaryVariant">?attr/baColorBrandVariant</item>
+        <item name="colorOnPrimary">?attr/baColorOnBrand</item>
+        <item name="colorSecondary">?attr/baColorSupport</item>
+        <item name="colorSecondaryVariant">?attr/baColorSupportVariant</item>
+        <item name="colorOnSecondary">?attr/baColorOnSupport</item>
+        <item name="android:statusBarColor">?attr/baColorStatusBar</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="actionBarStyle">@style/Widget.BatteryAssistant.ActionBar</item>
+        <item name="baTextStrokeEnabled">false</item>
+        <item name="baTextStrokeColor">@color/white</item>
+        <item name="baTextStrokeWidth">0</item>
+    </style>
+
+    <style name="Theme.BatteryAssistant.Oled" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="baColorBrand">@color/black</item>
+        <item name="baColorBrandVariant">@color/black</item>
+        <item name="baColorOnBrand">@color/white</item>
+        <item name="baColorSupport">@color/teal_200</item>
+        <item name="baColorSupportVariant">@color/teal_200</item>
+        <item name="baColorOnSupport">@color/black</item>
+        <item name="baColorStatusBar">?attr/baColorBrand</item>
+        <item name="android:windowBackground">@color/theme_oled_background</item>
+        <item name="colorSurface">@color/theme_oled_surface</item>
+        <item name="colorBackgroundFloating">@color/theme_oled_background</item>
+        <item name="baColorListItemHighlight">@color/list_item_highlight</item>
+        <item name="baColorChartHighlight">@color/theme_oled_chart_highlight</item>
+        <item name="baColorStatsBackground">@color/theme_oled_stats_background</item>
+        <item name="baColorStatsCardBackground">@color/theme_oled_stats_card_background</item>
+        <item name="baColorStatsPrimaryText">@color/theme_oled_primary_text</item>
+        <item name="baColorStatsSecondaryText">@color/theme_oled_secondary_text</item>
+        <item name="baColorStatsAccent">@color/teal_200</item>
+        <item name="baColorAppBackground">@color/theme_oled_background</item>
+        <item name="baColorSurface">@color/theme_oled_surface</item>
+        <item name="baColorAccent">@color/teal_200</item>
+        <item name="baColorDivider">@color/theme_oled_secondary_text</item>
+        <item name="baColorPrimaryText">@color/theme_oled_primary_text</item>
+        <item name="baColorSecondaryText">@color/theme_oled_secondary_text</item>
+        <item name="colorPrimary">?attr/baColorBrand</item>
+        <item name="colorPrimaryVariant">?attr/baColorBrandVariant</item>
+        <item name="colorOnPrimary">?attr/baColorOnBrand</item>
+        <item name="colorSecondary">?attr/baColorSupport</item>
+        <item name="colorSecondaryVariant">?attr/baColorSupportVariant</item>
+        <item name="colorOnSecondary">?attr/baColorOnSupport</item>
+        <item name="android:statusBarColor">?attr/baColorStatusBar</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="actionBarStyle">@style/Widget.BatteryAssistant.ActionBar</item>
+        <item name="baTextStrokeEnabled">false</item>
+        <item name="baTextStrokeColor">@color/black</item>
+        <item name="baTextStrokeWidth">0</item>
+    </style>
+
+    <style name="Theme.BatteryAssistant.EinkLight" parent="Theme.MaterialComponents.Light.DarkActionBar">
+        <item name="baColorBrand">@color/black</item>
+        <item name="baColorBrandVariant">@color/black</item>
+        <item name="baColorOnBrand">@color/white</item>
+        <item name="baColorSupport">@color/black</item>
+        <item name="baColorSupportVariant">@color/black</item>
+        <item name="baColorOnSupport">@color/white</item>
+        <item name="baColorStatusBar">?attr/baColorBrand</item>
+        <item name="android:windowBackground">@color/theme_eink_light_background</item>
+        <item name="colorSurface">@color/theme_eink_light_surface</item>
+        <item name="colorBackgroundFloating">@color/theme_eink_light_background</item>
+        <item name="baColorListItemHighlight">@color/theme_eink_light_list_highlight</item>
+        <item name="baColorChartHighlight">@color/theme_eink_light_highlight</item>
+        <item name="baColorStatsBackground">@color/theme_eink_light_stats_background</item>
+        <item name="baColorStatsCardBackground">@color/theme_eink_light_stats_card_background</item>
+        <item name="baColorStatsPrimaryText">@color/theme_eink_light_primary_text</item>
+        <item name="baColorStatsSecondaryText">@color/theme_eink_light_secondary_text</item>
+        <item name="baColorStatsAccent">@color/theme_eink_light_accent</item>
+        <item name="baColorAppBackground">@color/theme_eink_light_background</item>
+        <item name="baColorSurface">@color/theme_eink_light_surface</item>
+        <item name="baColorAccent">@color/theme_eink_light_accent</item>
+        <item name="baColorDivider">@color/theme_eink_light_secondary_text</item>
+        <item name="baColorPrimaryText">@color/theme_eink_light_primary_text</item>
+        <item name="baColorSecondaryText">@color/theme_eink_light_secondary_text</item>
+        <item name="colorPrimary">?attr/baColorBrand</item>
+        <item name="colorPrimaryVariant">?attr/baColorBrandVariant</item>
+        <item name="colorOnPrimary">?attr/baColorOnBrand</item>
+        <item name="colorSecondary">?attr/baColorSupport</item>
+        <item name="colorSecondaryVariant">?attr/baColorSupportVariant</item>
+        <item name="colorOnSecondary">?attr/baColorOnSupport</item>
+        <item name="android:statusBarColor">?attr/baColorStatusBar</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="actionBarStyle">@style/Widget.BatteryAssistant.ActionBar</item>
+        <item name="baTextStrokeEnabled">true</item>
+        <item name="baTextStrokeColor">@color/theme_eink_light_stroke</item>
+        <item name="baTextStrokeWidth">1.2</item>
+    </style>
+
+    <style name="Theme.BatteryAssistant.EinkDark" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+        <item name="baColorBrand">@color/black</item>
+        <item name="baColorBrandVariant">@color/white</item>
+        <item name="baColorOnBrand">@color/black</item>
+        <item name="baColorSupport">@color/white</item>
+        <item name="baColorSupportVariant">@color/white</item>
+        <item name="baColorOnSupport">@color/black</item>
+        <item name="baColorStatusBar">?attr/baColorBrand</item>
+        <item name="android:windowBackground">@color/theme_eink_dark_background</item>
+        <item name="colorSurface">@color/theme_eink_dark_surface</item>
+        <item name="colorBackgroundFloating">@color/theme_eink_dark_background</item>
+        <item name="baColorListItemHighlight">@color/theme_eink_dark_list_highlight</item>
+        <item name="baColorChartHighlight">@color/theme_eink_dark_highlight</item>
+        <item name="baColorStatsBackground">@color/theme_eink_dark_stats_background</item>
+        <item name="baColorStatsCardBackground">@color/theme_eink_dark_stats_card_background</item>
+        <item name="baColorStatsPrimaryText">@color/theme_eink_dark_primary_text</item>
+        <item name="baColorStatsSecondaryText">@color/theme_eink_dark_secondary_text</item>
+        <item name="baColorStatsAccent">@color/theme_eink_dark_accent</item>
+        <item name="baColorAppBackground">@color/theme_eink_dark_background</item>
+        <item name="baColorSurface">@color/theme_eink_dark_surface</item>
+        <item name="baColorAccent">@color/theme_eink_dark_accent</item>
+        <item name="baColorDivider">@color/theme_eink_dark_secondary_text</item>
+        <item name="baColorPrimaryText">@color/theme_eink_dark_primary_text</item>
+        <item name="baColorSecondaryText">@color/theme_eink_dark_secondary_text</item>
+        <item name="colorPrimary">?attr/baColorBrand</item>
+        <item name="colorPrimaryVariant">?attr/baColorBrandVariant</item>
+        <item name="colorOnPrimary">?attr/baColorOnBrand</item>
+        <item name="colorSecondary">?attr/baColorSupport</item>
+        <item name="colorSecondaryVariant">?attr/baColorSupportVariant</item>
+        <item name="colorOnSecondary">?attr/baColorOnSupport</item>
+        <item name="android:statusBarColor">?attr/baColorStatusBar</item>
+        <item name="android:windowOptOutEdgeToEdgeEnforcement">true</item>
+        <item name="actionBarStyle">@style/Widget.BatteryAssistant.ActionBar</item>
+        <item name="baTextStrokeEnabled">true</item>
+        <item name="baTextStrokeColor">@color/theme_eink_dark_stroke</item>
+        <item name="baTextStrokeWidth">1.2</item>
+    </style>
+
+    <style name="Widget.BatteryAssistant.ActionBar" parent="Widget.MaterialComponents.ActionBar.Solid">
+        <item name="background">?attr/colorPrimary</item>
     </style>
 </resources>

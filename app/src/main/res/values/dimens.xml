@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="spacing_xs">4dp</dimen>
+    <dimen name="spacing_sm">8dp</dimen>
+    <dimen name="spacing_md">12dp</dimen>
+    <dimen name="spacing_lg">16dp</dimen>
+    <dimen name="spacing_xl">24dp</dimen>
+
+    <dimen name="text_size_caption">12sp</dimen>
+    <dimen name="text_size_body">14sp</dimen>
+    <dimen name="text_size_title">18sp</dimen>
+    <dimen name="text_size_section">16sp</dimen>
+    <dimen name="text_size_display">24sp</dimen>
+    <dimen name="text_size_hero">32sp</dimen>
+
+    <dimen name="min_touch_target_size">48dp</dimen>
+    <dimen name="list_item_min_height">56dp</dimen>
+
+    <dimen name="stats_chart_height">240dp</dimen>
+    <dimen name="stats_capacity_chart_height">260dp</dimen>
+</resources>

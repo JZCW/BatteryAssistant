@@ -3,6 +3,7 @@ package com.upo.batteryassistant.ui;
 import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.graphics.Color;
+import android.util.TypedValue;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +14,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -45,6 +47,7 @@ public class ChargeHistoryFragment extends Fragment {
     private static final int JUMP_WINDOW_PAGES = 3;
     private Handler mainHandler;
     private SwipeRefreshLayout swipeRefreshLayout;
+    private TextView emptyView;
     
     @Nullable
     @Override
@@ -53,6 +56,7 @@ public class ChargeHistoryFragment extends Fragment {
         
         swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
         recyclerView = view.findViewById(R.id.recycler_view);
+        emptyView = view.findViewById(R.id.empty_view);
         historyManager = ChargeHistoryManager.getInstance(requireContext());
         mainHandler = new Handler(Looper.getMainLooper());
         
@@ -132,18 +136,30 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         new Thread(() -> {
-            Log.d("ChargeHistoryFragment", "Swipe refreshing with fresh query");
-            List<ChargeSession> sessions = historyManager.getSessionsFresh(0, PAGE_SIZE);
+            try {
+                Log.d("ChargeHistoryFragment", "Swipe refreshing with fresh query");
+                List<ChargeSession> sessions = historyManager.getSessionsFresh(0, PAGE_SIZE);
 
-            mainHandler.post(() -> {
-                adapter.setItems(sessions);
-                currentOffsetStart = 0;
-                hasMore = sessions.size() >= PAGE_SIZE;
-                isLoading = false;
-                if (swipeRefreshLayout != null) {
-                    swipeRefreshLayout.setRefreshing(false);
-                }
-            });
+                mainHandler.post(() -> {
+                    adapter.setItems(sessions);
+                    currentOffsetStart = 0;
+                    hasMore = sessions.size() >= PAGE_SIZE;
+                    isLoading = false;
+                    updateEmptyState();
+                    if (swipeRefreshLayout != null) {
+                        swipeRefreshLayout.setRefreshing(false);
+                    }
+                });
+            } catch (Exception e) {
+                Log.e("ChargeHistoryFragment", "Failed to refresh history", e);
+                mainHandler.post(() -> {
+                    isLoading = false;
+                    if (swipeRefreshLayout != null) {
+                        swipeRefreshLayout.setRefreshing(false);
+                    }
+                    Toast.makeText(requireContext(), R.string.charge_history_load_failed, Toast.LENGTH_SHORT).show();
+                });
+            }
         }).start();
     }
 
@@ -211,6 +227,7 @@ public class ChargeHistoryFragment extends Fragment {
                 currentOffsetStart = windowStart;
                 hasMore = windowData.size() == windowLimit;
                 isLoading = false;
+                updateEmptyState();
                 if (swipeRefreshLayout != null) {
                     swipeRefreshLayout.setRefreshing(false);
                 }
@@ -232,21 +249,39 @@ public class ChargeHistoryFragment extends Fragment {
         isLoading = true;
 
         new Thread(() -> {
-            int offset = currentOffsetStart + adapter.getItemCount();
-            List<ChargeSession> sessions = historyManager.getSessionsFresh(offset, PAGE_SIZE);
+            try {
+                int offset = currentOffsetStart + adapter.getItemCount();
+                List<ChargeSession> sessions = historyManager.getSessionsFresh(offset, PAGE_SIZE);
 
-            if (sessions.isEmpty()) {
-                hasMore = false;
-            }
-
-            mainHandler.post(() -> {
-                adapter.addItems(sessions);
-                isLoading = false;
-                if (sessions.size() < PAGE_SIZE) {
+                if (sessions.isEmpty()) {
                     hasMore = false;
                 }
-            });
+
+                mainHandler.post(() -> {
+                    adapter.addItems(sessions);
+                    isLoading = false;
+                    if (sessions.size() < PAGE_SIZE) {
+                        hasMore = false;
+                    }
+                    updateEmptyState();
+                });
+            } catch (Exception e) {
+                Log.e("ChargeHistoryFragment", "Failed to load history page", e);
+                mainHandler.post(() -> {
+                    isLoading = false;
+                    Toast.makeText(requireContext(), R.string.charge_history_load_failed, Toast.LENGTH_SHORT).show();
+                });
+            }
         }).start();
+    }
+
+    private void updateEmptyState() {
+        if (emptyView == null || recyclerView == null || adapter == null) {
+            return;
+        }
+        boolean empty = adapter.getItemCount() == 0;
+        emptyView.setVisibility(empty ? View.VISIBLE : View.GONE);
+        recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
     }
     
     /**
@@ -290,13 +325,35 @@ public class ChargeHistoryFragment extends Fragment {
         }
 
         public void highlightSession(long sessionId) {
+            long previousSessionId = highlightedSessionId;
             highlightedSessionId = sessionId;
-            notifyDataSetChanged();
+            notifyHighlightChanged(previousSessionId);
+            notifyHighlightChanged(highlightedSessionId);
         }
 
         public void clearHighlight() {
+            long previousSessionId = highlightedSessionId;
             highlightedSessionId = -1;
-            notifyDataSetChanged();
+            notifyHighlightChanged(previousSessionId);
+        }
+
+        private void notifyHighlightChanged(long sessionId) {
+            if (sessionId < 0) {
+                return;
+            }
+            int position = findPositionById(sessionId);
+            if (position >= 0) {
+                notifyItemChanged(position);
+            }
+        }
+
+        private int findPositionById(long sessionId) {
+            for (int i = 0; i < sessions.size(); i++) {
+                if (sessions.get(i).getId() == sessionId) {
+                    return i;
+                }
+            }
+            return -1;
         }
         
         class ViewHolder extends RecyclerView.ViewHolder {
@@ -318,13 +375,16 @@ public class ChargeHistoryFragment extends Fragment {
             }
             
             void bind(ChargeSession session) {
+                android.content.Context context = itemView.getContext();
+
                 // 阶段类型
                 typeText.setText(session.getSessionTypeText());
                 
                 // 开始时间
                 String startTime = dateFormat.format(new Date(session.getStartTimestamp()));
                 String endTime = dateFormat.format(new Date(session.getEndTimestamp()));
-                timeText.setText(String.format("%s - %s", startTime, endTime));
+                String timeRange = context.getString(R.string.charge_history_time_range, startTime, endTime);
+                timeText.setText(timeRange);
                 
                 // 持续时间
                 long duration = session.getEndTimestamp() - session.getStartTimestamp();
@@ -332,29 +392,38 @@ public class ChargeHistoryFragment extends Fragment {
                 long minutes = (duration % (60 * 60 * 1000)) / (60 * 1000);
                 String durationStr;
                 if (hours > 0) {
-                    durationStr = String.format("%d小时%d分钟", hours, minutes);
+                    durationStr = context.getString(R.string.charge_history_duration_hours_minutes, hours, minutes);
                 } else {
-                    durationStr = String.format("%d分钟", minutes);
+                    durationStr = context.getString(R.string.charge_history_duration_minutes, minutes);
                 }
-                durationText.setText("持续时间: " + durationStr);
+                String durationLabel = context.getString(R.string.charge_history_duration_label, durationStr);
+                durationText.setText(durationLabel);
                 
                 // 电量变化
                 int levelChange = session.getLevelChange();
                 String levelChangeStr = levelChange > 0 ? 
                     String.format("+%d%%", levelChange) : 
                     String.format("%d%%", levelChange);
-                levelChangeText.setText("电量变化: " + levelChangeStr);
+                String levelChangeLabel = context.getString(R.string.charge_history_level_change_label, levelChangeStr);
+                levelChangeText.setText(levelChangeLabel);
                 
                 // 开始状态（使用新的字段）
-                String startInfo = String.format("开始: %d%%", session.getStartLevel());
+                String startInfo = context.getString(R.string.charge_history_start_level, session.getStartLevel());
                 startInfoText.setText(startInfo);
                 
                 // 结束状态（使用新的字段）
-                String endInfo = String.format("结束: %d%% | 最高%.1f°C | 最低%.1f°C",
+                String endInfo = context.getString(R.string.charge_history_end_info,
                     session.getEndLevel(),
                     session.getMaxTemperatureCelsius(),
                     session.getMinTemperatureCelsius());
                 endInfoText.setText(endInfo);
+
+                itemView.setContentDescription(context.getString(
+                    R.string.charge_history_item_cd,
+                    session.getSessionTypeText(),
+                    timeRange,
+                    durationLabel,
+                    levelChangeLabel));
                 
                 // 点击跳转到详情页面
                 itemView.setOnClickListener(v -> {
@@ -364,12 +433,28 @@ public class ChargeHistoryFragment extends Fragment {
                 });
 
                 if (session.getId() == highlightedSessionId) {
-                    itemView.setBackgroundColor(0x33FF9800);
+                    // 使用主题语义色，而不是硬编码橙色，便于多主题定制
+                    itemView.setBackgroundColor(resolveThemeColor(itemView, R.attr.baColorListItemHighlight));
                 } else {
                     itemView.setBackgroundColor(Color.TRANSPARENT);
                 }
             }
         }
+    }
+
+    /**
+     * 从当前 View 所在的主题解析颜色属性，如果解析失败则回退为透明。
+     */
+    private static int resolveThemeColor(@NonNull View view, int attrResId) {
+        TypedValue typedValue = new TypedValue();
+        if (view.getContext().getTheme().resolveAttribute(attrResId, typedValue, true)) {
+            if (typedValue.resourceId != 0) {
+                return view.getContext().getColor(typedValue.resourceId);
+            } else {
+                return typedValue.data;
+            }
+        }
+        return Color.TRANSPARENT;
     }
 }
 

@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 列表高亮背景色 -->
+    <attr name="baColorListItemHighlight" format="color" />
+    <!-- 图表高亮颜色 -->
+    <attr name="baColorChartHighlight" format="color" />
+
+    <!-- 统计页面背景、卡片、文字与强调色语义属性，便于多主题扩展 -->
+    <attr name="baColorStatsBackground" format="color" />
+    <attr name="baColorStatsCardBackground" format="color" />
+    <attr name="baColorStatsPrimaryText" format="color" />
+    <attr name="baColorStatsSecondaryText" format="color" />
+    <attr name="baColorStatsAccent" format="color" />
+
+    <!-- 全局品牌、表面与文本语义属性 -->
+    <attr name="baColorBrand" format="color" />
+    <attr name="baColorBrandVariant" format="color" />
+    <attr name="baColorOnBrand" format="color" />
+    <attr name="baColorSupport" format="color" />
+    <attr name="baColorSupportVariant" format="color" />
+    <attr name="baColorOnSupport" format="color" />
+    <attr name="baColorStatusBar" format="color" />
+    <attr name="baColorAppBackground" format="color" />
+    <attr name="baColorSurface" format="color" />
+    <attr name="baColorAccent" format="color" />
+    <attr name="baColorDivider" format="color" />
+    <attr name="baColorPrimaryText" format="color" />
+    <attr name="baColorSecondaryText" format="color" />
+
+    <!-- E-Ink 主题文字描边控制 -->
+    <attr name="baTextStrokeEnabled" format="boolean" />
+    <attr name="baTextStrokeColor" format="color" />
+    <attr name="baTextStrokeWidth" format="float" />
+</resources>

@@ -18,9 +18,12 @@
         android:id="@+id/tab_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?attr/colorPrimary"
+        android:background="?attr/baColorSurface"
         app:tabMode="fixed"
-        app:tabGravity="fill" />
+        app:tabGravity="fill"
+        app:tabIndicatorColor="?attr/baColorAccent"
+        app:tabSelectedTextColor="?attr/baColorPrimaryText"
+        app:tabTextColor="?attr/baColorSecondaryText" />
 
 </LinearLayout>
 

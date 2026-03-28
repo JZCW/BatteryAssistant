@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/stats_background">
+    android:background="?attr/baColorStatsBackground">
 
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
@@ -25,6 +25,7 @@
                     android:id="@+id/stats_period_toggle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:contentDescription="@string/a11y_stats_period_toggle"
                     android:layout_gravity="center"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="16dp"
@@ -56,26 +57,27 @@
                 <com.github.mikephil.charting.charts.BarChart
                     android:id="@+id/stats_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="240dp"
+                    android:layout_height="@dimen/stats_chart_height"
+                    android:contentDescription="@string/a11y_stats_bar_chart"
                     android:layout_marginBottom="16dp" />
 
                 
 
-                <TextView
+                <com.upo.batteryassistant.ui.StrokeTextView
                     android:id="@+id/detail_hint"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/stats_detail_hint"
-                    android:textColor="@color/stats_secondary_text"
+                    android:textColor="?attr/baColorStatsSecondaryText"
                     android:textSize="14sp"
                     android:layout_marginBottom="12dp" />
 
-                <androidx.cardview.widget.CardView
+                <com.google.android.material.card.MaterialCardView
                     android:id="@+id/detail_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:visibility="gone"
-                    app:cardBackgroundColor="@color/stats_card_background"
+                    app:cardBackgroundColor="?attr/baColorStatsCardBackground"
                     app:cardCornerRadius="16dp"
                     app:cardUseCompatPadding="true">
 
@@ -85,85 +87,85 @@
                         android:orientation="vertical"
                         android:padding="16dp">
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_title"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="18sp"
                             android:textStyle="bold" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_description"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:textColor="@color/stats_secondary_text"
+                            android:textColor="?attr/baColorStatsSecondaryText"
                             android:textSize="14sp" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_session_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_level_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_charge_counter"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_estimated_capacity"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_cycle_count"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_capacity"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
 
-                        <TextView
+                        <com.upo.batteryassistant.ui.StrokeTextView
                             android:id="@+id/detail_max_level_change"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="8dp"
-                            android:textColor="@color/stats_primary_text"
+                            android:textColor="?attr/baColorStatsPrimaryText"
                             android:textSize="15sp" />
                     </LinearLayout>
-                </androidx.cardview.widget.CardView>
+                </com.google.android.material.card.MaterialCardView>
 
-                <TextView
+                <com.upo.batteryassistant.ui.StrokeTextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="容量散点图（estimated_capacity）"
-                    android:textColor="@color/stats_primary_text"
+                    android:text="@string/stats_capacity_chart_title"
+                    android:textColor="?attr/baColorStatsPrimaryText"
                     android:textSize="16sp"
                     android:textStyle="bold"
                     android:layout_marginTop="16dp"
@@ -173,6 +175,7 @@
                     android:id="@+id/capacity_range_toggle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:contentDescription="@string/a11y_stats_capacity_toggle"
                     android:layout_marginBottom="8dp"
                     app:singleSelection="true">
 
@@ -181,35 +184,36 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="最近3个月" />
+                        android:text="@string/stats_capacity_range_3m" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_capacity_12m"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="最近12个月" />
+                        android:text="@string/stats_capacity_range_12m" />
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btn_capacity_all"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="全部时间" />
+                        android:text="@string/stats_capacity_range_all" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
 
                 <com.github.mikephil.charting.charts.ScatterChart
                     android:id="@+id/capacity_scatter_chart"
                     android:layout_width="match_parent"
-                    android:layout_height="260dp"
+                    android:layout_height="@dimen/stats_capacity_chart_height"
+                    android:contentDescription="@string/a11y_stats_capacity_chart"
                     android:layout_marginBottom="8dp" />
 
-                <TextView
+                <com.upo.batteryassistant.ui.StrokeTextView
                     android:id="@+id/capacity_detail_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textColor="@color/stats_secondary_text"
+                    android:textColor="?attr/baColorStatsSecondaryText"
                     android:textSize="14sp"
                     android:layout_marginBottom="16dp" />
 
@@ -218,6 +222,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
+                    android:contentDescription="@string/a11y_view_charge_history"
                     android:text="@string/btn_charge_history"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 
@@ -225,13 +230,13 @@
         </ScrollView>
     </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
-    <TextView
+    <com.upo.batteryassistant.ui.StrokeTextView
         android:id="@+id/empty_view"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:text="@string/stats_empty_state"
-        android:textColor="@color/stats_primary_text"
+        android:textColor="?attr/baColorStatsPrimaryText"
         android:textSize="16sp"
         android:visibility="gone" />
 

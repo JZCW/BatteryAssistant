@@ -20,8 +20,11 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        setTheme(ThemeHelper.getThemeResId(this));
+        ThemeHelper.applySavedTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_charge_session_detail);
+        setupActionBar();
         
         ChargeSession session = (ChargeSession) getIntent().getSerializableExtra(EXTRA_SESSION);
         if (session == null) {
@@ -30,6 +33,18 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         }
         
         setupViews(session);
+    }
+
+    private void setupActionBar() {
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        getOnBackPressedDispatcher().onBackPressed();
+        return true;
     }
     
     private void setupViews(ChargeSession session) {
@@ -52,10 +67,10 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         if (session.getPauseTimestamp() > 0) {
             pauseTimeText.setText(dateFormat.format(new Date(session.getPauseTimestamp())));
         } else {
-            pauseTimeText.setText("无");
+            pauseTimeText.setText(R.string.common_none);
         }
         
-        ongoingText.setText(session.isOngoing() ? "进行中" : "已结束");
+        ongoingText.setText(session.isOngoing() ? R.string.status_ongoing : R.string.status_completed);
         
         // 电量信息
         TextView startLevelText = findViewById(R.id.detail_start_level_text);
@@ -72,13 +87,13 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         if (session.getStartChargeCounter() >= 0) {
             startChargeCounterText.setText(session.getStartChargeCounter() + " mAh");
         } else {
-            startChargeCounterText.setText("无数据");
+            startChargeCounterText.setText(R.string.common_no_data);
         }
         
         if (session.getEndChargeCounter() >= 0) {
             endChargeCounterText.setText(session.getEndChargeCounter() + " mAh");
         } else {
-            endChargeCounterText.setText("无数据");
+            endChargeCounterText.setText(R.string.common_no_data);
         }
         
         int counterDiff = session.getChargeCounterDiff();
@@ -98,15 +113,15 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         if (session.getScreenOnDuration() >= 0) {
             screenOnDurationText.setText(formatDuration(session.getScreenOnDuration()));
         } else {
-            screenOnDurationText.setText("不可用");
+            screenOnDurationText.setText(R.string.common_unavailable);
         }
 
         if (session.getScreenOnChargeCounterDiff() >= 0) {
-            screenOnChargeCounterDiffText.setText("+" + session.getScreenOnChargeCounterDiff() + " mAh");
+            screenOnChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, session.getScreenOnChargeCounterDiff()));
         } else if (session.getScreenOnChargeCounterDiff() < 0) {
-            screenOnChargeCounterDiffText.setText(session.getScreenOnChargeCounterDiff() + " mAh");
+            screenOnChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, session.getScreenOnChargeCounterDiff()));
         } else {
-            screenOnChargeCounterDiffText.setText("不可用");
+            screenOnChargeCounterDiffText.setText(R.string.common_unavailable);
         }
         
         // Doze信息
@@ -116,15 +131,15 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         if (session.getDozeDuration() >= 0) {
             dozeDurationText.setText(formatDuration(session.getDozeDuration()));
         } else {
-            dozeDurationText.setText("不可用");
+            dozeDurationText.setText(R.string.common_unavailable);
         }
 
         if (session.getDozeChargeCounterDiff() >= 0) {
-            dozeChargeCounterDiffText.setText("+" + session.getDozeChargeCounterDiff() + " mAh");
+            dozeChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, session.getDozeChargeCounterDiff()));
         } else if (session.getDozeChargeCounterDiff() < 0) {
-            dozeChargeCounterDiffText.setText(session.getDozeChargeCounterDiff() + " mAh");
+            dozeChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, session.getDozeChargeCounterDiff()));
         } else {
-            dozeChargeCounterDiffText.setText("不可用");
+            dozeChargeCounterDiffText.setText(R.string.common_unavailable);
         }
         
         // 容量和周期信息
@@ -134,13 +149,13 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         if (session.getEstimatedCapacity() > 0) {
             estimatedCapacityText.setText(session.getEstimatedCapacity() + " mAh");
         } else {
-            estimatedCapacityText.setText("无数据");
+            estimatedCapacityText.setText(R.string.common_no_data);
         }
         
         if (session.getCycleCount() > 0) {
             cycleCountText.setText(String.valueOf(session.getCycleCount()));
         } else {
-            cycleCountText.setText("无数据");
+            cycleCountText.setText(R.string.common_no_data);
         }
         
         // 息屏非Doze信息（推断）
@@ -167,16 +182,16 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         if (nondozeDuration >= 0) {
             nondozeDurationText.setText(formatDuration(nondozeDuration));
         } else {
-            nondozeDurationText.setText("不可用");
+            nondozeDurationText.setText(R.string.common_unavailable);
         }
 
         // 显示非Doze电量变化
         if (nondozeChargeCounterDiff >= 0) {
-            nondozeChargeCounterDiffText.setText("+" + nondozeChargeCounterDiff + " mAh");
+            nondozeChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, nondozeChargeCounterDiff));
         } else if (nondozeChargeCounterDiff < 0) {
-            nondozeChargeCounterDiffText.setText(nondozeChargeCounterDiff + " mAh");
+            nondozeChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, nondozeChargeCounterDiff));
         } else {
-            nondozeChargeCounterDiffText.setText("不可用");
+            nondozeChargeCounterDiffText.setText(R.string.common_unavailable);
         }
 
         // ID信息和更新计数
@@ -184,6 +199,20 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         TextView counterText = findViewById(R.id.detail_counter_text);
         idText.setText(String.valueOf(session.getId()));
         counterText.setText(String.valueOf(session.getCounter()));
+
+        updateFieldAccessibility(typeText, typeValueText);
+        updateFieldAccessibility(findViewById(R.id.detail_start_time_text_label), startTimeText);
+        updateFieldAccessibility(findViewById(R.id.detail_end_time_text_label), endTimeText);
+        updateFieldAccessibility(findViewById(R.id.detail_duration_text_label), durationText);
+        updateFieldAccessibility(findViewById(R.id.detail_pause_time_text_label), pauseTimeText);
+        updateFieldAccessibility(findViewById(R.id.detail_ongoing_text_label), ongoingText);
+        updateFieldAccessibility(findViewById(R.id.detail_start_level_text_label), startLevelText);
+        updateFieldAccessibility(findViewById(R.id.detail_end_level_text_label), endLevelText);
+        updateFieldAccessibility(findViewById(R.id.detail_level_change_text_label), levelChangeText);
+        updateFieldAccessibility(findViewById(R.id.detail_max_temp_text_label), maxTempText);
+        updateFieldAccessibility(findViewById(R.id.detail_min_temp_text_label), minTempText);
+        updateFieldAccessibility(findViewById(R.id.detail_id_text_label), idText);
+        updateFieldAccessibility(findViewById(R.id.detail_counter_text_label), counterText);
     }
     
     
@@ -195,13 +224,20 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         long days = hours / 24;
         
         if (days > 0) {
-            return String.format("%d天%d小时%d分钟", days, hours % 24, minutes % 60);
+            return getString(R.string.detail_duration_days, days, hours % 24, minutes % 60);
         } else if (hours > 0) {
-            return String.format("%d小时%d分钟", hours, minutes % 60);
+            return getString(R.string.detail_duration_hours, hours, minutes % 60);
         } else if (minutes > 0) {
-            return String.format("%d分钟", minutes);
+            return getString(R.string.detail_duration_minutes, minutes);
         } else {
-            return String.format("%d秒", seconds);
+            return getString(R.string.detail_duration_seconds, seconds);
         }
+    }
+
+    private void updateFieldAccessibility(TextView labelView, TextView valueView) {
+        if (labelView == null || valueView == null) {
+            return;
+        }
+        valueView.setContentDescription(getString(R.string.a11y_field_value, labelView.getText(), valueView.getText()));
     }
 }
