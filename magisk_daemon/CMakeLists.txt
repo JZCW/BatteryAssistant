@@ -34,9 +34,9 @@ find_package(PkgConfig REQUIRED)
 set(JSONCPP_INCLUDE_DIRS ${jsoncpp_SOURCE_DIR}/include)
 set(JSONCPP_LIBRARIES jsoncpp_static)
 
-# 源文件 (主daemon)
+# Daemon源文件
 set(SOURCES
-    src/main.cpp
+    src/daemon.cpp
     src/data_collector.cpp
     src/cache_manager.cpp
     src/socket_server.cpp
@@ -45,14 +45,14 @@ set(SOURCES
 
 # 调试版本源文件
 set(DEBUG_SOURCES
-    src/main_debug.cpp
+    src/daemon_debug.cpp
     src/data_collector.cpp
     src/cache_manager.cpp
     src/socket_server.cpp
     src/logger.cpp
 )
 
-# Socket代理源文件
+# Bridge源文件
 set(PROXY_SOURCES
     src/bridge.cpp
     src/socket_proxy.cpp
