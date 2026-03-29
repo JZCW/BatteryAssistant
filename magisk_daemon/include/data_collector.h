@@ -22,7 +22,7 @@ struct ChargeConfig {
     int actualLimit;
     bool chargingEnabled;
 
-    ChargeConfig() : targetLimit(2000), actualLimit(2000), chargingEnabled(true) {}
+    ChargeConfig() : targetLimit(2500), actualLimit(2500), chargingEnabled(true) {}
 };
 
 class DataCollector {
@@ -79,6 +79,8 @@ private:
     // 充电控制私有方法
     bool writeFile(const std::string& path, const std::string& content);
     bool writeScenarioFcc(int value);
+    int resolveActualLimitLocked(int capacity) const;
+    bool applyLimitLocked(int requestedLimit, int capacity, const std::string& reason);
     bool checkAndRestoreLimit(int currentValue);
 
     bool startStatusMonitoring();

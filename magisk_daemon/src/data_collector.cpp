@@ -8,6 +8,12 @@
 #include <type_traits>
 #include <unistd.h>
 
+namespace {
+constexpr int LOW_BATTERY_THRESHOLD = 30;
+constexpr int LOW_BATTERY_MIN_LIMIT = 2000;
+constexpr int DISCONNECTED_DEFAULT_LIMIT = 2500;
+}
+
 DataCollector DataCollector::instance;
 
 DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true), scenarioInotifyFd(-1), scenarioWatchFd(-1), scenarioMonitoring(false) {
@@ -62,6 +68,11 @@ void DataCollector::onClientConnected() {
 
 void DataCollector::onClientDisconnected() {
     hasActiveClients = false;
+    BatteryData data = CacheManager::getInstance().getBatteryData(false);
+    std::lock_guard<std::mutex> lock(configMutex);
+    if (!applyLimitLocked(DISCONNECTED_DEFAULT_LIMIT, data.capacity, "client disconnected")) {
+        LOG_ERROR("Failed to apply default charge limit after client disconnected");
+    }
     LOG_INFO("All clients disconnected, switching to 5s collection interval");
 }
 
@@ -123,7 +134,17 @@ void DataCollector::updateData() {
         CacheManager::getInstance().updateBatteryData(data);
         // 更新充电状态
         updateChargingStatus(data.status_str);
-        //TODO 计算新的目标值
+        {
+            std::lock_guard<std::mutex> configLock(configMutex);
+            int resolvedLimit = resolveActualLimitLocked(data.capacity);
+            if (resolvedLimit != currentConfig.actualLimit) {
+                LOG_INFO("Charge limit adjusted by safety rule: target=" +
+                         std::to_string(currentConfig.targetLimit) + ", actual=" +
+                         std::to_string(resolvedLimit) + ", capacity=" +
+                         std::to_string(data.capacity));
+                currentConfig.actualLimit = resolvedLimit;
+            }
+        }
         // 检查并恢复充电限制（定期写入）
         checkAndRestoreLimit(data.scenario_fcc);
     } catch (const std::exception& e) {
@@ -308,25 +329,43 @@ bool DataCollector::writeScenarioFcc(int value) {
     return writeFile(SCENARIO_FCC_PATH, std::to_string(value));
 }
 
-bool DataCollector::setChargeLimit(int limit) {
-    std::lock_guard<std::mutex> lock(configMutex);
+int DataCollector::resolveActualLimitLocked(int capacity) const {
+    int resolvedLimit = currentConfig.targetLimit;
+    if (capacity >= 0 && capacity < LOW_BATTERY_THRESHOLD && resolvedLimit < LOW_BATTERY_MIN_LIMIT) {
+        resolvedLimit = LOW_BATTERY_MIN_LIMIT;
+    }
+    return resolvedLimit;
+}
 
-    // 设置目标值
-    currentConfig.targetLimit = limit;
+bool DataCollector::applyLimitLocked(int requestedLimit, int capacity, const std::string& reason) {
+    currentConfig.targetLimit = requestedLimit;
+    currentConfig.actualLimit = resolveActualLimitLocked(capacity);
 
-    // 设置实际值
-    currentConfig.actualLimit = limit;
+    if (currentConfig.actualLimit != currentConfig.targetLimit) {
+        LOG_WARN("Charge limit restricted by safety rule: reason=" + reason +
+                 ", requested=" + std::to_string(currentConfig.targetLimit) +
+                 ", actual=" + std::to_string(currentConfig.actualLimit) +
+                 ", capacity=" + std::to_string(capacity) +
+                 ", threshold=" + std::to_string(LOW_BATTERY_THRESHOLD));
+    }
 
-    LOG_INFO("Charge limit set: target=" + std::to_string(currentConfig.targetLimit) + 
-              ", actual=" + std::to_string(currentConfig.actualLimit));
+    LOG_INFO("Charge limit applied: reason=" + reason + ", target=" +
+             std::to_string(currentConfig.targetLimit) + ", actual=" +
+             std::to_string(currentConfig.actualLimit) + ", capacity=" +
+             std::to_string(capacity));
 
-    // 写入实际值
     if (!writeScenarioFcc(currentConfig.actualLimit)) {
         LOG_ERROR("Failed to set charge limit to " + std::to_string(currentConfig.actualLimit));
         return false;
     }
 
     return true;
+}
+
+bool DataCollector::setChargeLimit(int limit) {
+    std::lock_guard<std::mutex> lock(configMutex);
+    BatteryData data = CacheManager::getInstance().getBatteryData(false);
+    return applyLimitLocked(limit, data.capacity, "app request");
 }
 
 bool DataCollector::startScenarioMonitoring() {
