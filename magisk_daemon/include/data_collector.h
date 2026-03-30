@@ -39,6 +39,10 @@ private:
     // 采集间隔
     const std::chrono::milliseconds CHARGING_INTERVAL{5000};
     const std::chrono::milliseconds DISCHARGING_INTERVAL{20000};
+
+    // 数据缓存
+    BatteryData currentData;
+    mutable std::mutex dataMutex;
     
     // 充电状态监控
     int statusInotifyFd{-1};

@@ -38,7 +38,6 @@ set(JSONCPP_LIBRARIES jsoncpp_static)
 set(SOURCES
     src/daemon.cpp
     src/data_collector.cpp
-    src/cache_manager.cpp
     src/socket_server.cpp
     src/logger.cpp
 )
@@ -47,7 +46,6 @@ set(SOURCES
 set(DEBUG_SOURCES
     src/daemon_debug.cpp
     src/data_collector.cpp
-    src/cache_manager.cpp
     src/socket_server.cpp
     src/logger.cpp
 )

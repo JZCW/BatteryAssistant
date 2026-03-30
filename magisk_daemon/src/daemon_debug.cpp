@@ -2,7 +2,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include "data_collector.h"
-#include "cache_manager.h"
 #include "battery_data.h"
 
 volatile sig_atomic_t running = 1;
@@ -66,9 +65,6 @@ int main() {
     std::cout << std::endl;
     
     try {
-        // 初始化组件
-        CacheManager::getInstance();
-        
         // 启动数据采集器
         DataCollector& dataCollector = DataCollector::getInstance();
         dataCollector.start();
@@ -84,8 +80,7 @@ int main() {
             sleep(2);
             
             // 从缓存获取最新数据
-            BatteryData data = CacheManager::getInstance().getBatteryData(false); // 不标记为已读
-            
+            BatteryData data = dataCollector.getCurrentData();
             printBatteryData(data);
         }
         

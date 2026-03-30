@@ -1,5 +1,4 @@
 #include "data_collector.h"
-#include "cache_manager.h"
 #include "logger.h"
 #include <fstream>
 #include <filesystem>
@@ -108,7 +107,11 @@ void DataCollector::updateData() {
     try {
         // 采集数据
         BatteryData data = readAllFiles();
-        CacheManager::getInstance().updateBatteryData(data);
+        {
+            std::lock_guard<std::mutex> lock(dataMutex);
+            currentData = data;
+            LOG_DEBUG("Battery data updated, timestamp: " + std::to_string(data.timestamp));
+        }
 
         // 尽快唤醒查询线程
         dataCv.notify_all();
@@ -309,7 +312,8 @@ BatteryData DataCollector::getCurrentData() {
 
     std::unique_lock<std::mutex> lk(dataCvMutex);
     dataCv.wait_for(lk, std::chrono::milliseconds(300));
-    return CacheManager::getInstance().getBatteryData();
+    std::lock_guard<std::mutex> lock(dataMutex);
+    return currentData;
 }
 
 bool DataCollector::writeFile(const std::string& path, const std::string& content) {
@@ -331,8 +335,11 @@ bool DataCollector::writeScenarioFcc(int value) {
 }
 
 bool DataCollector::applyLimitLocked(int requestedLimit, const std::string& reason) {
-    BatteryData data = CacheManager::getInstance().getBatteryData(false);
-    int capacity = data.capacity;
+    int capacity = -1;
+    {
+        std::lock_guard<std::mutex> lock(dataMutex);
+        capacity = currentData.capacity;
+    }
 
     currentConfig.targetLimit = requestedLimit;
     if (capacity < LOW_BATTERY_THRESHOLD && requestedLimit < LOW_BATTERY_MIN_LIMIT) { // 保守判断，电量不可用时也生效

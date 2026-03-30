@@ -1,5 +1,4 @@
 #include "socket_server.h"
-#include "cache_manager.h"
 #include "data_collector.h"
 #include "logger.h"
 #include <sys/socket.h>

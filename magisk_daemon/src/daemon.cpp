@@ -4,7 +4,6 @@
 #include <sys/select.h>
 #include <cstring>
 #include "data_collector.h"
-#include "cache_manager.h"
 #include "socket_server.h"
 #include "logger.h"
 
@@ -41,10 +40,7 @@ int main(int argc, char* argv[]) {
             LOG_ERROR("Root permission required");
             return 1;
         }
-        
-        // 初始化组件
-        CacheManager::getInstance();
-        
+
         // 启动数据采集器
         DataCollector& dataCollector = DataCollector::getInstance();
         if (!dataCollector.start()) {
