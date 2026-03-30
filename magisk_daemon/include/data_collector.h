@@ -83,7 +83,7 @@ private:
     bool writeFile(const std::string& path, const std::string& content);
     bool writeScenarioFcc(int value);
     bool applyLimitLocked(int requestedLimit, const std::string& reason);
-    bool checkAndRestoreLimit(int currentValue);
+    bool checkAndRestoreLimit();
 
     bool startStatusMonitoring();
     bool startScenarioMonitoring();

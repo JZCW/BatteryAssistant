@@ -11,8 +11,8 @@ struct BatteryData {
     int voltage_now = -1;           // 当前电池电压(μV)  // 和adc读数不一致？
     int voltage_max = -1;           // 最大电池电压(μV)
     int voltage_ocv = -1;           // 电池开路电压(μV) //最低电压？
-    int current_now = -1;           // 当前电池电流(μA) // 同max？
-    int current_avg = -1;           // 平均电池电流(μA)
+    int current_now = 0;            // 当前电池电流(μA) // 同max？
+    int current_avg = 0;            // 平均电池电流(μA)
     int temp_battery = -1;          // 电池温度(0.1°C)
     // int temp_usb = -1;              // USB温度(0.1°C)
     // int temp_usb_gpio = -1;         // USB GPIO温度(0.1°C) 与usb有差别 略低

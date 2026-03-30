@@ -112,6 +112,8 @@ void DataCollector::updateData() {
             currentData = data;
             LOG_DEBUG("Battery data updated, timestamp: " + std::to_string(data.timestamp));
         }
+        // 成功采集后清除 stale 标记
+        dataIsStale = false;
 
         // 尽快唤醒查询线程
         dataCv.notify_all();
@@ -123,11 +125,8 @@ void DataCollector::updateData() {
             applyLimitLocked(currentConfig.targetLimit, "safety rule");
         }
 
-        // 成功采集后清除 stale 标记
-        dataIsStale = false;
-
-        // 检查并恢复充电限制（定期写入）
-        checkAndRestoreLimit(data.scenario_fcc);
+        // 检查并恢复充电限制
+        checkAndRestoreLimit();
     } catch (const std::exception& e) {
         LOG_ERROR("Data collection error: " + std::string(e.what()));
         // 唤醒所有阻塞的查询线程，避免 stop 时死等
@@ -419,27 +418,36 @@ void DataCollector::stopScenarioMonitoring() {
     LOG_INFO("Scenario monitoring stopped");
 }
 
-bool DataCollector::checkAndRestoreLimit(int currentValue) {
+bool DataCollector::checkAndRestoreLimit() {
     std::lock_guard<std::mutex> lock(configMutex);
     
     if (!scenarioMonitoring) {
         return false;
     }
+
+    int scenario_fcc = -1;
+    int current = 0;
+    {
+        std::lock_guard<std::mutex> dataLock(dataMutex);
+        scenario_fcc = currentData.scenario_fcc;
+        current = currentData.current_now;
+    }
     
     // 读取当前值
-    if (currentValue < 0) {
+    if (scenario_fcc < 0) {
         LOG_ERROR("Failed to read scenario_fcc");
         return false;
     }
     
-    // 充电时强制写入目标值（即使当前值相同）
+    // 写入目标值
     bool needWrite = false;
-    if (currentValue != currentConfig.actualLimit) {
+    if (scenario_fcc != currentConfig.actualLimit) {
         needWrite = true;
         LOG_INFO("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
-                  " to " + std::to_string(currentValue) + ", restoring to " + std::to_string(currentConfig.actualLimit));
-    } else if (isCharging) { //TODO 当充电且电流大于预设值，强制写入
+                  " to " + std::to_string(scenario_fcc) + ", restoring to " + std::to_string(currentConfig.actualLimit));
+    } else if (isCharging && (current > currentConfig.actualLimit)) { //当充电且电流大于预设值，强制写入
         needWrite = true;
+        LOG_WARN("Current (" + std::to_string(current) + "μA) exceeds limit (" + std::to_string(currentConfig.actualLimit) + "μA), reapplying scenario_fcc");
     }
     
     if (needWrite) {
