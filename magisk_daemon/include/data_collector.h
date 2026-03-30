@@ -32,13 +32,11 @@ private:
     ~DataCollector();
     
     std::atomic<bool> running{false};
-    std::atomic<bool> hasActiveClients{false};
     std::thread collectorThread;
     std::condition_variable cv;
     std::mutex cvMutex;
     
     // 采集间隔
-    const std::chrono::milliseconds ACTIVE_INTERVAL{2000};
     const std::chrono::milliseconds CHARGING_INTERVAL{5000};
     const std::chrono::milliseconds DISCHARGING_INTERVAL{20000};
     
@@ -50,8 +48,6 @@ private:
     
     // 刷新触发标记
     std::atomic<bool> dataIsStale{false};    // 充电状态变化时置位，绕过 WRITE_COOLDOWN
-    std::atomic<bool> appRequested{false};   // app 发起查询时置位，影响采集间隔
-    std::atomic<uint64_t> dataVersion{0};    // 每次成功采集后递增，供阻塞查询判断
     std::condition_variable dataCv;          // 数据就绪通知（配套 dataCvMutex）
     std::mutex dataCvMutex;
 
@@ -103,15 +99,12 @@ public:
     void onClientDisconnected();
     
     bool isRunning() const { return running; }
-    bool hasClients() const { return hasActiveClients; }
     
     // 充电状态监控
     bool checkStatusChange(int fd);
     void onChargeStatusChanged(int fd); // 充电状态 inotify 事件：置位 stale 并唤醒循环
-    void notifyAppQuery();              // app 查询通知：置位 appRequested 并唤醒循环
-    uint64_t getDataVersion() const { return dataVersion.load(); }
-    // 阻塞等待直到 dataVersion > versionBefore 或超时
-    bool waitForFreshData(uint64_t versionBefore, std::chrono::milliseconds timeout);
+    bool notifyAppQuery(uint64_t versionBefore, std::chrono::milliseconds timeout);              // app 查询通知：置位 appRequested 并唤醒循环
+    BatteryData getCurrentData();
     int getStatusInotifyFd() const { return statusInotifyFd; }
     
     // 充电控制公共方法

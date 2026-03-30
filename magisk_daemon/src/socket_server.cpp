@@ -288,15 +288,8 @@ std::string SocketServer::processStatusQuery(const Json::Value& request) {
     Json::Value response;
     response["success"] = true;
 
-    // 阻塞查询：通知采集循环有 app 查询，等待新数据就绪（最多 1500ms）
-    // 若冷却期未到，等待超时后仍返回缓存中最近一次的数据
-    DataCollector& dc = DataCollector::getInstance();
-    uint64_t versionBefore = dc.getDataVersion();
-    dc.notifyAppQuery();
-    dc.waitForFreshData(versionBefore, std::chrono::milliseconds(1500));
-
-    // 读取缓存（刷新完成或超时后均从此获取）
-    BatteryData data = CacheManager::getInstance().getBatteryData();
+    // 阻塞查询
+    BatteryData data = DataCollector::getInstance().getCurrentData();
     
     // 转换为JSON
     Json::Reader reader;

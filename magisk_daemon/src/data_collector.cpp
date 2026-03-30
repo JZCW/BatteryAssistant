@@ -53,7 +53,7 @@ void DataCollector::stop() {
     stopStatusMonitoring();
     stopScenarioMonitoring();
 
-    cv.notify_one();
+    cv.notify_all();
     
     if (collectorThread.joinable()) {
         collectorThread.join();
@@ -62,12 +62,10 @@ void DataCollector::stop() {
 }
 
 void DataCollector::onClientConnected() {
-    hasActiveClients = true;
     LOG_INFO("Client connected");
 }
 
 void DataCollector::onClientDisconnected() {
-    hasActiveClients = false;
     BatteryData data = CacheManager::getInstance().getBatteryData(false);
     std::lock_guard<std::mutex> lock(configMutex);
     if (!applyLimitLocked(DISCONNECTED_DEFAULT_LIMIT, data.capacity, "client disconnected")) {
@@ -78,51 +76,16 @@ void DataCollector::onClientDisconnected() {
 
 void DataCollector::collectLoop() {
     while (running) {
-        auto startTime = std::chrono::steady_clock::now();
-
         // 更新数据
         updateData();
 
-        // 根据 app 查询标记和充电状态决定采集间隔：
-        //   appRequested=true  → ACTIVE_INTERVAL  (2s)：有 app 查询，快速响应
-        //   isCharging=true    → CHARGING_INTERVAL (5s)：充电中，保持定期刷新
-        //   其他            → DISCHARGING_INTERVAL (20s)：非充电且无请求，降低刷新频率
-        static bool lastChargingState = false;
-        static bool lastAppRequestedState = false;
-        bool currentAppRequested = appRequested.load();
+        // 根据充电状态决定采集间隔：
+        std::chrono::milliseconds interval = isCharging ? CHARGING_INTERVAL : DISCHARGING_INTERVAL;
+        LOG_INFO("Collection interval: " + std::to_string(interval.count()) + "ms ");
 
-        std::chrono::milliseconds interval;
-        std::string intervalDesc;
-        if (currentAppRequested) {
-            interval = ACTIVE_INTERVAL;
-            intervalDesc = "(app-query)";
-        } else if (isCharging) {
-            interval = CHARGING_INTERVAL;
-            intervalDesc = "(charging)";
-        } else {
-            interval = DISCHARGING_INTERVAL;
-            intervalDesc = "(discharging)";
-        }
-
-        if (lastChargingState != isCharging || lastAppRequestedState != currentAppRequested) {
-            LOG_INFO("Collection interval changed to " + intervalDesc);
-        }
-        lastChargingState = isCharging;
-        lastAppRequestedState = currentAppRequested;
-
-        // 消耗本次 appRequested 标记（单次有效）
-        appRequested = false;
-
-        // 计算休眠时间，等待期间可被 notifyAppQuery / onChargeStatusChanged 唤醒
-        auto elapsed = std::chrono::steady_clock::now() - startTime;
-        auto sleepTime = interval - elapsed;
-
-        if (sleepTime.count() > 0) {
-            std::unique_lock<std::mutex> lock(cvMutex);
-            cv.wait_for(lock, sleepTime, [this] {
-                return !running || appRequested.load() || dataIsStale.load();
-            });
-        }
+        // 等待期间可被 getCurrentData 唤醒
+        std::unique_lock<std::mutex> lock(cvMutex);
+        cv.wait_for(lock, interval);
     }
 }
 
@@ -147,6 +110,10 @@ void DataCollector::updateData() {
         // 采集数据
         BatteryData data = readAllFiles();
         CacheManager::getInstance().updateBatteryData(data);
+
+        // 尽快唤醒查询线程
+        dataCv.notify_all();
+
         // 更新充电状态
         updateChargingStatus(data.status_str);
         {
@@ -160,20 +127,17 @@ void DataCollector::updateData() {
                 currentConfig.actualLimit = resolvedLimit;
             }
         }
-        // 检查并恢复充电限制（定期写入）
-        checkAndRestoreLimit(data.scenario_fcc);
+
         // 成功采集后清除 stale 标记
         dataIsStale = false;
-        // 递增版本号并通知所有阻塞在 waitForFreshData 的查询线程
-        {
-            std::lock_guard<std::mutex> lk(dataCvMutex);
-            ++dataVersion;
-        }
-        dataCv.notify_all();
+
+        // 检查并恢复充电限制（定期写入）
+        checkAndRestoreLimit(data.scenario_fcc);
     } catch (const std::exception& e) {
         LOG_ERROR("Data collection error: " + std::string(e.what()));
-    dataCv.notify_all(); // 唤醒所有阻塞在 waitForFreshData 的查询线程，避免 stop 时死等
-
+        // 唤醒所有阻塞的查询线程，避免 stop 时死等
+        dataCv.notify_all();
+    }
 
     // 更新时间
     lastUpdateTime = now;
@@ -342,23 +306,18 @@ void DataCollector::onChargeStatusChanged(int fd) {
     char buffer[1024];
     ssize_t len = read(fd, buffer, sizeof(buffer));
     if (len > 0) {
-        // 充电状态文件变化：标记数据过期并唤醒采集循环（绕过 WRITE_COOLDOWN）
-        LOG_INFO("Charging status file changed, marking data stale to bypass cooldown");
+        // 充电状态文件变化：标记数据过期
+        LOG_INFO("Charging status file changed, marking data stale");
         dataIsStale = true;
-        cv.notify_one();
     }
 }
 
-void DataCollector::notifyAppQuery() {
-    appRequested = true;
+BatteryData DataCollector::getCurrentData() {
     cv.notify_one();
-}
 
-bool DataCollector::waitForFreshData(uint64_t versionBefore, std::chrono::milliseconds timeout) {
     std::unique_lock<std::mutex> lk(dataCvMutex);
-    return dataCv.wait_for(lk, timeout, [this, versionBefore] {
-        return !running || dataVersion.load() > versionBefore;
-    });
+    dataCv.wait_for(lk, std::chrono::milliseconds(300));
+    return CacheManager::getInstance().getBatteryData();
 }
 
 bool DataCollector::writeFile(const std::string& path, const std::string& content) {
@@ -387,7 +346,7 @@ int DataCollector::resolveActualLimitLocked(int capacity) const {
     return resolvedLimit;
 }
 
-bool DataCollector::applyLimitLocked(int requestedLimit, int capacity, const std::string& reason) {
+bool DataCollector::applyLimitLocked(int requestedLimit, int capacity, const std::string& reason) { //TODO 自行读缓存而不是传入参
     currentConfig.targetLimit = requestedLimit;
     currentConfig.actualLimit = resolveActualLimitLocked(capacity);
 
