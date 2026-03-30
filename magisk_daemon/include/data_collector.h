@@ -78,8 +78,7 @@ private:
     // 充电控制私有方法
     bool writeFile(const std::string& path, const std::string& content);
     bool writeScenarioFcc(int value);
-    int resolveActualLimitLocked(int capacity) const;
-    bool applyLimitLocked(int requestedLimit, int capacity, const std::string& reason);
+    bool applyLimitLocked(int requestedLimit, const std::string& reason);
     bool checkAndRestoreLimit(int currentValue);
 
     bool startStatusMonitoring();

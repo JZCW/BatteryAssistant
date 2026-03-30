@@ -66,9 +66,8 @@ void DataCollector::onClientConnected() {
 }
 
 void DataCollector::onClientDisconnected() {
-    BatteryData data = CacheManager::getInstance().getBatteryData(false);
     std::lock_guard<std::mutex> lock(configMutex);
-    if (!applyLimitLocked(DISCONNECTED_DEFAULT_LIMIT, data.capacity, "client disconnected")) {
+    if (!applyLimitLocked(DISCONNECTED_DEFAULT_LIMIT, "client disconnected")) {
         LOG_ERROR("Failed to apply default charge limit after client disconnected");
     }
     LOG_INFO("All clients disconnected");
@@ -118,14 +117,7 @@ void DataCollector::updateData() {
         updateChargingStatus(data.status_str);
         {
             std::lock_guard<std::mutex> configLock(configMutex);
-            int resolvedLimit = resolveActualLimitLocked(data.capacity);
-            if (resolvedLimit != currentConfig.actualLimit) {
-                LOG_INFO("Charge limit adjusted by safety rule: target=" +
-                         std::to_string(currentConfig.targetLimit) + ", actual=" +
-                         std::to_string(resolvedLimit) + ", capacity=" +
-                         std::to_string(data.capacity));
-                currentConfig.actualLimit = resolvedLimit;
-            }
+            applyLimitLocked(currentConfig.targetLimit, "safety rule");
         }
 
         // 成功采集后清除 stale 标记
@@ -338,17 +330,16 @@ bool DataCollector::writeScenarioFcc(int value) {
     return writeFile(SCENARIO_FCC_PATH, std::to_string(value));
 }
 
-int DataCollector::resolveActualLimitLocked(int capacity) const {
-    int resolvedLimit = currentConfig.targetLimit;
-    if (capacity < LOW_BATTERY_THRESHOLD && resolvedLimit < LOW_BATTERY_MIN_LIMIT) { // 保守判断，电量不可用时也生效
-        resolvedLimit = LOW_BATTERY_MIN_LIMIT;
-    }
-    return resolvedLimit;
-}
+bool DataCollector::applyLimitLocked(int requestedLimit, const std::string& reason) {
+    BatteryData data = CacheManager::getInstance().getBatteryData(false);
+    int capacity = data.capacity;
 
-bool DataCollector::applyLimitLocked(int requestedLimit, int capacity, const std::string& reason) { //TODO 自行读缓存而不是传入参
     currentConfig.targetLimit = requestedLimit;
-    currentConfig.actualLimit = resolveActualLimitLocked(capacity);
+    if (capacity < LOW_BATTERY_THRESHOLD && requestedLimit < LOW_BATTERY_MIN_LIMIT) { // 保守判断，电量不可用时也生效
+        currentConfig.actualLimit = LOW_BATTERY_MIN_LIMIT;
+    } else {
+        currentConfig.actualLimit = requestedLimit;
+    }
 
     if (currentConfig.actualLimit != currentConfig.targetLimit) {
         LOG_WARN("Charge limit restricted by safety rule: reason=" + reason +
@@ -357,11 +348,6 @@ bool DataCollector::applyLimitLocked(int requestedLimit, int capacity, const std
                  ", capacity=" + std::to_string(capacity) +
                  ", threshold=" + std::to_string(LOW_BATTERY_THRESHOLD));
     }
-
-    LOG_INFO("Charge limit applied: reason=" + reason + ", target=" +
-             std::to_string(currentConfig.targetLimit) + ", actual=" +
-             std::to_string(currentConfig.actualLimit) + ", capacity=" +
-             std::to_string(capacity));
 
     if (!writeScenarioFcc(currentConfig.actualLimit)) {
         LOG_ERROR("Failed to set charge limit to " + std::to_string(currentConfig.actualLimit));
@@ -373,8 +359,7 @@ bool DataCollector::applyLimitLocked(int requestedLimit, int capacity, const std
 
 bool DataCollector::setChargeLimit(int limit) {
     std::lock_guard<std::mutex> lock(configMutex);
-    BatteryData data = CacheManager::getInstance().getBatteryData(false);
-    return applyLimitLocked(limit, data.capacity, "app request");
+    return applyLimitLocked(limit, "app request");
 }
 
 bool DataCollector::startScenarioMonitoring() {
