@@ -63,7 +63,7 @@ void DataCollector::stop() {
 
 void DataCollector::onClientConnected() {
     hasActiveClients = true;
-    LOG_INFO("Client connected, switching to 1s collection interval");
+    LOG_INFO("Client connected");
 }
 
 void DataCollector::onClientDisconnected() {
@@ -73,44 +73,55 @@ void DataCollector::onClientDisconnected() {
     if (!applyLimitLocked(DISCONNECTED_DEFAULT_LIMIT, data.capacity, "client disconnected")) {
         LOG_ERROR("Failed to apply default charge limit after client disconnected");
     }
-    LOG_INFO("All clients disconnected, switching to 5s collection interval");
+    LOG_INFO("All clients disconnected");
 }
 
 void DataCollector::collectLoop() {
     while (running) {
         auto startTime = std::chrono::steady_clock::now();
-        
-        // 检查缓存是否被读取
-        bool wasRead = CacheManager::getInstance().wasDataRead();
-        if (wasRead) {
-            consecutiveUnreadCount = 0;
-        } else {
-            consecutiveUnreadCount++;
-        }
 
         // 更新数据
         updateData();
 
-        // 根据客户端状态、充电状态和缓存读取状态决定采集间隔
+        // 根据 app 查询标记和充电状态决定采集间隔：
+        //   appRequested=true  → ACTIVE_INTERVAL  (2s)：有 app 查询，快速响应
+        //   isCharging=true    → CHARGING_INTERVAL (5s)：充电中，保持定期刷新
+        //   其他            → DISCHARGING_INTERVAL (20s)：非充电且无请求，降低刷新频率
         static bool lastChargingState = false;
-        static bool lastReadState = false;
-        bool currentReadState = (hasActiveClients && consecutiveUnreadCount < MAX_UNREAD_COUNT);
+        static bool lastAppRequestedState = false;
+        bool currentAppRequested = appRequested.load();
 
-        std::chrono::milliseconds interval = currentReadState ? ACTIVE_INTERVAL : (isCharging ? CHARGING_INTERVAL : DISCHARGING_INTERVAL);
-        if (lastChargingState != isCharging || lastReadState != currentReadState) {
-            std::string intervalDesc = currentReadState ? "(active, data readed)" : (isCharging ? "(charging)" : "(discharging)");
+        std::chrono::milliseconds interval;
+        std::string intervalDesc;
+        if (currentAppRequested) {
+            interval = ACTIVE_INTERVAL;
+            intervalDesc = "(app-query)";
+        } else if (isCharging) {
+            interval = CHARGING_INTERVAL;
+            intervalDesc = "(charging)";
+        } else {
+            interval = DISCHARGING_INTERVAL;
+            intervalDesc = "(discharging)";
+        }
+
+        if (lastChargingState != isCharging || lastAppRequestedState != currentAppRequested) {
             LOG_INFO("Collection interval changed to " + intervalDesc);
         }
         lastChargingState = isCharging;
-        lastReadState = currentReadState;
+        lastAppRequestedState = currentAppRequested;
 
-        // 计算休眠时间
+        // 消耗本次 appRequested 标记（单次有效）
+        appRequested = false;
+
+        // 计算休眠时间，等待期间可被 notifyAppQuery / onChargeStatusChanged 唤醒
         auto elapsed = std::chrono::steady_clock::now() - startTime;
         auto sleepTime = interval - elapsed;
-        
+
         if (sleepTime.count() > 0) {
             std::unique_lock<std::mutex> lock(cvMutex);
-            cv.wait_for(lock, sleepTime, [this] { return !running; });
+            cv.wait_for(lock, sleepTime, [this] {
+                return !running || appRequested.load() || dataIsStale.load();
+            });
         }
     }
 }
@@ -122,10 +133,14 @@ void DataCollector::updateData() {
         return;
     }
     // 检查距离上次更新是否超过冷却时间（1秒）
+    // dataIsStale=true（充电状态变化）时绕过冷却，确保立即采集新鲜数据
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdateTime);
-    if (elapsed < WRITE_COOLDOWN) { 
-        return; 
+    if (!dataIsStale && elapsed < WRITE_COOLDOWN) {
+        LOG_DEBUG("updateData: skipping, cooldown not expired (" +
+                  std::to_string(elapsed.count()) + "ms < " +
+                  std::to_string(WRITE_COOLDOWN.count()) + "ms)");
+        return;
     }
 
     try {
@@ -147,6 +162,8 @@ void DataCollector::updateData() {
         }
         // 检查并恢复充电限制（定期写入）
         checkAndRestoreLimit(data.scenario_fcc);
+        // 成功采集后清除 stale 标记
+        dataIsStale = false;
     } catch (const std::exception& e) {
         LOG_ERROR("Data collection error: " + std::string(e.what()));
     }
@@ -298,17 +315,36 @@ bool DataCollector::checkStatusChange(int fd) {
     if (fd < 0) {
         return false;
     }
-    
+
     // 读取并清空 inotify 事件队列
     char buffer[1024];
     ssize_t len = read(fd, buffer, sizeof(buffer));
     if (len > 0) {
-        // 检测到变化，检查并恢复限制，同时重新采集完整数据
+        // 检测到变化（场景文件），走正常 updateData 路径
         updateData();
         return true;
     }
-    
+
     return false;
+}
+
+void DataCollector::onChargeStatusChanged(int fd) {
+    if (fd < 0) return;
+
+    // 清空 inotify 事件队列
+    char buffer[1024];
+    ssize_t len = read(fd, buffer, sizeof(buffer));
+    if (len > 0) {
+        // 充电状态文件变化：标记数据过期并唤醒采集循环（绕过 WRITE_COOLDOWN）
+        LOG_INFO("Charging status file changed, marking data stale to bypass cooldown");
+        dataIsStale = true;
+        cv.notify_one();
+    }
+}
+
+void DataCollector::notifyAppQuery() {
+    appRequested = true;
+    cv.notify_one();
 }
 
 bool DataCollector::writeFile(const std::string& path, const std::string& content) {

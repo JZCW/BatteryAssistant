@@ -287,7 +287,10 @@ std::string SocketServer::processSetChargeLimit(const Json::Value& request) {
 std::string SocketServer::processStatusQuery(const Json::Value& request) {
     Json::Value response;
     response["success"] = true;
-    
+
+    // 通知采集循环有 app 查询，唤醒后区尽快刷新（依然受 WRITE_COOLDOWN 节流）
+    DataCollector::getInstance().notifyAppQuery();
+
     // 从缓存获取最新数据
     BatteryData data = CacheManager::getInstance().getBatteryData();
     

@@ -48,9 +48,9 @@ private:
     bool isCharging{true};
     const std::string BATTERY_STATUS_PATH = "/sys/class/power_supply/battery/status";
     
-    // 缓存读取状态
-    int consecutiveUnreadCount{0};
-    const int MAX_UNREAD_COUNT{3};
+    // 刷新触发标记
+    std::atomic<bool> dataIsStale{false};  // 充电状态变化时置位，绕过 WRITE_COOLDOWN
+    std::atomic<bool> appRequested{false}; // app 发起查询时置位，影响采集间隔
     
     // 充电控制相关
     ChargeConfig currentConfig;
@@ -104,6 +104,8 @@ public:
     
     // 充电状态监控
     bool checkStatusChange(int fd);
+    void onChargeStatusChanged(int fd); // 充电状态 inotify 事件：置位 stale 并唤醒循环
+    void notifyAppQuery();              // app 查询通知：置位 appRequested 并唤醒循环
     int getStatusInotifyFd() const { return statusInotifyFd; }
     
     // 充电控制公共方法

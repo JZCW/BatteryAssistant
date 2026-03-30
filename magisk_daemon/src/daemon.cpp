@@ -129,8 +129,8 @@ int main(int argc, char* argv[]) {
             
             // 处理充电状态 inotify 事件
             if (statusInotifyFd >= 0 && FD_ISSET(statusInotifyFd, &readfds)) {
-                // 检查状态变化
-                dataCollector.checkStatusChange(statusInotifyFd);
+                // 充电状态变化：标记数据过期并唤醒采集循环（绕过 WRITE_COOLDOWN）
+                dataCollector.onChargeStatusChanged(statusInotifyFd);
             }
             
             loopCount++;
