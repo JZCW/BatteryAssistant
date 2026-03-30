@@ -331,7 +331,7 @@ bool DataCollector::writeScenarioFcc(int value) {
 
 int DataCollector::resolveActualLimitLocked(int capacity) const {
     int resolvedLimit = currentConfig.targetLimit;
-    if (capacity >= 0 && capacity < LOW_BATTERY_THRESHOLD && resolvedLimit < LOW_BATTERY_MIN_LIMIT) {
+    if (capacity < LOW_BATTERY_THRESHOLD && resolvedLimit < LOW_BATTERY_MIN_LIMIT) { // 保守判断，电量不可用时也生效
         resolvedLimit = LOW_BATTERY_MIN_LIMIT;
     }
     return resolvedLimit;
