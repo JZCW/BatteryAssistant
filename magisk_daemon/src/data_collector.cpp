@@ -164,9 +164,16 @@ void DataCollector::updateData() {
         checkAndRestoreLimit(data.scenario_fcc);
         // 成功采集后清除 stale 标记
         dataIsStale = false;
+        // 递增版本号并通知所有阻塞在 waitForFreshData 的查询线程
+        {
+            std::lock_guard<std::mutex> lk(dataCvMutex);
+            ++dataVersion;
+        }
+        dataCv.notify_all();
     } catch (const std::exception& e) {
         LOG_ERROR("Data collection error: " + std::string(e.what()));
-    }
+    dataCv.notify_all(); // 唤醒所有阻塞在 waitForFreshData 的查询线程，避免 stop 时死等
+
 
     // 更新时间
     lastUpdateTime = now;
@@ -345,6 +352,13 @@ void DataCollector::onChargeStatusChanged(int fd) {
 void DataCollector::notifyAppQuery() {
     appRequested = true;
     cv.notify_one();
+}
+
+bool DataCollector::waitForFreshData(uint64_t versionBefore, std::chrono::milliseconds timeout) {
+    std::unique_lock<std::mutex> lk(dataCvMutex);
+    return dataCv.wait_for(lk, timeout, [this, versionBefore] {
+        return !running || dataVersion.load() > versionBefore;
+    });
 }
 
 bool DataCollector::writeFile(const std::string& path, const std::string& content) {
