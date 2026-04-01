@@ -86,9 +86,11 @@ void SocketServer::stop() {
     // 关闭活跃客户端连接，打断 handleClient 中阻塞 read
     closeActiveClientForStop();
     
-    // 首先关闭socket文件描述符，这会导致accept()返回EBADF
+    // 并发场景下仅 close() 不保证立刻打断其他线程中的阻塞 accept()。
+    // 先 shutdown() 再 close()，确保监听套接字上的阻塞系统调用被唤醒。
     if (serverFd >= 0) {
         LOG_DEBUG("Closing server socket fd: " + std::to_string(serverFd));
+        shutdown(serverFd, SHUT_RDWR);
         close(serverFd);
         serverFd = -1;
     }
