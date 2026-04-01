@@ -2,8 +2,10 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/select.h>
+#include <sys/timerfd.h>
 #include <fcntl.h>
 #include <cstring>
+#include <cstdint>
 #include "data_collector.h"
 #include "socket_server.h"
 #include "logger.h"
@@ -29,8 +31,11 @@ int main(int argc, char* argv[]) {
         std::cerr << "Failed to create signal pipe: " << strerror(errno) << std::endl;
         return 1;
     }
-    int flags = fcntl(g_signalPipe[1], F_GETFL, 0);
-    if (flags < 0 || fcntl(g_signalPipe[1], F_SETFL, flags | O_NONBLOCK) < 0) {
+    int readFlags = fcntl(g_signalPipe[0], F_GETFL, 0);
+    int writeFlags = fcntl(g_signalPipe[1], F_GETFL, 0);
+    if (readFlags < 0 || writeFlags < 0 ||
+            fcntl(g_signalPipe[0], F_SETFL, readFlags | O_NONBLOCK) < 0 ||
+            fcntl(g_signalPipe[1], F_SETFL, writeFlags | O_NONBLOCK) < 0) {
         std::cerr << "Failed to set signal pipe non-blocking: " << strerror(errno) << std::endl;
         close(g_signalPipe[0]);
         close(g_signalPipe[1]);
@@ -64,6 +69,8 @@ int main(int argc, char* argv[]) {
         LOG_INFO("Debug mode enabled");
     }
     
+    int statusLogTimerFd = -1;
+
     try {
         // 检查root权限
         if (getuid() != 0) {
@@ -105,7 +112,6 @@ int main(int argc, char* argv[]) {
         
         // 主循环
         LOG_INFO("Entering main event loop...");
-        int loopCount = 0;
         int scenarioInotifyFd = dataCollector.getScenarioInotifyFd();
         int statusInotifyFd = dataCollector.getStatusInotifyFd();
 
@@ -115,6 +121,21 @@ int main(int argc, char* argv[]) {
             dataCollector.stop();
             server.stop();
             return 1;
+        }
+
+        // 用 timerfd 代替 select 超时轮询，保持阻塞等待同时保留周期状态日志。
+        statusLogTimerFd = timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
+        if (statusLogTimerFd >= 0) {
+            struct itimerspec timerSpec{};
+            timerSpec.it_value.tv_sec = 60;
+            timerSpec.it_interval.tv_sec = 60;
+            if (timerfd_settime(statusLogTimerFd, 0, &timerSpec, nullptr) < 0) {
+                LOG_WARN("Failed to arm status timerfd: " + std::string(strerror(errno)) + ", periodic status log disabled");
+                close(statusLogTimerFd);
+                statusLogTimerFd = -1;
+            }
+        } else {
+            LOG_WARN("Failed to create status timerfd: " + std::string(strerror(errno)) + ", periodic status log disabled");
         }
 
         while (running) {
@@ -133,19 +154,18 @@ int main(int argc, char* argv[]) {
             if (statusInotifyFd >= 0) {
                 FD_SET(statusInotifyFd, &readfds);
             }
-            
-            // 等待事件，超时 1 秒
-            struct timeval timeout;
-            timeout.tv_sec = 1;
-            timeout.tv_usec = 0;
+            if (statusLogTimerFd >= 0) {
+                FD_SET(statusLogTimerFd, &readfds);
+            }
             
             int maxFd = 0;
             if (g_signalPipe[0] >= 0 && g_signalPipe[0] > maxFd) maxFd = g_signalPipe[0];
             if (scenarioInotifyFd >= 0 && scenarioInotifyFd > maxFd) maxFd = scenarioInotifyFd;
             if (statusInotifyFd >= 0 && statusInotifyFd > maxFd) maxFd = statusInotifyFd;
+            if (statusLogTimerFd >= 0 && statusLogTimerFd > maxFd) maxFd = statusLogTimerFd;
             maxFd++;
             
-            int ready = select(maxFd, &readfds, nullptr, nullptr, &timeout);
+            int ready = select(maxFd, &readfds, nullptr, nullptr, nullptr);
             
             if (ready < 0) {
                 if (errno == EINTR) {
@@ -175,14 +195,19 @@ int main(int argc, char* argv[]) {
                 // 充电状态变化：标记数据过期并唤醒采集循环（绕过 WRITE_COOLDOWN）
                 dataCollector.onChargeStatusChanged(statusInotifyFd);
             }
-            
-            loopCount++;
-            
-            // 每60秒记录一次状态
-            if (loopCount % 60 == 0) {
+
+            // 定时状态日志，不依赖轮询超时。
+            if (statusLogTimerFd >= 0 && FD_ISSET(statusLogTimerFd, &readfds)) {
+                std::uint64_t expirations = 0;
+                (void)read(statusLogTimerFd, &expirations, sizeof(expirations));
                 LOG_INFO("Daemon status: running=" + std::string(running ? "true" : "false") +
                         ", active_clients=" + std::to_string(server.getActiveClients()));
             }
+        }
+
+        if (statusLogTimerFd >= 0) {
+            close(statusLogTimerFd);
+            statusLogTimerFd = -1;
         }
         
         // 清理
@@ -205,6 +230,10 @@ int main(int argc, char* argv[]) {
         
     } catch (const std::exception& e) {
         LOG_ERROR("Exception: " + std::string(e.what()));
+        if (statusLogTimerFd >= 0) {
+            close(statusLogTimerFd);
+            statusLogTimerFd = -1;
+        }
         if (g_signalPipe[0] >= 0) {
             close(g_signalPipe[0]);
             g_signalPipe[0] = -1;
