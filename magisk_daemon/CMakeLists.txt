@@ -83,7 +83,10 @@ target_include_directories(batteryAssistant_debug PRIVATE ${JSONCPP_INCLUDE_DIRS
 target_compile_options(batteryAssistant_debug PRIVATE ${JSONCPP_CFLAGS_OTHER})
 
 # 链接socket代理的库
-target_link_libraries(batteryProxy dl)
+target_link_libraries(batteryProxy 
+    dl
+    ${JSONCPP_LIBRARIES}
+)
 target_include_directories(batteryProxy PRIVATE ${JSONCPP_INCLUDE_DIRS})
 
 # 安装规则

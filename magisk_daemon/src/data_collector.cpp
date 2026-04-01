@@ -6,14 +6,13 @@
 #include <chrono>
 #include <type_traits>
 #include <unistd.h>
+#include <climits>
 
 namespace {
 constexpr int LOW_BATTERY_THRESHOLD = 30;
 constexpr int LOW_BATTERY_MIN_LIMIT = 2000;
 constexpr int DISCONNECTED_DEFAULT_LIMIT = 2500;
 }
-
-DataCollector DataCollector::instance;
 
 DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true), scenarioInotifyFd(-1), scenarioWatchFd(-1), scenarioMonitoring(false) {
     lastUpdateTime = std::chrono::steady_clock::now();
@@ -30,12 +29,17 @@ bool DataCollector::start() {
     // 启动充电控制监控
     if (!startScenarioMonitoring()) {
         LOG_ERROR("Failed to start scenario monitoring");
+        // 回滚 running 标志，允许外部重试
+        running = false;
         return false;
     }
     
     // 启动充电状态监控
     if (!startStatusMonitoring()) {
         LOG_ERROR("Failed to start status monitoring");
+        // 回滚已启动的 scenario 监控，避免后续 stop() 状态不一致
+        stopScenarioMonitoring();
+        running = false;
         return false;
     }
 
@@ -78,7 +82,8 @@ void DataCollector::collectLoop() {
         updateData();
 
         // 根据充电状态决定采集间隔：
-        std::chrono::milliseconds interval = isCharging ? CHARGING_INTERVAL : DISCHARGING_INTERVAL;
+        // Atomic load avoids cross-thread data race on charge state.
+        std::chrono::milliseconds interval = isCharging.load() ? CHARGING_INTERVAL : DISCHARGING_INTERVAL;
         LOG_INFO("Collection interval: " + std::to_string(interval.count()) + "ms ");
 
         // 等待期间可被 getCurrentData 唤醒
@@ -97,7 +102,7 @@ void DataCollector::updateData() {
     // dataIsStale=true（充电状态变化）时绕过冷却，确保立即采集新鲜数据
     auto now = std::chrono::steady_clock::now();
     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastUpdateTime);
-    if (!dataIsStale && elapsed < WRITE_COOLDOWN) {
+    if (!dataIsStale.load(std::memory_order_acquire) && elapsed < WRITE_COOLDOWN) {
         LOG_DEBUG("updateData: skipping, cooldown not expired (" +
                   std::to_string(elapsed.count()) + "ms < " +
                   std::to_string(WRITE_COOLDOWN.count()) + "ms)");
@@ -113,7 +118,7 @@ void DataCollector::updateData() {
             LOG_DEBUG("Battery data updated, timestamp: " + std::to_string(data.timestamp));
         }
         // 成功采集后清除 stale 标记
-        dataIsStale = false;
+        dataIsStale.store(false, std::memory_order_release);
 
         // 尽快唤醒查询线程
         dataCv.notify_all();
@@ -197,9 +202,16 @@ void DataCollector::readFile(const std::string& path, T& target, DataType type) 
     std::getline(file, content);
     file.close();
     
-    // 去除空白字符
-    content.erase(0, content.find_first_not_of(" \t\n\r"));
-    content.erase(content.find_last_not_of(" \t\n\r") + 1);
+    // 安全去除首尾空白：先判断是否全为空白，避免 find_last_not_of 返回 npos
+    // 后直接 +1 造成无符号溢出绕回（npos+1=0）的隐性依赖。
+    // 只有确认存在非空白字符后，第二次 erase 的 pos 才保证合法。
+    size_t trimFirst = content.find_first_not_of(" \t\n\r");
+    if (trimFirst == std::string::npos) {
+        content.clear();
+    } else {
+        content.erase(0, trimFirst);
+        content.erase(content.find_last_not_of(" \t\n\r") + 1);
+    }
     
     if (content.empty()) {
         return;
@@ -208,7 +220,15 @@ void DataCollector::readFile(const std::string& path, T& target, DataType type) 
     // 根据 DataType 执行不同的转换
     if (type == DataType::INT) {
         if constexpr (std::is_same_v<T, int>) {
-            target = std::stoi(content);
+            try {
+                target = std::stoi(content);
+            } catch (const std::out_of_range&) {
+                // 数值超出 int 范围，保留字段默认值，避免整次采集失败
+                LOG_WARN("readFile: value out of range for " + path + ": " + content);
+            } catch (const std::invalid_argument&) {
+                // 内容不是有效整数，保留字段默认值
+                LOG_WARN("readFile: invalid integer for " + path + ": " + content);
+            }
         }
     } else if (type == DataType::STRING) {
         if constexpr (std::is_same_v<T, std::string>) {
@@ -224,16 +244,16 @@ long DataCollector::getCurrentTimestamp() {
 
 void DataCollector::updateChargingStatus(const std::string& status) {
     if (status.empty()) {
-        isCharging = false;
+        isCharging.store(false);
         return;
     }
     
     bool newChargingState = status.length() < 11; // 这里用长度简单判断是不是 discharging
 
-    if (newChargingState != isCharging) {
+    if (newChargingState != isCharging.load()) {
         LOG_INFO("Charging status changed: " + std::string(newChargingState ? "Charging" : "Discharging"));
     }
-    isCharging = newChargingState;
+    isCharging.store(newChargingState);
 }
 
 bool DataCollector::startStatusMonitoring() {
@@ -276,13 +296,14 @@ void DataCollector::stopStatusMonitoring() {
     LOG_INFO("Status monitoring stopped");
 }
 
-bool DataCollector::checkStatusChange(int fd) {
+bool DataCollector::checkScenarioChange(int fd) {
     if (fd < 0) {
         return false;
     }
 
     // 读取并清空 inotify 事件队列
-    char buffer[1024];
+    // 缓冲区大小必须勿截断单个 inotify_event 结构体
+    char buffer[sizeof(struct inotify_event) + NAME_MAX + 1];
     ssize_t len = read(fd, buffer, sizeof(buffer));
     if (len > 0) {
         // 检测到变化（场景文件），走正常 updateData 路径
@@ -297,12 +318,14 @@ void DataCollector::onChargeStatusChanged(int fd) {
     if (fd < 0) return;
 
     // 清空 inotify 事件队列
-    char buffer[1024];
+    // 缓冲区大小必须勿截断单个 inotify_event 结构体
+    char buffer[sizeof(struct inotify_event) + NAME_MAX + 1];
     ssize_t len = read(fd, buffer, sizeof(buffer));
     if (len > 0) {
         // 充电状态文件变化：标记数据过期
         LOG_INFO("Charging status file changed, marking data stale");
-        dataIsStale = true;
+        // 使用 release 语义发布“数据已过期”信号，供采集线程 acquire 读取。
+        dataIsStale.store(true, std::memory_order_release);
     }
 }
 
@@ -311,6 +334,7 @@ BatteryData DataCollector::getCurrentData() {
 
     std::unique_lock<std::mutex> lk(dataCvMutex);
     dataCv.wait_for(lk, std::chrono::milliseconds(300));
+    lk.unlock(); // 等待完成后先释放 dataCvMutex，避免与 dataMutex 嵌套持锁。
     std::lock_guard<std::mutex> lock(dataMutex);
     return currentData;
 }
@@ -364,6 +388,12 @@ bool DataCollector::applyLimitLocked(int requestedLimit, const std::string& reas
 }
 
 bool DataCollector::setChargeLimit(int limit) {
+    // Defensive check for internal callers as well.
+    if (limit < 0) {
+        LOG_WARN("Rejected negative charge limit: " + std::to_string(limit));
+        return false;
+    }
+
     std::lock_guard<std::mutex> lock(configMutex);
     return applyLimitLocked(limit, "app request");
 }
@@ -445,7 +475,7 @@ bool DataCollector::checkAndRestoreLimit() {
         needWrite = true;
         LOG_INFO("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
                   " to " + std::to_string(scenario_fcc) + ", restoring to " + std::to_string(currentConfig.actualLimit));
-    } else if (isCharging && (current > currentConfig.actualLimit)) { //当充电且电流大于预设值，强制写入
+    } else if (isCharging.load() && (current > currentConfig.actualLimit)) { //当充电且电流大于预设值，强制写入
         needWrite = true;
         LOG_WARN("Current (" + std::to_string(current) + "μA) exceeds limit (" + std::to_string(currentConfig.actualLimit) + "μA), reapplying scenario_fcc");
     }

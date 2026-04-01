@@ -67,7 +67,11 @@ int main() {
     try {
         // 启动数据采集器
         DataCollector& dataCollector = DataCollector::getInstance();
-        dataCollector.start();
+      if (!dataCollector.start()) {
+        // start 失败时立即退出，避免持续打印默认值误导调试结论。
+        std::cerr << "Failed to start data collector" << std::endl;
+        return 1;
+      }
         
         // 模拟客户端连接，使采集器以1秒间隔采集数据
         dataCollector.onClientConnected();

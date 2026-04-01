@@ -2,6 +2,7 @@
 #define DATA_COLLECTOR_H
 
 #include "battery_data.h"
+#include "config.h"
 #include <atomic>
 #include <thread>
 #include <chrono>
@@ -20,14 +21,12 @@ enum class DataType {
 struct ChargeConfig {
     int targetLimit;
     int actualLimit;
-    bool chargingEnabled;
 
-    ChargeConfig() : targetLimit(2500), actualLimit(2500), chargingEnabled(true) {}
+    ChargeConfig() : targetLimit(2500), actualLimit(2500) {}
 };
 
 class DataCollector {
 private:
-    static DataCollector instance;
     DataCollector();
     ~DataCollector();
     
@@ -40,6 +39,11 @@ private:
     const std::chrono::milliseconds CHARGING_INTERVAL{5000};
     const std::chrono::milliseconds DISCHARGING_INTERVAL{20000};
 
+    // 锁获取顺序约定：违反下列顺序嵌套持锁将导致死锁
+    // configMutex → dataMutex（禁止逆序）
+    // updateMutex 独立，以 try_lock 使用，不与其他锁嵌套
+    // cvMutex     独立，仅用于 collectLoop 的采集间隔等待，不与其他锁嵌套
+    // dataCvMutex 独立，仅用于 getCurrentData/dataCv 的数据就绪等待，不与业务锁嵌套
     // 数据缓存
     BatteryData currentData;
     mutable std::mutex dataMutex;
@@ -47,8 +51,8 @@ private:
     // 充电状态监控
     int statusInotifyFd{-1};
     int statusWatchFd{-1};
-    bool isCharging{true};
-    const std::string BATTERY_STATUS_PATH = "/sys/class/power_supply/battery/status";
+    std::atomic<bool> isCharging{true};
+    const std::string BATTERY_STATUS_PATH = Config::BATTERY_STATUS_PATH;
     
     // 刷新触发标记
     std::atomic<bool> dataIsStale{false};    // 充电状态变化时置位，绕过 WRITE_COOLDOWN
@@ -61,15 +65,10 @@ private:
     int scenarioInotifyFd{-1};
     int scenarioWatchFd{-1};
     bool scenarioMonitoring{false};
-    const std::string SCENARIO_FCC_PATH = "/proc/charger/scenario_fcc";
+    const std::string SCENARIO_FCC_PATH = Config::SCENARIO_FCC_PATH;
     std::mutex updateMutex;
     const std::chrono::milliseconds WRITE_COOLDOWN{1000};
     std::chrono::steady_clock::time_point lastUpdateTime;
-    
-    // 文件路径列表
-    std::vector<std::string> batteryFiles;
-    std::vector<std::string> usbFiles;
-    std::vector<std::string> wirelessFiles;
     
     void collectLoop();
     BatteryData readAllFiles();
@@ -92,6 +91,9 @@ private:
     
 public:
     static DataCollector& getInstance() {
+        // Meyers' Singleton：C++11 保证局部静态量线程安全初始化，
+        // 析构由运行时管理，消除跨编译单元静态成员析构顺序不确定的风险。
+        static DataCollector instance;
         return instance;
     }
     
@@ -104,9 +106,8 @@ public:
     bool isRunning() const { return running; }
     
     // 充电状态监控
-    bool checkStatusChange(int fd);
-    void onChargeStatusChanged(int fd); // 充电状态 inotify 事件：置位 stale 并唤醒循环
-    bool notifyAppQuery(uint64_t versionBefore, std::chrono::milliseconds timeout);              // app 查询通知：置位 appRequested 并唤醒循环
+    bool checkScenarioChange(int fd);
+    void onChargeStatusChanged(int fd);
     BatteryData getCurrentData();
     int getStatusInotifyFd() const { return statusInotifyFd; }
     

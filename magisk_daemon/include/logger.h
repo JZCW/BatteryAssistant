@@ -33,7 +33,8 @@ public:
 private:
     static std::string getLevelString(Level level);
     static std::string getCurrentTimestamp();
-    static void writeToFile(Level level, const std::string& message);
+    // timestamp 由 log() 统一计算后传入，确保控制台与文件记录同一时刻
+    static void writeToFile(Level level, const std::string& message, const std::string& timestamp);
     static void rotateLogFile();
 };
 

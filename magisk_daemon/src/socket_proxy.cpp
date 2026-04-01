@@ -1,13 +1,97 @@
 #include "socket_proxy.h"
 #include "logger.h"
+#include "socket_utils.h"
+#include <json/json.h>
 #include <cstring>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/resource.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <arpa/inet.h>
-#include <fstream>
+#include <sys/syscall.h>
+#include <linux/close_range.h>
+#include <climits>
+
+namespace {
+constexpr int MAX_DAEMON_START_ATTEMPTS = 3;
+constexpr int DAEMON_START_WAIT_RETRIES = 4;
+constexpr useconds_t DAEMON_START_WAIT_US = 500000;
+constexpr int IO_TIMEOUT_SEC = 10;
+
+// Non-blocking wakeup pipe write with explicit error handling.
+// Returns true only when one byte is successfully queued.
+bool sendWakeupCommand(int fd, char cmd) {
+    if (fd < 0) {
+        return false;
+    }
+
+    for (;;) {
+        ssize_t n = write(fd, &cmd, 1);
+        if (n == 1) {
+            return true;
+        }
+        if (n < 0 && errno == EINTR) {
+            continue;
+        }
+        return false;
+    }
+}
+
+// 创建 abstract namespace socket 并连接
+// 成功返回阻塞 fd（带 SO_RCVTIMEO/SO_SNDTIMEO）；失败记录日志并返回 -1
+static int connectAbstractSocket(const std::string& name, const std::string& label) {
+    int newFd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (newFd < 0) {
+        LOG_ERROR("Failed to create " + label + " socket: " + std::string(strerror(errno)));
+        return -1;
+    }
+    struct sockaddr_un addr;
+    socklen_t addrLen = 0;
+    if (!buildAbstractSockaddr(name, addr, addrLen)) {
+        // 失败原因统一按“名称超长”记录，便于定位配置错误。
+        const size_t maxAbstractNameLen = sizeof(addr.sun_path) - 1;
+        LOG_ERROR("Abstract socket name too long: " + std::to_string(name.size()) +
+                  " bytes (max " + std::to_string(maxAbstractNameLen) + ")");
+        close(newFd);
+        return -1;
+    }
+    if (connect(newFd, (struct sockaddr*)&addr, addrLen) < 0) {
+        LOG_ERROR("Failed to connect to " + label + ": " + std::string(strerror(errno)));
+        close(newFd);
+        return -1;
+    }
+    // 读写超时由内核 socket 选项处理，避免 read/write 内部再套一层 select。
+    struct timeval tv { IO_TIMEOUT_SEC, 0 };
+    if (setsockopt(newFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0 ||
+        setsockopt(newFd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv)) < 0) {
+        LOG_ERROR("Failed to set socket IO timeout on " + label + ": " + std::string(strerror(errno)));
+        close(newFd);
+        return -1;
+    }
+    return newFd;
+}
+
+// 主动 connect 探测 daemon 可达性，避免依赖 /proc/net/unix 的文本格式。
+bool probeAbstractSocketReachable(const std::string& name) {
+    int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (fd < 0) {
+        return false;
+    }
+
+    struct sockaddr_un addr;
+    socklen_t addrLen = 0;
+    if (!buildAbstractSockaddr(name, addr, addrLen)) {
+        close(fd);
+        return false;
+    }
+
+    bool reachable = (connect(fd, (struct sockaddr*)&addr, addrLen) == 0);
+    close(fd);
+    return reachable;
+}
+}
 
 SocketProxy::SocketProxy(const std::string& appSocketName,
                          const std::string& daemonSocketName,
@@ -28,64 +112,23 @@ SocketProxy::~SocketProxy() {
 
 // connectToDaemon: 创建新连接，成功时将新fd写入daemonSocketFd（加锁）
 bool SocketProxy::connectToDaemon() {
-    int newFd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (newFd < 0) {
-        LOG_ERROR("Failed to create daemon socket: " + std::string(strerror(errno)));
-        return false;
-    }
-
-    struct sockaddr_un addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    addr.sun_path[0] = '\0';  // Abstract namespace
-    strncpy(&addr.sun_path[1], daemonSocketName.c_str(), sizeof(addr.sun_path) - 2);
-    socklen_t addrLen = offsetof(struct sockaddr_un, sun_path) + 1 + daemonSocketName.length();
-
-    if (connect(newFd, (struct sockaddr*)&addr, addrLen) < 0) {
-        LOG_ERROR("Failed to connect to daemon: " + std::string(strerror(errno)));
-        close(newFd);
-        return false;
-    }
-
-    // 设置非阻塞模式
-    int flags = fcntl(newFd, F_GETFL, 0);
-    fcntl(newFd, F_SETFL, flags | O_NONBLOCK);
+    int newFd = connectAbstractSocket(daemonSocketName, "daemon");
+    if (newFd < 0) return false;
 
     std::lock_guard<std::mutex> lock(daemonFdMutex);
-    // 关闭旧fd（以防万一）
-    if (daemonSocketFd >= 0) {
-        close(daemonSocketFd);
-    }
+    if (daemonSocketFd >= 0) close(daemonSocketFd);
     daemonSocketFd = newFd;
     LOG_INFO("Connected to daemon socket: " + daemonSocketName);
     return true;
 }
 
 bool SocketProxy::connectToApp() {
-    appSocketFd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (appSocketFd < 0) {
-        LOG_ERROR("Failed to create app socket: " + std::string(strerror(errno)));
-        return false;
-    }
+    int newFd = connectAbstractSocket(appSocketName, "app");
+    if (newFd < 0) return false;
 
-    struct sockaddr_un addr;
-    memset(&addr, 0, sizeof(addr));
-    addr.sun_family = AF_UNIX;
-    addr.sun_path[0] = '\0';  // Abstract namespace
-    strncpy(&addr.sun_path[1], appSocketName.c_str(), sizeof(addr.sun_path) - 2);
-    socklen_t addrLen = offsetof(struct sockaddr_un, sun_path) + 1 + appSocketName.length();
-
-    if (connect(appSocketFd, (struct sockaddr*)&addr, addrLen) < 0) {
-        LOG_ERROR("Failed to connect to app: " + std::string(strerror(errno)));
-        close(appSocketFd);
-        appSocketFd = -1;
-        return false;
-    }
-
-    // 设置非阻塞模式
-    int flags = fcntl(appSocketFd, F_GETFL, 0);
-    fcntl(appSocketFd, F_SETFL, flags | O_NONBLOCK);
-
+    std::lock_guard<std::mutex> lock(appFdMutex);
+    if (appSocketFd >= 0) close(appSocketFd);
+    appSocketFd = newFd;
     LOG_INFO("Connected to app socket: " + appSocketName);
     return true;
 }
@@ -100,17 +143,8 @@ bool SocketProxy::readMessage(int fd, std::vector<char>& buffer) {
         if (n < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                fd_set readFds;
-                FD_ZERO(&readFds);
-                FD_SET(fd, &readFds);
-                struct timeval tv = {10, 0}; // 10秒超时
-                int ret = select(fd + 1, &readFds, nullptr, nullptr, &tv);
-                if (ret <= 0) {
-                    if (ret == 0) LOG_WARN("Timeout reading message length");
-                    else LOG_ERROR("Select error while reading message length: " + std::string(strerror(errno)));
-                    return false;
-                }
-                continue;
+                LOG_WARN("Timeout reading message length");
+                return false;
             }
             LOG_ERROR("Failed to read message length: " + std::string(strerror(errno)));
             return false;
@@ -139,17 +173,8 @@ bool SocketProxy::readMessage(int fd, std::vector<char>& buffer) {
         if (n < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                fd_set readFds;
-                FD_ZERO(&readFds);
-                FD_SET(fd, &readFds);
-                struct timeval tv = {10, 0}; // 10秒超时
-                int ret = select(fd + 1, &readFds, nullptr, nullptr, &tv);
-                if (ret <= 0) {
-                    if (ret == 0) LOG_WARN("Timeout reading message data");
-                    else LOG_ERROR("Select error while reading message data: " + std::string(strerror(errno)));
-                    return false;
-                }
-                continue;
+                LOG_WARN("Timeout reading message data");
+                return false;
             }
             LOG_ERROR("Failed to read message data: " + std::string(strerror(errno)));
             return false;
@@ -176,20 +201,14 @@ bool SocketProxy::writeMessage(int fd, const std::vector<char>& buffer) {
         if (n < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                fd_set writeFds;
-                FD_ZERO(&writeFds);
-                FD_SET(fd, &writeFds);
-                if (select(fd + 1, nullptr, &writeFds, nullptr, nullptr) < 0) {
-                    LOG_ERROR("Select error while writing message length: " + std::string(strerror(errno)));
-                    return false;
-                }
-                continue;
+                LOG_WARN("Timeout writing message length");
+                return false;
             }
             LOG_ERROR("Failed to write message length: " + std::string(strerror(errno)));
             return false;
         }
-        if (n <= 0) {
-            LOG_ERROR("Connection closed or error while writing message length");
+        if (n == 0) {
+            LOG_ERROR("Connection closed while writing message length");
             return false;
         }
         totalWritten += n;
@@ -202,20 +221,14 @@ bool SocketProxy::writeMessage(int fd, const std::vector<char>& buffer) {
         if (n < 0) {
             if (errno == EINTR) continue;
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                fd_set writeFds;
-                FD_ZERO(&writeFds);
-                FD_SET(fd, &writeFds);
-                if (select(fd + 1, nullptr, &writeFds, nullptr, nullptr) < 0) {
-                    LOG_ERROR("Select error while writing message data: " + std::string(strerror(errno)));
-                    return false;
-                }
-                continue;
+                LOG_WARN("Timeout writing message data");
+                return false;
             }
             LOG_ERROR("Failed to write message data: " + std::string(strerror(errno)));
             return false;
         }
-        if (n <= 0) {
-            LOG_ERROR("Connection closed or error while writing message data");
+        if (n == 0) {
+            LOG_ERROR("Connection closed while writing message data");
             return false;
         }
         totalWritten += n;
@@ -224,28 +237,29 @@ bool SocketProxy::writeMessage(int fd, const std::vector<char>& buffer) {
     return true;
 }
 
-// 检查daemon abstract socket是否已绑定（通过 /proc/net/unix 查找条目）
-bool SocketProxy::isDaemonSocketBound() {
-    std::ifstream unixFile("/proc/net/unix");
-    if (!unixFile.is_open()) {
-        // 无法读取时乐观处理，让connect自己失败
-        return true;
-    }
-    std::string line;
-    std::string target = "@" + daemonSocketName;
-    while (std::getline(unixFile, line)) {
-        if (line.find(target) != std::string::npos) {
-            return true;
-        }
-    }
-    return false;
+bool SocketProxy::isDaemonSocketReachable() {
+    return probeAbstractSocketReachable(daemonSocketName);
 }
 
 // 向App发送JSON错误响应（与daemon正常响应格式兼容）
 bool SocketProxy::sendErrorToApp(const std::string& errorCode) {
-    std::string json = "{\"success\":false,\"error\":\"" + errorCode + "\"}";
+    // 使用 JsonCpp 序列化，避免手动拼接导致的 JSON 注入
+    Json::Value response;
+    response["success"] = false;
+    response["error"] = errorCode;
+    Json::StreamWriterBuilder builder;
+    std::string json = Json::writeString(builder, response);
     std::vector<char> buf(json.begin(), json.end());
-    return writeMessage(appSocketFd, buf);
+    int localAppFd = -1;
+    {
+        std::lock_guard<std::mutex> lock(appFdMutex);
+        localAppFd = appSocketFd;
+    }
+    if (localAppFd < 0) {
+        LOG_WARN("Cannot send error to app: app socket is unavailable");
+        return false;
+    }
+    return writeMessage(localAppFd, buf);
 }
 
 // 启动daemon进程（双 fork 避免僵尸）
@@ -259,9 +273,27 @@ static void spawnDaemon(const std::string& binaryPath) {
         pid_t grandchild = fork();
         if (grandchild == 0) {
             setsid();
-            // 关闭不需要的fd
-            for (int fd = 3; fd < 256; fd++) close(fd);
+            // 重定向 fd 0/1/2 到 /dev/null：守护进程脱离终端后继续持有父进程继承的
+            // stdin/stdout/stderr 会导致意外的管道污染或 read 阻塞，使用 /dev/null 隔离。
+            int devNull = open("/dev/null", O_RDWR);
+            if (devNull >= 0) {
+                dup2(devNull, STDIN_FILENO);
+                dup2(devNull, STDOUT_FILENO);
+                dup2(devNull, STDERR_FILENO);
+                if (devNull > 2) close(devNull);
+            }
+            // 内核 >=5.9 优先使用 close_range，一次性关闭 3+ fd。
+            int closeRangeRc = static_cast<int>(syscall(SYS_close_range, 3u, UINT_MAX, 0u));
+            if (closeRangeRc != 0) {
+                // 某些构建环境可能缺少 close_range 支持，回退到逐个关闭。
+                LOG_WARN("close_range syscall failed, falling back to manual fd close: " + std::string(strerror(errno)));
+                struct rlimit rl;
+                int maxFd = (getrlimit(RLIMIT_NOFILE, &rl) == 0 && rl.rlim_cur != RLIM_INFINITY)
+                            ? static_cast<int>(rl.rlim_cur) : 1024;
+                for (int fd = 3; fd < maxFd; fd++) close(fd);
+            }
             execl(binaryPath.c_str(), binaryPath.c_str(), nullptr);
+            // execl 只在失败时返回；fd 3+ 已关闭，stderr 已重定向，无法写日志，直接退出
             _exit(1);
         }
         _exit(0); // 第一层子进程立即退出
@@ -274,7 +306,10 @@ static void spawnDaemon(const std::string& binaryPath) {
 void SocketProxy::reconnectLoop() {
     auto finishWith = [this](char cmd) {
         daemonConnecting.store(false);
-        write(wakeupPipe[1], &cmd, 1);
+        // Reconnect notification is best-effort; failures are logged for diagnosis.
+        if (!sendWakeupCommand(wakeupPipe[1], cmd)) {
+            LOG_WARN("[Reconnect] Failed to notify proxy thread via wakeup pipe");
+        }
     };
 
     if (!isFirstConnectAttempt) {
@@ -286,24 +321,27 @@ void SocketProxy::reconnectLoop() {
             return finishWith('f');
         }
 
-        // 如果 socket 未绑定，尝试启动 daemon
-        if (!isDaemonSocketBound()) {
+        // 如果 daemon 当前不可达，尝试启动 daemon。
+        if (!isDaemonSocketReachable()) {
             daemonStartAttempts++;
-            if (daemonStartAttempts > 3) {
-                LOG_ERROR("[Reconnect] Daemon failed to start after 3 attempts, giving up");
+            if (daemonStartAttempts > MAX_DAEMON_START_ATTEMPTS) {
+                LOG_ERROR("[Reconnect] Daemon failed to start after " +
+                          std::to_string(MAX_DAEMON_START_ATTEMPTS) +
+                          " attempts, giving up");
                 daemonUnavailable.store(true);
                 return finishWith('f');
             }
             LOG_WARN("[Reconnect] Daemon not running, starting it (attempt "
-                     + std::to_string(daemonStartAttempts) + "/3)");
+                     + std::to_string(daemonStartAttempts) + "/"
+                     + std::to_string(MAX_DAEMON_START_ATTEMPTS) + ")");
             spawnDaemon(daemonBinaryPath);
 
-            // 最多等 2 秒让 daemon 完成启动
-            for (int i = 0; i < 4; i++) {
-                usleep(500000);
-                if (isDaemonSocketBound()) break;
+            // 固定等待窗口，给 daemon 留出 bind abstract socket 的时间。
+            for (int i = 0; i < DAEMON_START_WAIT_RETRIES; i++) {
+                usleep(DAEMON_START_WAIT_US);
+                if (isDaemonSocketReachable()) break;
             }
-            if (!isDaemonSocketBound()) {
+            if (!isDaemonSocketReachable()) {
                 LOG_WARN("[Reconnect] Daemon still not ready after start attempt "
                          + std::to_string(daemonStartAttempts));
                 return finishWith('f');
@@ -351,11 +389,22 @@ void SocketProxy::runProxy() {
             localDaemonFd = daemonSocketFd;
         }
 
+        int localAppFd;
+        {
+            std::lock_guard<std::mutex> lock(appFdMutex);
+            localAppFd = appSocketFd;
+        }
+        if (localAppFd < 0) {
+            LOG_WARN("App socket unavailable, proxy will exit");
+            running = false;
+            break;
+        }
+
         fd_set readFds;
         FD_ZERO(&readFds);
-        FD_SET(appSocketFd, &readFds);
+        FD_SET(localAppFd, &readFds);
 
-        int maxFd = appSocketFd;
+        int maxFd = localAppFd;
 
         // 监听wakeupPipe读端（重连通知 / stop通知）
         if (wakeupPipe[0] >= 0) {
@@ -368,6 +417,9 @@ void SocketProxy::runProxy() {
             FD_SET(localDaemonFd, &readFds);
             if (localDaemonFd > maxFd) maxFd = localDaemonFd;
         }
+
+        // 固定本轮 select 的 daemon fd 快照，避免返回后被重连线程覆盖。
+        const int selectedDaemonFd = localDaemonFd;
 
         // 等待事件
         int ready = select(maxFd + 1, &readFds, nullptr, nullptr, nullptr);
@@ -394,10 +446,10 @@ void SocketProxy::runProxy() {
         }
 
         // 处理App消息
-        if (FD_ISSET(appSocketFd, &readFds)) {
+        if (FD_ISSET(localAppFd, &readFds)) {
             std::vector<char> buffer;
 
-            if (!readMessage(appSocketFd, buffer)) {
+            if (!readMessage(localAppFd, buffer)) {
                 LOG_INFO("App disconnected or error reading message, proxy will exit");
                 running = false;
                 break;
@@ -434,30 +486,42 @@ void SocketProxy::runProxy() {
             }
         }
 
-        // 处理Daemon消息
-        {
-            std::lock_guard<std::mutex> lock(daemonFdMutex);
-            localDaemonFd = daemonSocketFd;
-        }
-        if (localDaemonFd >= 0 && FD_ISSET(localDaemonFd, &readFds)) {
+        // 处理Daemon消息：必须使用 select 前快照判断 FD_ISSET。
+        if (selectedDaemonFd >= 0 && FD_ISSET(selectedDaemonFd, &readFds)) {
             std::vector<char> buffer;
 
-            if (!readMessage(localDaemonFd, buffer)) {
+            if (!readMessage(selectedDaemonFd, buffer)) {
                 LOG_WARN("Daemon disconnected or read error, will reconnect on next request");
                 {
                     std::lock_guard<std::mutex> lock(daemonFdMutex);
-                    close(daemonSocketFd);
-                    daemonSocketFd = -1;
+                    // 仅关闭当前登记的 fd，避免误关重连线程刚建立的新连接。
+                    if (daemonSocketFd == selectedDaemonFd) {
+                        close(daemonSocketFd);
+                        daemonSocketFd = -1;
+                    }
                 }
                 continue;
             }
 
             // 转发到App
-            if (!writeMessage(appSocketFd, buffer)) {
+            {
+                std::lock_guard<std::mutex> lock(appFdMutex);
+                localAppFd = appSocketFd;
+            }
+            if (localAppFd < 0 || !writeMessage(localAppFd, buffer)) {
                 LOG_ERROR("Failed to write message to app");
                 running = false;
                 break;
             }
+        }
+    }
+
+    // app fd 仅由proxy线程关闭，避免stop线程并发关闭造成竞态
+    {
+        std::lock_guard<std::mutex> lock(appFdMutex);
+        if (appSocketFd >= 0) {
+            close(appSocketFd);
+            appSocketFd = -1;
         }
     }
 
@@ -472,9 +536,14 @@ bool SocketProxy::start() {
         LOG_ERROR("Failed to create wakeup pipe: " + std::string(strerror(errno)));
         return false;
     }
-    // 写端设为非阻塞，防止管道满时阻塞
+    // 写端设为非阻塞，防止管道满时 stop() 的 write 阻塞导致停止流程挂起
     int flags = fcntl(wakeupPipe[1], F_GETFL, 0);
-    fcntl(wakeupPipe[1], F_SETFL, flags | O_NONBLOCK);
+    if (flags < 0 || fcntl(wakeupPipe[1], F_SETFL, flags | O_NONBLOCK) < 0) {
+        LOG_ERROR("Failed to set wakeupPipe write end non-blocking: " + std::string(strerror(errno)));
+        close(wakeupPipe[0]); wakeupPipe[0] = -1;
+        close(wakeupPipe[1]); wakeupPipe[1] = -1;
+        return false;
+    }
 
     // 连接到App - 必须成功
     if (!connectToApp()) {
@@ -503,14 +572,15 @@ void SocketProxy::stop() {
     // 通过wakeupPipe发送stop信号，让select优雅退出
     if (wakeupPipe[1] >= 0) {
         char cmd = 's';
-        write(wakeupPipe[1], &cmd, 1);
+        if (!sendWakeupCommand(wakeupPipe[1], cmd)) {
+            LOG_WARN("Failed to send stop signal via wakeup pipe, falling back to closing writer");
+            // Closing writer forces EOF on read end, which also wakes select().
+            close(wakeupPipe[1]);
+            wakeupPipe[1] = -1;
+        }
     }
 
-    // 关闭app socket（兜底，确保select返回）
-    if (appSocketFd >= 0) {
-        close(appSocketFd);
-        appSocketFd = -1;
-    }
+    // app socket由proxy线程统一关闭，stop线程只负责唤醒并等待退出
 
     // 等待proxy线程退出
     if (proxyThread.joinable()) {
