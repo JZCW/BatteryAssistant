@@ -5,7 +5,7 @@
 namespace Config {
     // 日志与 PID 文件路径
     constexpr const char* DAEMON_LOG_PATH    = "/data/local/tmp/battery_service.log";
-    constexpr const char* BRIDGE_LOG_PATH    = "/data/local/tmp/socket_proxy.log";
+    constexpr const char* BRIDGE_LOG_PATH    = "/data/local/tmp/battery_proxy.log";
     constexpr const char* BRIDGE_PID_PATH    = "/data/local/tmp/batteryProxy.pid";
 
     // 守护进程可执行文件路径
