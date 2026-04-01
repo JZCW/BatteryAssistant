@@ -460,7 +460,7 @@ bool DataCollector::checkAndRestoreLimit() {
     {
         std::lock_guard<std::mutex> dataLock(dataMutex);
         scenario_fcc = currentData.scenario_fcc;
-        current = currentData.current_now;
+        current = currentData.current_now / 1000; // 转换为mA
     }
     
     // 读取当前值
@@ -477,7 +477,7 @@ bool DataCollector::checkAndRestoreLimit() {
                   " to " + std::to_string(scenario_fcc) + ", restoring to " + std::to_string(currentConfig.actualLimit));
     } else if (isCharging.load() && (current > currentConfig.actualLimit)) { //当充电且电流大于预设值，强制写入
         needWrite = true;
-        LOG_WARN("Current (" + std::to_string(current) + "μA) exceeds limit (" + std::to_string(currentConfig.actualLimit) + "μA), reapplying scenario_fcc");
+        LOG_WARN("Current (" + std::to_string(current) + "mA) exceeds limit (" + std::to_string(currentConfig.actualLimit) + "mA), reapplying scenario_fcc");
     }
     
     if (needWrite) {
