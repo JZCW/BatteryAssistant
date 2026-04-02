@@ -14,31 +14,31 @@ public class BatteryData {
     private int version;
     private long timestamp; // 时间戳
     private int capacity;   // 0-100, 电池电量百分比
-    private int voltage_now;           // 当前电池电压(μV)  // 和adc读数不一致？
-    private int voltage_max;           // 最大电池电压(μV)
-    private int voltage_ocv;           // 电池开路电压(μV) //最低电压？
-    private int current_now;           // 当前电池电流(μA) // 同max？
-    private int current_avg;           // 平均电池电流(μA)
+    private int voltage_now;           // 当前电池电压(mV)  // 和adc读数不一致？
+    private int voltage_max;           // 最大电池电压(mV)
+    private int voltage_ocv;           // 电池开路电压(mV) //最低电压？
+    private int current_now;           // 当前电池电流(mA) // 同max？
+    private int current_avg;           // 平均电池电流(mA)
     private int temp_battery;          // 电池温度(0.1°C)
     private int health;                // 电池健康状态 0-100
     private String status_str;    // 电池状态文本 "Charging", "Discharging", "Full"
     private String charge_type_str; // 充电类型文本 "Fast", "Standard", "N/A"
-    private int charge_counter;        // charge counter in μAh  // 剩余电量
+    private int charge_counter;        // charge counter in mAh  // 剩余电量
     private int cycle_count;           // 电池循环次数
-    private int charge_full;           // 实际充满容量 in μAh
-    private int charge_design;         // 设计充满容量 in μAh
+    private int charge_full;           // 实际充满容量 in mAh
+    private int charge_design;         // 设计充满容量 in mAh
     private int usb_online;             // 0 or 1
-    private int usb_voltage_now;        // voltage in μV
-    private int usb_voltage_max;        // max voltage in μV
-    private int in_current_now;        // current in μA // usb与wls相同数据
-    private int usb_current_max;        // max current in μA
+    private int usb_voltage_now;        // voltage in mV
+    private int usb_voltage_max;        // max voltage in mV
+    private int in_current_now;        // current in mA // usb与wls相同数据
+    private int usb_current_max;        // max current in mA
     private String usb_type;       // [Unknown] SDP DCP CDP ACA C PD PD_DRP PD_PPS BrickID
     private int wireless_online;         // 0 or 1
-    private int wireless_voltage_now;    // voltage in μV
-    private int wireless_voltage_max;    // max voltage in μV
-    private int wireless_current_max;    // max current in μA
+    private int wireless_voltage_now;    // voltage in mV
+    private int wireless_voltage_max;    // max voltage in mV
+    private int wireless_current_max;    // max current in mA
     private String wireless_type;       // [Unknown] BPP
-    private int scenario_fcc;           // 场景快速充电电流(μA)
+    private int scenario_fcc;           // 场景快速充电电流(mA)
     private int nt_abnormal_status;     // 异常状态
 
     public BatteryData() {
@@ -92,18 +92,18 @@ public class BatteryData {
     }
 
     public int getVoltageNow() {
-        return voltage_now/1000;
+        return voltage_now;
     }
 
         // data.voltage_max = json.getInt("voltage_max");
         // data.voltage_ocv = json.getInt("voltage_ocv");
 
     public int getCurrentNow() {
-        return (int) (current_now/1000.0f);
+        return current_now;
     }
     
     public int getCurrentAverage() {
-        return (int) (current_avg/1000.0f);
+        return current_avg;
     }
 
     public int getTempBattery() {
@@ -130,7 +130,7 @@ public class BatteryData {
     // data.charge_type_str = json.getString("charge_type_str");
 
     public int getChargeCounter() {
-        return (int) (charge_counter/1000.0f);
+        return charge_counter;
     }
 
     public int getCycleCount() {
@@ -138,11 +138,11 @@ public class BatteryData {
     }
 
     public int getChargeFull() {
-        return (int) (charge_full/1000.0f);
+        return charge_full;
     }
 
     public int getChargeDesign() {
-        return (int) (charge_design/1000.0f);
+        return charge_design;
     }
 
     public boolean isUsbOnline() {
@@ -150,19 +150,19 @@ public class BatteryData {
     }
 
     public int getUsbVoltageNow() {
-        return (int) (usb_voltage_now/1000.0f);
+        return usb_voltage_now;
     }
 
     public int getUsbVoltageMax() {
-        return (int) (usb_voltage_max/1000.0f);
+        return usb_voltage_max;
     }
 
     public int getInCurrentNow() {
-        return (int) (in_current_now/1000.0f);
+        return in_current_now;
     }
 
     public int getUsbCurrentMax() {
-        return (int) (usb_current_max/1000.0f);
+        return usb_current_max;
     }
 
         // data.usb_type = json.getString("usb_type");
@@ -172,15 +172,15 @@ public class BatteryData {
     }
 
     public int getWirelessVoltageNow() {
-        return (int) (wireless_voltage_now/1000.0f);
+        return wireless_voltage_now;
     }
 
     public int getWirelessVoltageMax() {
-        return (int) (wireless_voltage_max/1000.0f);
+        return wireless_voltage_max;
     }
 
     public int getWirelessCurrentMax() {
-        return (int) (wireless_current_max/1000.0f);
+        return wireless_current_max;
     }
 
         // data.wireless_type = json.getString("wireless_type");
