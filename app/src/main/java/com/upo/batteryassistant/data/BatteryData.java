@@ -40,7 +40,7 @@ public class BatteryData {
     private String wireless_type;       // [Unknown] BPP
     private int scenario_fcc;           // 场景快速充电电流(μA)
     private int nt_abnormal_status;     // 异常状态
-    
+
     public BatteryData() {
         // 默认构造函数
     }
@@ -145,18 +145,50 @@ public class BatteryData {
         return (int) (charge_design/1000.0f);
     }
 
-        // data.usb_online = json.getInt("usb_online");
-        // data.usb_voltage_now = json.getInt("usb_voltage_now");
-        // data.usb_voltage_max = json.getInt("usb_voltage_max");
-        // data.in_current_now = json.getInt("in_current_now");
-        // data.usb_current_max = json.getInt("usb_current_max");
+    public boolean isUsbOnline() {
+        return usb_online == 1;
+    }
+
+    public int getUsbVoltageNow() {
+        return (int) (usb_voltage_now/1000.0f);
+    }
+
+    public int getUsbVoltageMax() {
+        return (int) (usb_voltage_max/1000.0f);
+    }
+
+    public int getInCurrentNow() {
+        return (int) (in_current_now/1000.0f);
+    }
+
+    public int getUsbCurrentMax() {
+        return (int) (usb_current_max/1000.0f);
+    }
+
         // data.usb_type = json.getString("usb_type");
-        // data.wireless_online = json.getInt("wireless_online");
-        // data.wireless_voltage_now = json.getInt("wireless_voltage_now");
-        // data.wireless_voltage_max = json.getInt("wireless_voltage_max");
-        // data.wireless_current_max = json.getInt("wireless_current_max");
+
+    public boolean isWirelessOnline() {
+        return wireless_online == 1;
+    }
+
+    public int getWirelessVoltageNow() {
+        return (int) (wireless_voltage_now/1000.0f);
+    }
+
+    public int getWirelessVoltageMax() {
+        return (int) (wireless_voltage_max/1000.0f);
+    }
+
+    public int getWirelessCurrentMax() {
+        return (int) (wireless_current_max/1000.0f);
+    }
+
         // data.wireless_type = json.getString("wireless_type");
-        // data.scenario_fcc = json.getInt("scenario_fcc");
+
+    public int getScenarioFcc() {
+        return scenario_fcc;
+    }
+
         // data.nt_abnormal_status = json.getInt("nt_abnormal_status");
     
     @Override

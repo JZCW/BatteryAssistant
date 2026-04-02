@@ -162,35 +162,34 @@ public class BatteryInfoManager {
             info.setCurrent(data.getCurrentNow());
             info.setCurrentAverage(data.getCurrentAverage());
             info.setHealth(data.getHealth());
+            info.setStatus(data.getStatus());
             info.setChargeCounter(data.getChargeCounter());
             info.setCycleCount(data.getCycleCount());
             info.setFullCapacity(data.getChargeFull());
             info.setDesignCapacity(data.getChargeDesign());
+            info.setUsbOnline(data.isUsbOnline());
+            info.setUsbVoltageNow(data.getUsbVoltageNow());
+            info.setUsbCurrentMax(data.getUsbCurrentMax());
+            info.setUsbCurrentMax(data.getUsbCurrentMax());
+            info.setWirelessOnline(data.isWirelessOnline());
+            info.setWirelessVoltageNow(data.getWirelessVoltageNow());
+            info.setWirelessVoltageMax(data.getWirelessVoltageMax());
+            info.setWirelessCurrentMax(data.getWirelessCurrentMax());
+            info.setInCurrentNow(data.getCurrentNow());
+            info.setScenarioFcc(data.getScenarioFcc());
 
             // TODO
             //基础信息有的
             // private int health_api = -1;           // API健康状态
-            // private int status = -1;               // 充电状态
             // private long chargeTimeRemaining = -1; // 剩余充电时间，单位：毫秒（-1表示无法计算）
             
             //高级信息未使用的
             // private int version;
             // private int voltage_max;           // 最大电池电压(μV)
             // private int voltage_ocv;           // 电池开路电压(μV) //最低电压？
-            // private String status_str;    // 电池状态文本 "Charging", "Discharging", "Full"
             // private String charge_type_str; // 充电类型文本 "Fast", "Standard", "N/A"
-            // private int usb_online;             // 0 or 1
-            // private int usb_voltage_now;        // voltage in μV
-            // private int usb_voltage_max;        // max voltage in μV
-            // private int in_current_now;        // current in μA // usb与wls相同数据
-            // private int usb_current_max;        // max current in μA
             // private String usb_type;       // [Unknown] SDP DCP CDP ACA C PD PD_DRP PD_PPS BrickID
-            // private int wireless_online;         // 0 or 1
-            // private int wireless_voltage_now;    // voltage in μV
-            // private int wireless_voltage_max;    // max voltage in μV
-            // private int wireless_current_max;    // max current in μA
             // private String wireless_type;       // [Unknown] BPP
-            // private int scenario_fcc;           // 场景快速充电电流(μA)
             // private int nt_abnormal_status;     // 异常状态
 
             return true;
