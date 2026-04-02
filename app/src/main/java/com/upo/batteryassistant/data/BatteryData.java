@@ -82,6 +82,10 @@ public class BatteryData {
         return data;
     }
     
+    public long getTimestamp() {
+        return timestamp;
+    }
+
     // 电池相关getter方法
     public int getCapacity() {
         return capacity;
