@@ -5,14 +5,16 @@
 #include <json/json.h>
 
 struct BatteryData {
+    static constexpr int INVALID_VALUE = 65536;  // 无效值标记，超出所有合理取值范围
+
     long timestamp = 0;
-    
+
     int capacity = -1;              // 0-100, 电池电量百分比
     int voltage_now = -1;           // 当前电池电压(mV)  // 和adc读数不一致？
     int voltage_max = -1;           // 最大电池电压(mV)
     int voltage_ocv = -1;           // 电池开路电压(mV) //最低电压？
-    int current_now = 0;            // 当前电池电流(mA) // 同max？
-    int current_avg = 0;            // 平均电池电流(mA)
+    int current_now = INVALID_VALUE;            // 当前电池电流(mA) // 同max？
+    int current_avg = INVALID_VALUE;            // 平均电池电流(mA)
     int temp_battery = -1;          // 电池温度(0.1°C)
     // int temp_usb = -1;              // USB温度(0.1°C)
     // int temp_usb_gpio = -1;         // USB GPIO温度(0.1°C) 与usb有差别 略低
@@ -27,14 +29,14 @@ struct BatteryData {
     int usb_online = -1;             // 0 or 1
     int usb_voltage_now = -1;        // voltage in mV
     int usb_voltage_max = -1;        // max voltage in mV
-    int in_current_now = -1;        // current in mA // usb与wls相同数据
-    int usb_current_max = -1;        // max current in mA
+    int in_current_now = INVALID_VALUE;        // current in mA // usb与wls相同数据
+    int usb_current_max = INVALID_VALUE;        // max current in mA
     // int usb_input_current_limit = -1; // input current limit in μA 同max // usb与wls相同数据
     std::string usb_type = "";       // [Unknown] SDP DCP CDP ACA C PD PD_DRP PD_PPS BrickID
     int wireless_online = -1;         // 0 or 1
     int wireless_voltage_now = -1;    // voltage in mV
     int wireless_voltage_max = -1;    // max voltage in mV
-    int wireless_current_max = -1;    // max current in mA
+    int wireless_current_max = INVALID_VALUE;    // max current in mA
     std::string wireless_type = "";       // [Unknown] BPP
     // int wireless_boost_en = -1;       // 无线升压使能 指示反充
     // int wls_tx_volt = -1;            // 无线充电发射电压 in μV

@@ -11,6 +11,9 @@ import java.util.Map;
  * 从Magic Daemon获取的电池状态数据
  */
 public class BatteryData {
+    /** 无效值标记，超出所有合理取值范围 */
+    public static final int INVALID_VALUE = 65536;
+
     private int version;
     private long timestamp; // 时间戳
     private int capacity;   // 0-100, 电池电量百分比
@@ -99,11 +102,11 @@ public class BatteryData {
         // data.voltage_ocv = json.getInt("voltage_ocv");
 
     public int getCurrentNow() {
-        return current_now;
+        return getInvalidValue(current_now);
     }
     
     public int getCurrentAverage() {
-        return current_avg;
+        return getInvalidValue(current_avg);
     }
 
     public int getTempBattery() {
@@ -158,11 +161,11 @@ public class BatteryData {
     }
 
     public int getInCurrentNow() {
-        return in_current_now;
+        return getInvalidValue(in_current_now);
     }
 
     public int getUsbCurrentMax() {
-        return usb_current_max;
+        return getInvalidValue(usb_current_max);
     }
 
         // data.usb_type = json.getString("usb_type");
@@ -180,7 +183,7 @@ public class BatteryData {
     }
 
     public int getWirelessCurrentMax() {
-        return wireless_current_max;
+        return getInvalidValue(wireless_current_max);
     }
 
         // data.wireless_type = json.getString("wireless_type");
@@ -196,5 +199,9 @@ public class BatteryData {
         return "BatteryData{" +
                 "timestamp=" + timestamp +
                 '}';
+    }
+
+    private int getInvalidValue(int value) {
+        return (value >= INVALID_VALUE) ? Integer.MIN_VALUE : value;
     }
 }

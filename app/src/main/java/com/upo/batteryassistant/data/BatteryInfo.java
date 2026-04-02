@@ -23,18 +23,18 @@ public class BatteryInfo {
     private int designCapacity = -1;       // 设计容量，单位：mAh
 
     // 高级信息
-    private boolean usb_online;
-    private int usb_voltage_now;        // voltage in mV
-    private int usb_voltage_max;        // max voltage in mV
-    private int usb_current_max;        // max current in mA
-    private String usb_type;       // [Unknown] SDP DCP CDP ACA C PD PD_DRP PD_PPS BrickID
-    private boolean wireless_online;
-    private int wireless_voltage_now;    // voltage in mV
-    private int wireless_voltage_max;    // max voltage in mV
-    private int wireless_current_max;    // max current in mA
-    private String wireless_type;       // [Unknown] BPP
-    private int in_current_now;        // current in mA // usb与wls相同数据
-    private int scenario_fcc;           // 场景快速充电电流(mA)
+    private boolean usb_online = false;             // USB在线状态
+    private int usb_voltage_now = -1;        // voltage in mV
+    private int usb_voltage_max = -1;        // max voltage in mV
+    private int usb_current_max = Integer.MIN_VALUE;        // max current in mA
+    private String usb_type = "";       // [Unknown] SDP DCP CDP ACA C PD PD_DRP PD_PPS BrickID
+    private boolean wireless_online = false;
+    private int wireless_voltage_now = -1;    // voltage in mV
+    private int wireless_voltage_max = -1;    // max voltage in mV
+    private int wireless_current_max = Integer.MIN_VALUE;    // max current in mA
+    private String wireless_type = "";       // [Unknown] BPP
+    private int in_current_now = Integer.MIN_VALUE;        // current in mA // usb与wls相同数据
+    private int scenario_fcc = -1;           // 场景快速充电电流(mA)
 
     public BatteryInfo() {}
 

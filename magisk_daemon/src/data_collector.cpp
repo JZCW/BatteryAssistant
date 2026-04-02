@@ -154,9 +154,9 @@ BatteryData DataCollector::readAllFiles() {
     readFile("/sys/class/power_supply/battery/voltage_ocv", data.voltage_ocv, DataType::INT);
     if (data.voltage_ocv != -1) data.voltage_ocv /= 1000;
     readFile("/sys/class/power_supply/battery/current_now", data.current_now, DataType::INT);
-    if (data.current_now != 0) data.current_now /= 1000;
+    if (data.current_now != BatteryData::INVALID_VALUE) data.current_now /= 1000;
     readFile("/sys/class/power_supply/battery/current_avg", data.current_avg, DataType::INT);
-    if (data.current_avg != 0) data.current_avg /= 1000;
+    if (data.current_avg != BatteryData::INVALID_VALUE) data.current_avg /= 1000;
     readFile("/sys/class/power_supply/battery/temp", data.temp_battery, DataType::INT);
     // readFile("/sys/class/power_supply/usb/temp", data.temp_usb, DataType::INT);
     // readFile("/proc/charger/usb_temp_gpio", data.temp_usb_gpio, DataType::INT);
@@ -170,28 +170,27 @@ BatteryData DataCollector::readAllFiles() {
     if (data.charge_full != -1) data.charge_full /= 1000;
     readFile("/proc/charger/nt_qmax", data.charge_design, DataType::INT);
     if (data.charge_design != -1) data.charge_design /= 1000;
+    // readFile("/proc/charger/nt_resistance", data.battery_resistance, DataType::INT);
+    readFile("/sys/class/power_supply/usb/online", data.usb_online, DataType::INT);
+    readFile("/sys/class/power_supply/usb/voltage_now", data.usb_voltage_now, DataType::INT);
     if (data.usb_voltage_now != -1) data.usb_voltage_now /= 1000;
     readFile("/sys/class/power_supply/usb/voltage_max", data.usb_voltage_max, DataType::INT);
     if (data.usb_voltage_max != -1) data.usb_voltage_max /= 1000;
     readFile("/sys/class/power_supply/usb/current_now", data.in_current_now, DataType::INT);
-    if (data.in_current_now != -1) data.in_current_now /= 1000;
+    if (data.in_current_now != BatteryData::INVALID_VALUE) data.in_current_now /= 1000;
     readFile("/sys/class/power_supply/usb/current_max", data.usb_current_max, DataType::INT);
-    if (data.usb_current_max != -1) data.usb_current_max /= 1000;
-    readFile("/sys/class/power_supply/usb/voltage_max", data.usb_voltage_max, DataType::INT);
-    readFile("/sys/class/power_supply/usb/current_now", data.in_current_now, DataType::INT);
-    readFile("/sys/class/power_supply/usb/current_max", data.usb_current_max, DataType::INT);
+    if (data.usb_current_max != BatteryData::INVALID_VALUE) data.usb_current_max /= 1000;
+    // readFile("/sys/class/power_supply/usb/input_current_limit", data.usb_input_current_limit, DataType::INT);
+    readFile("/sys/class/power_supply/usb/usb_type", data.usb_type, DataType::STRING);
+    readFile("/sys/class/power_supply/wireless/online", data.wireless_online, DataType::INT);
+    readFile("/sys/class/power_supply/wireless/voltage_now", data.wireless_voltage_now, DataType::INT);
     if (data.wireless_voltage_now != -1) data.wireless_voltage_now /= 1000;
     readFile("/sys/class/power_supply/wireless/voltage_max", data.wireless_voltage_max, DataType::INT);
     if (data.wireless_voltage_max != -1) data.wireless_voltage_max /= 1000;
     readFile("/sys/class/power_supply/wireless/current_max", data.wireless_current_max, DataType::INT);
-    if (data.wireless_current_max != -1) data.wireless_current_max /= 1000;
-    readFile("/sys/class/power_supply/wireless/online", data.wireless_online, DataType::INT);
-    readFile("/sys/class/power_supply/wireless/voltage_now", data.wireless_voltage_now, DataType::INT);
-    readFile("/sys/class/power_supply/wireless/voltage_max", data.wireless_voltage_max, DataType::INT);
-    readFile("/sys/class/power_supply/wireless/current_max", data.wireless_current_max, DataType::INT);
-    readFile("/sys/class/qcom-battery/wireless_type", data.wireless_type, DataType::STRING);
+    if (data.wireless_current_max != BatteryData::INVALID_VALUE) data.wireless_current_max /= 1000;
+     readFile("/sys/class/qcom-battery/wireless_type", data.wireless_type, DataType::STRING);
     // readFile("/sys/class/qcom-battery/wireless_boost_en", data.wireless_boost_en, DataType::INT);
-    if (data.scenario_fcc != -1) data.scenario_fcc /= 1000;
     // readFile("/sys/class/qcom-battery/wls_volt_tx", data.wls_tx_volt, DataType::INT);
     // readFile("/sys/class/qcom-battery/wls_curr_tx", data.wls_tx_curr, DataType::INT);
     // readFile("/sys/class/qcom-battery/wls_reverse_status", data.wls_rev_status, DataType::INT);
@@ -472,11 +471,11 @@ bool DataCollector::checkAndRestoreLimit() {
     }
 
     int scenario_fcc = -1;
-    int current = 0;
+    int current = BatteryData::INVALID_VALUE;
     {
         std::lock_guard<std::mutex> dataLock(dataMutex);
         scenario_fcc = currentData.scenario_fcc;
-        current = currentData.current_now;  // 已经是 mA，无需再 /1000
+        current = currentData.current_now;
     }
     
     // 读取当前值
@@ -491,7 +490,7 @@ bool DataCollector::checkAndRestoreLimit() {
         needWrite = true;
         LOG_INFO("scenario_fcc changed from " + std::to_string(currentConfig.actualLimit) + 
                   " to " + std::to_string(scenario_fcc) + ", restoring to " + std::to_string(currentConfig.actualLimit));
-    } else if (isCharging.load() && (current > currentConfig.actualLimit)) { //当充电且电流大于预设值，强制写入
+    } else if (isCharging.load() && (current != BatteryData::INVALID_VALUE) && (current > currentConfig.actualLimit)) { //当充电且电流大于预设值，强制写入
         needWrite = true;
         LOG_WARN("Current (" + std::to_string(current) + "mA) exceeds limit (" + std::to_string(currentConfig.actualLimit) + "mA), reapplying scenario_fcc");
     }
