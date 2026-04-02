@@ -44,9 +44,13 @@ public class BatteryInfoManager {
 
     /**
      * 获取当前电池信息
+     * @param forceRefresh 是否强制刷新
      */
     public BatteryInfo getCurrentBatteryInfo() {
-        if (cache != null && (System.currentTimeMillis() - cache.getTimestamp()) < 2000) {
+        return getCurrentBatteryInfo(false);
+    }
+    public BatteryInfo getCurrentBatteryInfo(boolean forceRefresh) {
+        if ((!forceRefresh) && (cache != null) && ((System.currentTimeMillis() - cache.getTimestamp()) < 2000)) {
             return cache;
         }
 
