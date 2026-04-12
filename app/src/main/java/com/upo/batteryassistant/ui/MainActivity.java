@@ -3,7 +3,12 @@ package com.upo.batteryassistant.ui;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.tabs.TabLayout;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.manager.BatteryInfoManager;
@@ -27,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
         ThemeHelper.applySavedTheme(this);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        setupToolbar();
+        applyWindowInsets();
 
         // 初始化电池信息管理器
         batteryInfoManager = BatteryInfoManager.getInstance(this);
@@ -41,6 +48,55 @@ public class MainActivity extends AppCompatActivity {
         if (savedInstanceState == null) {
             showFragment(0);
         }
+    }
+
+    private void setupToolbar() {
+        MaterialToolbar toolbar = findViewById(R.id.top_toolbar);
+        setSupportActionBar(toolbar);
+    }
+
+    private void applyWindowInsets() {
+        View root = findViewById(R.id.main_root);
+        View appBarContainer = findViewById(R.id.app_bar_container);
+        View fragmentContainer = findViewById(R.id.fragment_container);
+        View bottomTabs = findViewById(R.id.tab_layout);
+
+        final int appBarLeft = appBarContainer.getPaddingLeft();
+        final int appBarTop = appBarContainer.getPaddingTop();
+        final int appBarRight = appBarContainer.getPaddingRight();
+        final int appBarBottom = appBarContainer.getPaddingBottom();
+        final int fragmentLeft = fragmentContainer.getPaddingLeft();
+        final int fragmentTop = fragmentContainer.getPaddingTop();
+        final int fragmentRight = fragmentContainer.getPaddingRight();
+        final int fragmentBottom = fragmentContainer.getPaddingBottom();
+        final int tabsLeft = bottomTabs.getPaddingLeft();
+        final int tabsTop = bottomTabs.getPaddingTop();
+        final int tabsRight = bottomTabs.getPaddingRight();
+        final int tabsBottom = bottomTabs.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            appBarContainer.setPadding(
+                appBarLeft + systemBars.left,
+                appBarTop + systemBars.top,
+                appBarRight + systemBars.right,
+                appBarBottom
+            );
+            fragmentContainer.setPadding(
+                fragmentLeft + systemBars.left,
+                fragmentTop,
+                fragmentRight + systemBars.right,
+                fragmentBottom
+            );
+            bottomTabs.setPadding(
+                tabsLeft + systemBars.left,
+                tabsTop,
+                tabsRight + systemBars.right,
+                tabsBottom + systemBars.bottom
+            );
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
     }
     
     /**

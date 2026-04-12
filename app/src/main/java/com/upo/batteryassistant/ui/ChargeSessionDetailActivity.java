@@ -1,8 +1,13 @@
 package com.upo.batteryassistant.ui;
 
 import android.os.Bundle;
+import android.view.View;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.ChargeSession;
 import com.upo.batteryassistant.ui.util.ThemeHelper;
@@ -26,6 +31,7 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_charge_session_detail);
         setupActionBar();
+        applyWindowInsets();
         
         ChargeSession session = (ChargeSession) getIntent().getSerializableExtra(EXTRA_SESSION);
         if (session == null) {
@@ -37,9 +43,44 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
     }
 
     private void setupActionBar() {
+        MaterialToolbar toolbar = findViewById(R.id.detail_toolbar);
+        setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
             getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         }
+    }
+
+    private void applyWindowInsets() {
+        View root = findViewById(R.id.detail_root);
+        View appBarContainer = findViewById(R.id.detail_app_bar_container);
+        View scrollView = findViewById(R.id.detail_scroll_view);
+
+        final int appBarLeft = appBarContainer.getPaddingLeft();
+        final int appBarTop = appBarContainer.getPaddingTop();
+        final int appBarRight = appBarContainer.getPaddingRight();
+        final int appBarBottom = appBarContainer.getPaddingBottom();
+        final int scrollLeft = scrollView.getPaddingLeft();
+        final int scrollTop = scrollView.getPaddingTop();
+        final int scrollRight = scrollView.getPaddingRight();
+        final int scrollBottom = scrollView.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            appBarContainer.setPadding(
+                appBarLeft + systemBars.left,
+                appBarTop + systemBars.top,
+                appBarRight + systemBars.right,
+                appBarBottom
+            );
+            scrollView.setPadding(
+                scrollLeft + systemBars.left,
+                scrollTop,
+                scrollRight + systemBars.right,
+                scrollBottom + systemBars.bottom
+            );
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
     }
 
     @Override
