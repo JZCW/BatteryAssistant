@@ -8,6 +8,7 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <sys/inotify.h>
 #include <condition_variable>
@@ -87,11 +88,15 @@ private:
     bool scenarioMonitoring{false};
     std::string scenarioFccPath{Config::SCENARIO_FCC_PATH};
     std::atomic<bool> scenarioPathUnavailable{false};
+    std::atomic<bool> scenarioWriteUnavailable{false};
     std::atomic<bool> scenarioUnavailableLogged{false};
     std::mutex updateMutex;
     const std::chrono::milliseconds WRITE_COOLDOWN{1000};
     std::chrono::steady_clock::time_point lastUpdateTime;
     DeviceProfile activeProfile;
+    std::unordered_map<std::string, bool> readablePathCache;
+    bool accessibilityProbed{false};
+    mutable std::mutex accessibilityMutex;
     
     void collectLoop();
     BatteryData readAllFiles();
@@ -99,6 +104,8 @@ private:
     template<typename T>
     void readFile(const std::string& path, T& target, DataType type);
     void applyFieldSpec(const FieldSpec& spec, BatteryData& data);
+    void probeAccessibilityOnce();
+    bool isPathReadableCached(const std::string& path) const;
     std::string getSystemProperty(const char* key) const;
     std::string readDeviceFingerprint() const;
     DeviceProfile detectDeviceProfile(const std::string& fingerprint) const;

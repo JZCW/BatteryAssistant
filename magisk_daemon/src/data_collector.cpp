@@ -124,6 +124,10 @@ DataCollector::DeviceProfile DataCollector::detectDeviceProfile(const std::strin
 }
 
 void DataCollector::applyFieldSpec(const FieldSpec& spec, BatteryData& data) {
+    if (accessibilityProbed && !isPathReadableCached(spec.path)) {
+        return;
+    }
+
     if (std::holds_alternative<IntFieldPtr>(spec.target)) {
         IntFieldPtr ptr = std::get<IntFieldPtr>(spec.target);
         int& field = data.*ptr;
@@ -139,6 +143,61 @@ void DataCollector::applyFieldSpec(const FieldSpec& spec, BatteryData& data) {
     readFile(spec.path, field, DataType::STRING);
 }
 
+bool DataCollector::isPathReadableCached(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(accessibilityMutex);
+    auto it = readablePathCache.find(path);
+    if (it == readablePathCache.end()) {
+        return true;
+    }
+    return it->second;
+}
+
+void DataCollector::probeAccessibilityOnce() {
+    std::unordered_map<std::string, bool> readableCache;
+    int totalReadablePaths = 0;
+    int readableCount = 0;
+
+    for (const FieldSpec& spec : activeProfile.fields) {
+        if (!spec.path || spec.path[0] == '\0') {
+            continue;
+        }
+
+        std::string path(spec.path);
+        if (readableCache.find(path) != readableCache.end()) {
+            continue;
+        }
+
+        ++totalReadablePaths;
+        bool readable = (access(path.c_str(), R_OK) == 0);
+        readableCache[path] = readable;
+        if (readable) {
+            ++readableCount;
+        }
+    }
+
+    bool statusReadable = !batteryStatusPath.empty() && (access(batteryStatusPath.c_str(), R_OK) == 0);
+    bool scenarioReadable = !scenarioFccPath.empty() && (access(scenarioFccPath.c_str(), R_OK) == 0);
+    bool scenarioWritable = !scenarioFccPath.empty() && (access(scenarioFccPath.c_str(), W_OK) == 0);
+
+    {
+        std::lock_guard<std::mutex> lock(accessibilityMutex);
+        readablePathCache = std::move(readableCache);
+        accessibilityProbed = true;
+    }
+
+    statusPathUnavailable.store(!statusReadable, std::memory_order_release);
+    scenarioPathUnavailable.store(!scenarioReadable, std::memory_order_release);
+    scenarioWriteUnavailable.store(!scenarioWritable, std::memory_order_release);
+
+    LOG_INFO("Accessibility probe summary: profile=" + activeProfile.name +
+             ", total_paths=" + std::to_string(totalReadablePaths) +
+             ", readable=" + std::to_string(readableCount) +
+             ", unreadable=" + std::to_string(totalReadablePaths - readableCount) +
+             ", status_readable=" + std::string(statusReadable ? "true" : "false") +
+             ", scenario_readable=" + std::string(scenarioReadable ? "true" : "false") +
+             ", scenario_writable=" + std::string(scenarioWritable ? "true" : "false"));
+}
+
 bool DataCollector::start() {
     if (running) return true;
     running = true;
@@ -147,12 +206,15 @@ bool DataCollector::start() {
     activeProfile = detectDeviceProfile(fingerprint);
     batteryStatusPath = activeProfile.batteryStatusPath;
     scenarioFccPath = activeProfile.scenarioFccPath;
-    statusPathUnavailable.store(batteryStatusPath.empty(), std::memory_order_release);
-    scenarioPathUnavailable.store(scenarioFccPath.empty(), std::memory_order_release);
+    statusPathUnavailable.store(false, std::memory_order_release);
+    scenarioPathUnavailable.store(false, std::memory_order_release);
+    scenarioWriteUnavailable.store(false, std::memory_order_release);
     scenarioUnavailableLogged.store(false, std::memory_order_release);
     LOG_INFO("Detected device profile: " + activeProfile.name);
     LOG_INFO("Device fingerprint: " + fingerprint);
     LOG_INFO("Profile file paths: status=" + batteryStatusPath + ", scenario_fcc=" + scenarioFccPath);
+
+    probeAccessibilityOnce();
 
     // 启动充电控制监控
     if (!startScenarioMonitoring()) {
@@ -474,9 +536,16 @@ bool DataCollector::writeScenarioFcc(int value) {
         }
         return false;
     }
+    if (scenarioWriteUnavailable.load(std::memory_order_acquire)) {
+        if (!scenarioUnavailableLogged.exchange(true, std::memory_order_acq_rel)) {
+            LOG_WARN("Skipping scenario_fcc write: path not writable");
+        }
+        return false;
+    }
     if (scenarioFccPath.empty()) {
         LOG_ERROR("Cannot write scenario_fcc: profile path is empty");
         scenarioPathUnavailable.store(true, std::memory_order_release);
+        scenarioWriteUnavailable.store(true, std::memory_order_release);
         return false;
     }
     return writeFile(scenarioFccPath, std::to_string(value));
@@ -550,6 +619,7 @@ bool DataCollector::startScenarioMonitoring() {
             LOG_WARN("Scenario monitoring disabled for unavailable path: " + scenarioFccPath +
                      " (errno=" + std::to_string(errno) + ")");
             scenarioPathUnavailable.store(true, std::memory_order_release);
+            scenarioWriteUnavailable.store(true, std::memory_order_release);
             close(scenarioInotifyFd);
             scenarioInotifyFd = -1;
             scenarioMonitoring = false;
