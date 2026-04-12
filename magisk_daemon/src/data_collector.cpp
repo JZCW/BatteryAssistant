@@ -274,9 +274,6 @@ BatteryData DataCollector::readAllFiles() {
         applyFieldSpec(spec, data);
     }
 
-    // 保留字段（设备上已验证有效，当前模型暂未启用，后续阶段会接入能力与动态字段体系）
-
-
     data.timestamp = getCurrentTimestamp();
     
     return data;
