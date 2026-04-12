@@ -51,36 +51,36 @@ public class BatteryData {
     public static BatteryData fromJson(JSONObject json) throws JSONException {
         BatteryData data = new BatteryData();
 
-        data.version = json.getInt("version");
-        
-        data.timestamp = json.getLong("timestamp");
-        data.capacity = json.getInt("capacity");
-        data.voltage_now = json.getInt("voltage_now");
-        data.voltage_max = json.getInt("voltage_max");
-        data.voltage_ocv = json.getInt("voltage_ocv");
-        data.current_now = json.getInt("current_now");
-        data.current_avg = json.getInt("current_avg");
-        data.temp_battery = json.getInt("temp_battery");
-        data.health = json.getInt("health");
-        data.status_str = json.getString("status_str");
-        data.charge_type_str = json.getString("charge_type_str");
-        data.charge_counter = json.getInt("charge_counter");
-        data.cycle_count = json.getInt("cycle_count");
-        data.charge_full = json.getInt("charge_full");
-        data.charge_design = json.getInt("charge_design");
-        data.usb_online = json.getInt("usb_online");
-        data.usb_voltage_now = json.getInt("usb_voltage_now");
-        data.usb_voltage_max = json.getInt("usb_voltage_max");
-        data.in_current_now = json.getInt("in_current_now");
-        data.usb_current_max = json.getInt("usb_current_max");
-        data.usb_type = json.getString("usb_type");
-        data.wireless_online = json.getInt("wireless_online");
-        data.wireless_voltage_now = json.getInt("wireless_voltage_now");
-        data.wireless_voltage_max = json.getInt("wireless_voltage_max");
-        data.wireless_current_max = json.getInt("wireless_current_max");
-        data.wireless_type = json.getString("wireless_type");
-        data.scenario_fcc = json.getInt("scenario_fcc");
-        data.nt_abnormal_status = json.getInt("nt_abnormal_status");
+        data.version = json.optInt("version", 1);
+
+        data.timestamp = json.optLong("timestamp", 0L);
+        data.capacity = json.optInt("capacity", -1);
+        data.voltage_now = json.optInt("voltage_now", -1);
+        data.voltage_max = json.optInt("voltage_max", -1);
+        data.voltage_ocv = json.optInt("voltage_ocv", -1);
+        data.current_now = json.optInt("current_now", INVALID_VALUE);
+        data.current_avg = json.optInt("current_avg", INVALID_VALUE);
+        data.temp_battery = json.optInt("temp_battery", -1);
+        data.health = json.optInt("health", -1);
+        data.status_str = json.optString("status_str", "");
+        data.charge_type_str = json.optString("charge_type_str", "");
+        data.charge_counter = json.optInt("charge_counter", -1);
+        data.cycle_count = json.optInt("cycle_count", -1);
+        data.charge_full = json.optInt("charge_full", -1);
+        data.charge_design = json.optInt("charge_design", -1);
+        data.usb_online = json.optInt("usb_online", -1);
+        data.usb_voltage_now = json.optInt("usb_voltage_now", -1);
+        data.usb_voltage_max = json.optInt("usb_voltage_max", -1);
+        data.in_current_now = json.optInt("in_current_now", INVALID_VALUE);
+        data.usb_current_max = json.optInt("usb_current_max", INVALID_VALUE);
+        data.usb_type = json.optString("usb_type", "");
+        data.wireless_online = json.optInt("wireless_online", -1);
+        data.wireless_voltage_now = json.optInt("wireless_voltage_now", -1);
+        data.wireless_voltage_max = json.optInt("wireless_voltage_max", -1);
+        data.wireless_current_max = json.optInt("wireless_current_max", INVALID_VALUE);
+        data.wireless_type = json.optString("wireless_type", "");
+        data.scenario_fcc = json.optInt("scenario_fcc", -1);
+        data.nt_abnormal_status = json.optInt("nt_abnormal_status", -1);
         
         return data;
     }

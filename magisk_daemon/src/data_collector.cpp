@@ -1,5 +1,8 @@
 #include "data_collector.h"
 #include "logger.h"
+#include <algorithm>
+#include <cerrno>
+#include <cctype>
 #include <fstream>
 #include <filesystem>
 #include <thread>
@@ -8,10 +11,23 @@
 #include <unistd.h>
 #include <climits>
 
+#if __has_include(<sys/system_properties.h>)
+#include <sys/system_properties.h>
+#define BATTERY_ASSISTANT_HAS_ANDROID_PROPERTIES 1
+#else
+#define BATTERY_ASSISTANT_HAS_ANDROID_PROPERTIES 0
+#endif
+
 namespace {
 constexpr int LOW_BATTERY_THRESHOLD = 30;
 constexpr int LOW_BATTERY_MIN_LIMIT = 2000;
 constexpr int DISCONNECTED_DEFAULT_LIMIT = 2500;
+
+std::string toLowerCopy(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return value;
+}
 }
 
 DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true), scenarioInotifyFd(-1), scenarioWatchFd(-1), scenarioMonitoring(false) {
@@ -22,9 +38,240 @@ DataCollector::~DataCollector() {
     stop();
 }
 
+std::string DataCollector::getSystemProperty(const char* key) const {
+#if BATTERY_ASSISTANT_HAS_ANDROID_PROPERTIES
+    char value[PROP_VALUE_MAX] = {0};
+    if (__system_property_get(key, value) <= 0) {
+        return "";
+    }
+    return value;
+#else
+    (void)key;
+    return "";
+#endif
+}
+
+std::string DataCollector::readDeviceFingerprint() const {
+    return getSystemProperty("ro.build.fingerprint");
+}
+
+std::vector<DataCollector::FieldSpec> DataCollector::buildGenericFieldSpecs() const {
+    return {
+        {"capacity", "/sys/class/power_supply/battery/capacity", DataType::INT, 1, false, &BatteryData::capacity},
+        {"voltage_now", "/sys/class/power_supply/battery/voltage_now", DataType::INT, 1000, false, &BatteryData::voltage_now},
+        {"voltage_max", "/sys/class/power_supply/battery/voltage_max", DataType::INT, 1000, false, &BatteryData::voltage_max},
+        {"voltage_ocv", "/sys/class/power_supply/battery/voltage_ocv", DataType::INT, 1000, false, &BatteryData::voltage_ocv},
+        {"current_now", "/sys/class/power_supply/battery/current_now", DataType::INT, 1000, false, &BatteryData::current_now},
+        {"current_avg", "/sys/class/power_supply/battery/current_avg", DataType::INT, 1000, false, &BatteryData::current_avg},
+        {"temp_battery", "/sys/class/power_supply/battery/temp", DataType::INT, 1, false, &BatteryData::temp_battery},
+        // {"temp_usb", "/sys/class/power_supply/usb/temp", DataType::INT, 1, false, &BatteryData::temp_usb},
+        {"status_str", "/sys/class/power_supply/battery/status", DataType::STRING, 1, false, &BatteryData::status_str},
+        {"charge_type_str", "/sys/class/power_supply/battery/charge_type", DataType::STRING, 1, false, &BatteryData::charge_type_str},
+        {"charge_counter", "/sys/class/power_supply/battery/charge_counter", DataType::INT, 1000, false, &BatteryData::charge_counter},
+        {"cycle_count", "/sys/class/power_supply/battery/cycle_count", DataType::INT, 1, false, &BatteryData::cycle_count},
+        {"usb_online", "/sys/class/power_supply/usb/online", DataType::INT, 1, false, &BatteryData::usb_online},
+        {"usb_voltage_now", "/sys/class/power_supply/usb/voltage_now", DataType::INT, 1000, false, &BatteryData::usb_voltage_now},
+        {"usb_voltage_max", "/sys/class/power_supply/usb/voltage_max", DataType::INT, 1000, false, &BatteryData::usb_voltage_max},
+        {"in_current_now", "/sys/class/power_supply/usb/current_now", DataType::INT, 1000, false, &BatteryData::in_current_now},
+        {"usb_current_max", "/sys/class/power_supply/usb/current_max", DataType::INT, 1000, false, &BatteryData::usb_current_max},
+        // {"usb_input_current_limit", "/sys/class/power_supply/usb/input_current_limit", DataType::INT, 1, false, &BatteryData::usb_input_current_limit},
+        {"usb_type", "/sys/class/power_supply/usb/usb_type", DataType::STRING, 1, false, &BatteryData::usb_type},
+        {"wireless_online", "/sys/class/power_supply/wireless/online", DataType::INT, 1, false, &BatteryData::wireless_online},
+        {"wireless_voltage_now", "/sys/class/power_supply/wireless/voltage_now", DataType::INT, 1000, false, &BatteryData::wireless_voltage_now},
+        {"wireless_voltage_max", "/sys/class/power_supply/wireless/voltage_max", DataType::INT, 1000, false, &BatteryData::wireless_voltage_max},
+        {"wireless_current_max", "/sys/class/power_supply/wireless/current_max", DataType::INT, 1000, false, &BatteryData::wireless_current_max},
+        // {"wireless_boost_en", "/sys/class/qcom-battery/wireless_boost_en", DataType::INT, 1, false, &BatteryData::wireless_boost_en},
+        // {"wls_tx_volt", "/sys/class/qcom-battery/wls_volt_tx", DataType::INT, 1 , false, &BatteryData::wls_tx_volt};
+        // {"wls_tx_curr", "/sys/class/qcom-battery/wls_curr_tx", DataType::INT, 1 , false, &BatteryData::wls_tx_curr};
+        // {"wls_rev_status", "/sys/class/qcom-battery/wls_reverse_status", DataType::INT, 1 , false, &BatteryData::wls_rev_status};
+        // {"wls_rev_fod", "/sys/class/qcom-battery/wls_reverse_fod", DataType::INT, 1 , false, &BatteryData::wls_rev_fod};
+        // {"restrict_chg", "/sys/class/qcom-battery/restrict_chg", DataType::INT, 1 , false, &BatteryData::restrict_chg};
+        // {"restrict_cur", "/sys/class/qcom-battery/restrict_cur", DataType::INT, 1 , false, &BatteryData::restrict_cur};
+    };
+}
+
+std::vector<DataCollector::FieldSpec> DataCollector::buildNothingFieldSpecs() const {
+    std::vector<FieldSpec> fields = buildGenericFieldSpecs();
+    fields.insert(fields.begin(), FieldSpec{"capacity", "/proc/charger/real_soc", DataType::INT, 1, false, &BatteryData::capacity});
+    // fields.push_back({"temp_usb_gpio", "/proc/charger/usb_temp_gpio", DataType::INT, 1, false, &BatteryData::temp_usb_gpio});
+    fields.push_back({"health", "/proc/charger/battery_health", DataType::INT, 1, false, &BatteryData::health});
+    fields.push_back({"charge_full", "/proc/charger/nt_quse", DataType::INT, 1000, false, &BatteryData::charge_full});
+    fields.push_back({"charge_design", "/proc/charger/nt_qmax", DataType::INT, 1000, false, &BatteryData::charge_design});
+    // fields.push_back({"battery_resistance", "/proc/charger/nt_resistance", DataType::INT, 1, false, &BatteryData::battery_resistance});
+    fields.push_back({"wireless_type", "/sys/class/qcom-battery/wireless_type", DataType::STRING, 1, false, &BatteryData::wireless_type});
+    fields.push_back({"scenario_fcc", "/proc/charger/scenario_fcc", DataType::INT, 1, true, &BatteryData::scenario_fcc});
+    // fields.push_back({"nt_otg_enable", "/proc/charger/nt_otg_enable", DataType::INT, 1, false, &BatteryData::nt_otg_enable});
+    fields.push_back({"nt_abnormal_status", "/proc/charger/nt_abnormal_status", DataType::INT, 1, false, &BatteryData::nt_abnormal_status});
+    return fields;
+}
+
+DataCollector::DeviceProfile DataCollector::detectDeviceProfile(const std::string& fingerprint) const {
+    DeviceProfile profile;
+    std::string haystack = toLowerCopy(fingerprint);
+    if (haystack.find("nothing") != std::string::npos) {
+        profile.name = "nothing";
+        profile.batteryStatusPath = "/sys/class/power_supply/battery/status";
+        profile.scenarioFccPath = "/proc/charger/scenario_fcc";
+        profile.fields = buildNothingFieldSpecs();
+        return profile;
+    }
+
+    profile.name = "generic";
+    profile.batteryStatusPath = Config::BATTERY_STATUS_PATH;
+    profile.scenarioFccPath = Config::SCENARIO_FCC_PATH;
+    profile.fields = buildGenericFieldSpecs();
+    return profile;
+}
+
+void DataCollector::applyFieldSpec(const FieldSpec& spec, BatteryData& data) {
+    if (accessibilityProbed && !isPathReadableCached(spec.path)) {
+        return;
+    }
+
+    if (std::holds_alternative<IntFieldPtr>(spec.target)) {
+        IntFieldPtr ptr = std::get<IntFieldPtr>(spec.target);
+        int& field = data.*ptr;
+        readFile(spec.path, field, DataType::INT);
+        if (spec.scaleDivisor > 1 && field != -1 && field != BatteryData::INVALID_VALUE) {
+            field /= spec.scaleDivisor;
+        }
+        return;
+    }
+
+    StringFieldPtr ptr = std::get<StringFieldPtr>(spec.target);
+    std::string& field = data.*ptr;
+    readFile(spec.path, field, DataType::STRING);
+}
+
+bool DataCollector::isPathReadableCached(const std::string& path) const {
+    std::lock_guard<std::mutex> lock(accessibilityMutex);
+    auto it = readablePathCache.find(path);
+    if (it == readablePathCache.end()) {
+        return true;
+    }
+    return it->second;
+}
+
+std::unordered_map<std::string, bool> DataCollector::buildAllBatteryDataFieldMap(bool defaultValue) const {
+    std::unordered_map<std::string, bool> fields;
+    fields["timestamp"] = true;
+    fields["capacity"] = defaultValue;
+    fields["voltage_now"] = defaultValue;
+    fields["voltage_max"] = defaultValue;
+    fields["voltage_ocv"] = defaultValue;
+    fields["current_now"] = defaultValue;
+    fields["current_avg"] = defaultValue;
+    fields["temp_battery"] = defaultValue;
+    fields["health"] = defaultValue;
+    fields["status_str"] = defaultValue;
+    fields["charge_type_str"] = defaultValue;
+    fields["charge_counter"] = defaultValue;
+    fields["cycle_count"] = defaultValue;
+    fields["charge_full"] = defaultValue;
+    fields["charge_design"] = defaultValue;
+    fields["usb_online"] = defaultValue;
+    fields["usb_voltage_now"] = defaultValue;
+    fields["usb_voltage_max"] = defaultValue;
+    fields["in_current_now"] = defaultValue;
+    fields["usb_current_max"] = defaultValue;
+    fields["usb_type"] = defaultValue;
+    fields["wireless_online"] = defaultValue;
+    fields["wireless_voltage_now"] = defaultValue;
+    fields["wireless_voltage_max"] = defaultValue;
+    fields["wireless_current_max"] = defaultValue;
+    fields["wireless_type"] = defaultValue;
+    fields["scenario_fcc"] = defaultValue;
+    fields["nt_abnormal_status"] = defaultValue;
+    return fields;
+}
+
+void DataCollector::probeAccessibilityOnce() {
+    std::unordered_map<std::string, bool> readableCache;
+    std::unordered_map<std::string, bool> readableFields = buildAllBatteryDataFieldMap(false);
+    std::unordered_map<std::string, bool> writableFields = buildAllBatteryDataFieldMap(false);
+
+    for (const FieldSpec& spec : activeProfile.fields) {
+        if (!spec.path || spec.path[0] == '\0') {
+            continue;
+        }
+
+        std::string path(spec.path);
+        if (readableCache.find(path) != readableCache.end()) {
+            auto fieldIt = readableFields.find(spec.key);
+            if (fieldIt != readableFields.end()) {
+                fieldIt->second = fieldIt->second || readableCache[path];
+            }
+            continue;
+        }
+
+        bool readable = (access(path.c_str(), R_OK) == 0);
+        readableCache[path] = readable;
+        auto fieldIt = readableFields.find(spec.key);
+        if (fieldIt == readableFields.end()) {
+            readableFields[spec.key] = readable;
+        } else {
+            fieldIt->second = fieldIt->second || readable;
+        }
+
+        if (spec.isControlPath) {
+            bool writable = (access(path.c_str(), W_OK) == 0);
+            writableFields[spec.key] = writable;
+        }
+    }
+
+    bool statusReadable = !batteryStatusPath.empty() && (access(batteryStatusPath.c_str(), R_OK) == 0);
+    bool scenarioReadable = !scenarioFccPath.empty() && (access(scenarioFccPath.c_str(), R_OK) == 0);
+    bool scenarioWritable = !scenarioFccPath.empty() && (access(scenarioFccPath.c_str(), W_OK) == 0);
+
+    readableFields["status_str"] = statusReadable;
+    readableFields["scenario_fcc"] = scenarioReadable;
+    writableFields["scenario_fcc"] = scenarioWritable;
+
+    {
+        std::lock_guard<std::mutex> lock(accessibilityMutex);
+        readablePathCache = std::move(readableCache);
+        accessibilityProbed = true;
+        capabilitySnapshot.profileName = activeProfile.name;
+        capabilitySnapshot.readableFields = std::move(readableFields);
+        capabilitySnapshot.writableFields = std::move(writableFields);
+    }
+
+    statusPathUnavailable.store(!statusReadable, std::memory_order_release);
+    scenarioPathUnavailable.store(!scenarioReadable, std::memory_order_release);
+    scenarioWriteUnavailable.store(!scenarioWritable, std::memory_order_release);
+
+    LOG_INFO("Accessibility probe summary: profile=" + activeProfile.name +
+             ", status_readable=" + std::string(statusReadable ? "true" : "false") +
+             ", scenario_readable=" + std::string(scenarioReadable ? "true" : "false") +
+             ", scenario_writable=" + std::string(scenarioWritable ? "true" : "false"));
+}
+
+DataCollector::CapabilitySnapshotView DataCollector::getCapabilitySnapshot() const {
+    std::lock_guard<std::mutex> lock(accessibilityMutex);
+    CapabilitySnapshotView view;
+    view.profileName = capabilitySnapshot.profileName;
+    view.readableFields = capabilitySnapshot.readableFields;
+    view.writableFields = capabilitySnapshot.writableFields;
+    return view;
+}
+
 bool DataCollector::start() {
     if (running) return true;
     running = true;
+
+    std::string fingerprint = readDeviceFingerprint();
+    activeProfile = detectDeviceProfile(fingerprint);
+    batteryStatusPath = activeProfile.batteryStatusPath;
+    scenarioFccPath = activeProfile.scenarioFccPath;
+    statusPathUnavailable.store(false, std::memory_order_release);
+    scenarioPathUnavailable.store(false, std::memory_order_release);
+    scenarioWriteUnavailable.store(false, std::memory_order_release);
+    scenarioUnavailableLogged.store(false, std::memory_order_release);
+    LOG_INFO("Detected device profile: " + activeProfile.name);
+    LOG_INFO("Device fingerprint: " + fingerprint);
+    LOG_INFO("Profile file paths: status=" + batteryStatusPath + ", scenario_fcc=" + scenarioFccPath);
+
+    probeAccessibilityOnce();
 
     // 启动充电控制监控
     if (!startScenarioMonitoring()) {
@@ -125,9 +372,11 @@ void DataCollector::updateData() {
 
         // 更新充电状态
         updateChargingStatus(data.status_str);
-        {
+        if (!scenarioPathUnavailable.load(std::memory_order_acquire)) {
             std::lock_guard<std::mutex> configLock(configMutex);
             applyLimitLocked(currentConfig.targetLimit, "safety rule");
+        } else if (!scenarioUnavailableLogged.exchange(true, std::memory_order_acq_rel)) {
+            LOG_WARN("scenario_fcc path unavailable, skip safety-rule write");
         }
 
         // 检查并恢复充电限制
@@ -145,61 +394,17 @@ void DataCollector::updateData() {
 BatteryData DataCollector::readAllFiles() {
     BatteryData data;
 
-    // 读取电池文件
-    readFile("/proc/charger/real_soc", data.capacity, DataType::INT);
-    readFile("/sys/class/power_supply/battery/voltage_now", data.voltage_now, DataType::INT);
-    if (data.voltage_now != -1) data.voltage_now /= 1000;
-    readFile("/sys/class/power_supply/battery/voltage_max", data.voltage_max, DataType::INT);
-    if (data.voltage_max != -1) data.voltage_max /= 1000;
-    readFile("/sys/class/power_supply/battery/voltage_ocv", data.voltage_ocv, DataType::INT);
-    if (data.voltage_ocv != -1) data.voltage_ocv /= 1000;
-    readFile("/sys/class/power_supply/battery/current_now", data.current_now, DataType::INT);
-    if (data.current_now != BatteryData::INVALID_VALUE) data.current_now /= 1000;
-    readFile("/sys/class/power_supply/battery/current_avg", data.current_avg, DataType::INT);
-    if (data.current_avg != BatteryData::INVALID_VALUE) data.current_avg /= 1000;
-    readFile("/sys/class/power_supply/battery/temp", data.temp_battery, DataType::INT);
-    // readFile("/sys/class/power_supply/usb/temp", data.temp_usb, DataType::INT);
-    // readFile("/proc/charger/usb_temp_gpio", data.temp_usb_gpio, DataType::INT);
-    readFile("/proc/charger/battery_health", data.health, DataType::INT);
-    readFile("/sys/class/power_supply/battery/status", data.status_str, DataType::STRING);
-    readFile("/sys/class/power_supply/battery/charge_type", data.charge_type_str, DataType::STRING);
-    readFile("/sys/class/power_supply/battery/charge_counter", data.charge_counter, DataType::INT);
-    if (data.charge_counter != -1) data.charge_counter /= 1000;
-    readFile("/sys/class/power_supply/battery/cycle_count", data.cycle_count, DataType::INT);
-    readFile("/proc/charger/nt_quse", data.charge_full, DataType::INT);
-    if (data.charge_full != -1) data.charge_full /= 1000;
-    readFile("/proc/charger/nt_qmax", data.charge_design, DataType::INT);
-    if (data.charge_design != -1) data.charge_design /= 1000;
-    // readFile("/proc/charger/nt_resistance", data.battery_resistance, DataType::INT);
-    readFile("/sys/class/power_supply/usb/online", data.usb_online, DataType::INT);
-    readFile("/sys/class/power_supply/usb/voltage_now", data.usb_voltage_now, DataType::INT);
-    if (data.usb_voltage_now != -1) data.usb_voltage_now /= 1000;
-    readFile("/sys/class/power_supply/usb/voltage_max", data.usb_voltage_max, DataType::INT);
-    if (data.usb_voltage_max != -1) data.usb_voltage_max /= 1000;
-    readFile("/sys/class/power_supply/usb/current_now", data.in_current_now, DataType::INT);
-    if (data.in_current_now != BatteryData::INVALID_VALUE) data.in_current_now /= 1000;
-    readFile("/sys/class/power_supply/usb/current_max", data.usb_current_max, DataType::INT);
-    if (data.usb_current_max != BatteryData::INVALID_VALUE) data.usb_current_max /= 1000;
-    // readFile("/sys/class/power_supply/usb/input_current_limit", data.usb_input_current_limit, DataType::INT);
-    readFile("/sys/class/power_supply/usb/usb_type", data.usb_type, DataType::STRING);
-    readFile("/sys/class/power_supply/wireless/online", data.wireless_online, DataType::INT);
-    readFile("/sys/class/power_supply/wireless/voltage_now", data.wireless_voltage_now, DataType::INT);
-    if (data.wireless_voltage_now != -1) data.wireless_voltage_now /= 1000;
-    readFile("/sys/class/power_supply/wireless/voltage_max", data.wireless_voltage_max, DataType::INT);
-    if (data.wireless_voltage_max != -1) data.wireless_voltage_max /= 1000;
-    readFile("/sys/class/power_supply/wireless/current_max", data.wireless_current_max, DataType::INT);
-    if (data.wireless_current_max != BatteryData::INVALID_VALUE) data.wireless_current_max /= 1000;
-     readFile("/sys/class/qcom-battery/wireless_type", data.wireless_type, DataType::STRING);
-    // readFile("/sys/class/qcom-battery/wireless_boost_en", data.wireless_boost_en, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_volt_tx", data.wls_tx_volt, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_curr_tx", data.wls_tx_curr, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_reverse_status", data.wls_rev_status, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_reverse_fod", data.wls_rev_fod, DataType::INT);
-    // readFile("/sys/class/qcom-battery/restrict_chg", data.restrict_chg, DataType::INT);
-    // readFile("/sys/class/qcom-battery/restrict_cur", data.restrict_cur, DataType::INT);
-    readFile("/proc/charger/scenario_fcc", data.scenario_fcc, DataType::INT);
-    // readFile("/proc/charger/nt_otg_enable", data.nt_otg_enable, DataType::INT);
-    readFile("/proc/charger/nt_abnormal_status", data.nt_abnormal_status, DataType::INT);
+    const std::vector<FieldSpec>* fieldSpecs = &activeProfile.fields;
+    std::vector<FieldSpec> fallbackSpecs;
+    if (fieldSpecs->empty()) {
+        fallbackSpecs = buildGenericFieldSpecs();
+        fieldSpecs = &fallbackSpecs;
+        LOG_WARN("Active profile field specs empty, falling back to generic specs");
+    }
+
+    for (const FieldSpec& spec : *fieldSpecs) {
+        applyFieldSpec(spec, data);
+    }
 
     data.timestamp = getCurrentTimestamp();
     
@@ -272,6 +477,11 @@ void DataCollector::updateChargingStatus(const std::string& status) {
 }
 
 bool DataCollector::startStatusMonitoring() {
+    if (statusPathUnavailable.load(std::memory_order_acquire)) {
+        LOG_WARN("Status monitoring skipped: status path unavailable");
+        return true;
+    }
+
     if (statusInotifyFd >= 0) {
         LOG_WARN("Status monitoring already started");
         return true;
@@ -285,15 +495,23 @@ bool DataCollector::startStatusMonitoring() {
     }
     
     // 添加监控
-    statusWatchFd = inotify_add_watch(statusInotifyFd, BATTERY_STATUS_PATH.c_str(), IN_MODIFY);
+    statusWatchFd = inotify_add_watch(statusInotifyFd, batteryStatusPath.c_str(), IN_MODIFY);
     if (statusWatchFd < 0) {
+        if (errno == ENOENT || errno == ENOTDIR || errno == EACCES || errno == EPERM) {
+            LOG_WARN("Status monitoring disabled for unavailable path: " + batteryStatusPath +
+                     " (errno=" + std::to_string(errno) + ")");
+            statusPathUnavailable.store(true, std::memory_order_release);
+            close(statusInotifyFd);
+            statusInotifyFd = -1;
+            return true;
+        }
         LOG_ERROR("Failed to add inotify watch for status monitoring");
         close(statusInotifyFd);
         statusInotifyFd = -1;
         return false;
     }
     
-    LOG_INFO("Status monitoring started for " + BATTERY_STATUS_PATH);
+    LOG_INFO("Status monitoring started for " + batteryStatusPath);
     return true;
 }
 
@@ -369,7 +587,25 @@ bool DataCollector::writeFile(const std::string& path, const std::string& conten
 }
 
 bool DataCollector::writeScenarioFcc(int value) {
-    return writeFile(SCENARIO_FCC_PATH, std::to_string(value));
+    if (scenarioPathUnavailable.load(std::memory_order_acquire)) {
+        if (!scenarioUnavailableLogged.exchange(true, std::memory_order_acq_rel)) {
+            LOG_WARN("Skipping scenario_fcc write: path unavailable");
+        }
+        return false;
+    }
+    if (scenarioWriteUnavailable.load(std::memory_order_acquire)) {
+        if (!scenarioUnavailableLogged.exchange(true, std::memory_order_acq_rel)) {
+            LOG_WARN("Skipping scenario_fcc write: path not writable");
+        }
+        return false;
+    }
+    if (scenarioFccPath.empty()) {
+        LOG_ERROR("Cannot write scenario_fcc: profile path is empty");
+        scenarioPathUnavailable.store(true, std::memory_order_release);
+        scenarioWriteUnavailable.store(true, std::memory_order_release);
+        return false;
+    }
+    return writeFile(scenarioFccPath, std::to_string(value));
 }
 
 bool DataCollector::applyLimitLocked(int requestedLimit, const std::string& reason) {
@@ -415,6 +651,11 @@ bool DataCollector::setChargeLimit(int limit) {
 
 bool DataCollector::startScenarioMonitoring() {
     std::lock_guard<std::mutex> lock(configMutex);
+
+    if (scenarioPathUnavailable.load(std::memory_order_acquire)) {
+        LOG_WARN("Scenario monitoring skipped: scenario_fcc path unavailable");
+        return true;
+    }
     
     if (scenarioMonitoring) {
         LOG_WARN("Scenario monitoring already started");
@@ -429,8 +670,18 @@ bool DataCollector::startScenarioMonitoring() {
     }
     
     // 添加监控
-    scenarioWatchFd = inotify_add_watch(scenarioInotifyFd, SCENARIO_FCC_PATH.c_str(), IN_MODIFY);
+    scenarioWatchFd = inotify_add_watch(scenarioInotifyFd, scenarioFccPath.c_str(), IN_MODIFY);
     if (scenarioWatchFd < 0) {
+        if (errno == ENOENT || errno == ENOTDIR || errno == EACCES || errno == EPERM) {
+            LOG_WARN("Scenario monitoring disabled for unavailable path: " + scenarioFccPath +
+                     " (errno=" + std::to_string(errno) + ")");
+            scenarioPathUnavailable.store(true, std::memory_order_release);
+            scenarioWriteUnavailable.store(true, std::memory_order_release);
+            close(scenarioInotifyFd);
+            scenarioInotifyFd = -1;
+            scenarioMonitoring = false;
+            return true;
+        }
         LOG_ERROR("Failed to add inotify watch");
         close(scenarioInotifyFd);
         scenarioInotifyFd = -1;
@@ -438,7 +689,7 @@ bool DataCollector::startScenarioMonitoring() {
     }
     
     scenarioMonitoring = true;
-    LOG_INFO("Scenario monitoring started for " + SCENARIO_FCC_PATH);
+    LOG_INFO("Scenario monitoring started for " + scenarioFccPath);
     return true;
 }
 

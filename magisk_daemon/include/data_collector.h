@@ -8,6 +8,7 @@
 #include <chrono>
 #include <vector>
 #include <string>
+#include <unordered_map>
 #include <variant>
 #include <sys/inotify.h>
 #include <condition_variable>
@@ -27,6 +28,31 @@ struct ChargeConfig {
 
 class DataCollector {
 private:
+    struct CapabilitySnapshot {
+        std::string profileName{"generic"};
+        std::unordered_map<std::string, bool> readableFields;
+        std::unordered_map<std::string, bool> writableFields;
+    };
+
+    using IntFieldPtr = int BatteryData::*;
+    using StringFieldPtr = std::string BatteryData::*;
+
+    struct FieldSpec {
+        const char* key;
+        const char* path;
+        DataType type;
+        int scaleDivisor;
+        bool isControlPath;
+        std::variant<IntFieldPtr, StringFieldPtr> target;
+    };
+
+    struct DeviceProfile {
+        std::string name{"generic"};
+        std::string batteryStatusPath{Config::BATTERY_STATUS_PATH};
+        std::string scenarioFccPath{Config::SCENARIO_FCC_PATH};
+        std::vector<FieldSpec> fields;
+    };
+
     DataCollector();
     ~DataCollector();
     
@@ -52,7 +78,8 @@ private:
     int statusInotifyFd{-1};
     int statusWatchFd{-1};
     std::atomic<bool> isCharging{true};
-    const std::string BATTERY_STATUS_PATH = Config::BATTERY_STATUS_PATH;
+    std::string batteryStatusPath{Config::BATTERY_STATUS_PATH};
+    std::atomic<bool> statusPathUnavailable{false};
     
     // 刷新触发标记
     std::atomic<bool> dataIsStale{false};    // 充电状态变化时置位，绕过 WRITE_COOLDOWN
@@ -65,16 +92,33 @@ private:
     int scenarioInotifyFd{-1};
     int scenarioWatchFd{-1};
     bool scenarioMonitoring{false};
-    const std::string SCENARIO_FCC_PATH = Config::SCENARIO_FCC_PATH;
+    std::string scenarioFccPath{Config::SCENARIO_FCC_PATH};
+    std::atomic<bool> scenarioPathUnavailable{false};
+    std::atomic<bool> scenarioWriteUnavailable{false};
+    std::atomic<bool> scenarioUnavailableLogged{false};
     std::mutex updateMutex;
     const std::chrono::milliseconds WRITE_COOLDOWN{1000};
     std::chrono::steady_clock::time_point lastUpdateTime;
+    DeviceProfile activeProfile;
+    std::unordered_map<std::string, bool> readablePathCache;
+    bool accessibilityProbed{false};
+    mutable std::mutex accessibilityMutex;
+    CapabilitySnapshot capabilitySnapshot;
     
     void collectLoop();
     BatteryData readAllFiles();
     void updateData();
     template<typename T>
     void readFile(const std::string& path, T& target, DataType type);
+    void applyFieldSpec(const FieldSpec& spec, BatteryData& data);
+    void probeAccessibilityOnce();
+    bool isPathReadableCached(const std::string& path) const;
+    std::unordered_map<std::string, bool> buildAllBatteryDataFieldMap(bool defaultValue) const;
+    std::string getSystemProperty(const char* key) const;
+    std::string readDeviceFingerprint() const;
+    DeviceProfile detectDeviceProfile(const std::string& fingerprint) const;
+    std::vector<FieldSpec> buildGenericFieldSpecs() const;
+    std::vector<FieldSpec> buildNothingFieldSpecs() const;
     long getCurrentTimestamp();
     void updateChargingStatus(const std::string& status);
     
@@ -90,6 +134,12 @@ private:
     void stopScenarioMonitoring();
     
 public:
+    struct CapabilitySnapshotView {
+        std::string profileName{"generic"};
+        std::unordered_map<std::string, bool> readableFields;
+        std::unordered_map<std::string, bool> writableFields;
+    };
+
     static DataCollector& getInstance() {
         // Meyers' Singleton：C++11 保证局部静态量线程安全初始化，
         // 析构由运行时管理，消除跨编译单元静态成员析构顺序不确定的风险。
@@ -109,6 +159,7 @@ public:
     bool checkScenarioChange(int fd);
     void onChargeStatusChanged(int fd);
     BatteryData getCurrentData();
+    CapabilitySnapshotView getCapabilitySnapshot() const;
     int getStatusInotifyFd() const { return statusInotifyFd; }
     
     // 充电控制公共方法
