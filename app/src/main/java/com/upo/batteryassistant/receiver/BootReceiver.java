@@ -17,8 +17,7 @@ public class BootReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         if (Intent.ACTION_BOOT_COMPLETED.equals(intent.getAction()) ||
-            Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction()) ||
-            Intent.ACTION_PACKAGE_REPLACED.equals(intent.getAction())) {
+            Intent.ACTION_MY_PACKAGE_REPLACED.equals(intent.getAction())) {
 
             Log.i(TAG, "收到广播: " + intent.getAction());
             BatteryMonitorService.startServiceCompat(context, BatteryMonitorService.START_SOURCE_BOOT);
