@@ -122,9 +122,23 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         TextView endChargeCounterText = findViewById(R.id.detail_end_charge_counter_text);
         TextView chargeCounterDiffText = findViewById(R.id.detail_charge_counter_diff_text);
         
-        startLevelText.setText(session.getStartLevel() + "%");
-        endLevelText.setText(session.getEndLevel() + "%");
-        levelChangeText.setText((session.getEndLevel() - session.getStartLevel()) + "%");
+        if (session.getStartLevel() >= 0) {
+            startLevelText.setText(session.getStartLevel() + "%");
+        } else {
+            startLevelText.setText(R.string.common_unavailable);
+        }
+
+        if (session.getEndLevel() >= 0) {
+            endLevelText.setText(session.getEndLevel() + "%");
+        } else {
+            endLevelText.setText(R.string.common_unavailable);
+        }
+
+        if (session.getStartLevel() >= 0 && session.getEndLevel() >= 0) {
+            levelChangeText.setText((session.getEndLevel() - session.getStartLevel()) + "%");
+        } else {
+            levelChangeText.setText(R.string.common_unavailable);
+        }
         
         if (session.getStartChargeCounter() >= 0) {
             startChargeCounterText.setText(session.getStartChargeCounter() + " mAh");
@@ -144,9 +158,18 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         // 温度信息
         TextView maxTempText = findViewById(R.id.detail_max_temp_text);
         TextView minTempText = findViewById(R.id.detail_min_temp_text);
-        
-        maxTempText.setText(String.format("%.1f°C", session.getMaxTemperatureCelsius()));
-        minTempText.setText(String.format("%.1f°C", session.getMinTemperatureCelsius()));
+
+        if (session.getMaxTemperature() > 0) {
+            maxTempText.setText(String.format(Locale.getDefault(), "%.1f°C", session.getMaxTemperatureCelsius()));
+        } else {
+            maxTempText.setText(R.string.common_unavailable);
+        }
+
+        if (session.getMinTemperature() > 0) {
+            minTempText.setText(String.format(Locale.getDefault(), "%.1f°C", session.getMinTemperatureCelsius()));
+        } else {
+            minTempText.setText(R.string.common_unavailable);
+        }
         
         // 屏幕信息
         TextView screenOnDurationText = findViewById(R.id.detail_screen_on_duration_text);

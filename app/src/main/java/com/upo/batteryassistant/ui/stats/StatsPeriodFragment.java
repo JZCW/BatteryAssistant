@@ -431,7 +431,8 @@ public class StatsPeriodFragment extends Fragment {
         List<BarEntry> chartEntries = new ArrayList<>();
         for (int i = 0; i < chartOrderedEntries.size(); i++) {
             int levelChange = chartOrderedEntries.get(i).getTotalLevelChange();
-            if (levelChange > 0) { // 仅展示正值柱
+            // 语义约定：统计图中 0 视为无效，仅保留占位，不作为可选有效数据。
+            if (levelChange > 0) {
                 chartEntries.add(new BarEntry(i, levelChange));
             } else {
                 chartEntries.add(new BarEntry(i, 0f));
@@ -620,10 +621,19 @@ public class StatsPeriodFragment extends Fragment {
             entry.getTotalChargeCounterDiff(), "mAh");
         detailChargeCounter.setText(getString(R.string.stats_charge_counter_diff_value, chargeCounterFormatted));
 
-        detailEstimatedCapacity.setText(getString(R.string.stats_estimated_capacity_value, entry.getEstimatedCapacity()));
-        detailCycleCount.setText(getString(R.string.stats_cycle_count_value, entry.getCycleCount()));
-        detailCapacity.setText(getString(R.string.stats_estimated_capacity_value, entry.getCapacity()));
-        detailMaxLevelChange.setText(getString(R.string.stats_level_change_value, entry.getMaxLevelChange()) + "%");
+        detailEstimatedCapacity.setText(formatDetailOptionalPositiveValue(
+            entry.getEstimatedCapacity(),
+            R.string.stats_estimated_capacity_value,
+            R.string.stats_estimated_capacity_text_value));
+        detailCycleCount.setText(formatDetailOptionalPositiveValue(
+            entry.getCycleCount(),
+            R.string.stats_cycle_count_value,
+            R.string.stats_cycle_count_text_value));
+        detailCapacity.setText(formatDetailOptionalPositiveValue(
+            entry.getCapacity(),
+            R.string.stats_estimated_capacity_value,
+            R.string.stats_estimated_capacity_text_value));
+        detailMaxLevelChange.setText(formatDetailOptionalLevelChange(entry.getMaxLevelChange()));
     }
 
     private void showLatestEntry() {
@@ -699,6 +709,20 @@ public class StatsPeriodFragment extends Fragment {
             }
         }
         return -1;
+    }
+
+    private String formatDetailOptionalPositiveValue(int value, int valueFormatResId, int noDataFormatResId) {
+        if (value <= 0) {
+            return getString(noDataFormatResId, getString(R.string.common_no_data));
+        }
+        return getString(valueFormatResId, value);
+    }
+
+    private String formatDetailOptionalLevelChange(int value) {
+        if (value <= 0) {
+            return getString(R.string.stats_level_change_value, getString(R.string.common_no_data));
+        }
+        return getString(R.string.stats_level_change_value, value + "%");
     }
 
     private List<StatsEntry> buildDisplayEntries(StatsPeriodType type, List<StatsEntry> rawEntries) {
