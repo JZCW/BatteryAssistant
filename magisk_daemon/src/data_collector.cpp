@@ -50,14 +50,8 @@ std::string DataCollector::getSystemProperty(const char* key) const {
 #endif
 }
 
-DataCollector::DeviceIdentity DataCollector::readDeviceIdentity() const {
-    DeviceIdentity identity;
-    identity.brand = getSystemProperty("ro.product.brand");
-    identity.manufacturer = getSystemProperty("ro.product.manufacturer");
-    identity.device = getSystemProperty("ro.product.device");
-    identity.model = getSystemProperty("ro.product.model");
-    identity.fingerprint = getSystemProperty("ro.build.fingerprint");
-    return identity;
+std::string DataCollector::readDeviceFingerprint() const {
+    return getSystemProperty("ro.build.fingerprint");
 }
 
 std::vector<DataCollector::FieldSpec> DataCollector::buildGenericFieldSpecs() const {
@@ -110,12 +104,9 @@ std::vector<DataCollector::FieldSpec> DataCollector::buildNothingFieldSpecs() co
     return fields;
 }
 
-DataCollector::DeviceProfile DataCollector::detectDeviceProfile(const DeviceIdentity& identity) const {
+DataCollector::DeviceProfile DataCollector::detectDeviceProfile(const std::string& fingerprint) const {
     DeviceProfile profile;
-    std::string haystack = identity.brand + " " + identity.manufacturer + " " +
-                           identity.device + " " + identity.model + " " +
-                           identity.fingerprint;
-    haystack = toLowerCopy(haystack);
+    std::string haystack = toLowerCopy(fingerprint);
     if (haystack.find("nothing") != std::string::npos) {
         profile.name = "nothing";
         profile.fields = buildNothingFieldSpecs();
@@ -147,13 +138,10 @@ bool DataCollector::start() {
     if (running) return true;
     running = true;
 
-    deviceIdentity = readDeviceIdentity();
-    activeProfile = detectDeviceProfile(deviceIdentity);
+    std::string fingerprint = readDeviceFingerprint();
+    activeProfile = detectDeviceProfile(fingerprint);
     LOG_INFO("Detected device profile: " + activeProfile.name);
-    LOG_INFO("Device identity snapshot: brand=" + deviceIdentity.brand +
-             ", manufacturer=" + deviceIdentity.manufacturer +
-             ", device=" + deviceIdentity.device +
-             ", model=" + deviceIdentity.model);
+    LOG_INFO("Device fingerprint: " + fingerprint);
 
     // 启动充电控制监控
     if (!startScenarioMonitoring()) {
