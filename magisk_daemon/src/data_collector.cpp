@@ -1,6 +1,7 @@
 #include "data_collector.h"
 #include "logger.h"
 #include <algorithm>
+#include <cerrno>
 #include <cctype>
 #include <fstream>
 #include <filesystem>
@@ -109,11 +110,15 @@ DataCollector::DeviceProfile DataCollector::detectDeviceProfile(const std::strin
     std::string haystack = toLowerCopy(fingerprint);
     if (haystack.find("nothing") != std::string::npos) {
         profile.name = "nothing";
+        profile.batteryStatusPath = "/sys/class/power_supply/battery/status";
+        profile.scenarioFccPath = "/proc/charger/scenario_fcc";
         profile.fields = buildNothingFieldSpecs();
         return profile;
     }
 
     profile.name = "generic";
+    profile.batteryStatusPath = Config::BATTERY_STATUS_PATH;
+    profile.scenarioFccPath = Config::SCENARIO_FCC_PATH;
     profile.fields = buildGenericFieldSpecs();
     return profile;
 }
@@ -140,8 +145,14 @@ bool DataCollector::start() {
 
     std::string fingerprint = readDeviceFingerprint();
     activeProfile = detectDeviceProfile(fingerprint);
+    batteryStatusPath = activeProfile.batteryStatusPath;
+    scenarioFccPath = activeProfile.scenarioFccPath;
+    statusPathUnavailable.store(batteryStatusPath.empty(), std::memory_order_release);
+    scenarioPathUnavailable.store(scenarioFccPath.empty(), std::memory_order_release);
+    scenarioUnavailableLogged.store(false, std::memory_order_release);
     LOG_INFO("Detected device profile: " + activeProfile.name);
     LOG_INFO("Device fingerprint: " + fingerprint);
+    LOG_INFO("Profile file paths: status=" + batteryStatusPath + ", scenario_fcc=" + scenarioFccPath);
 
     // 启动充电控制监控
     if (!startScenarioMonitoring()) {
@@ -242,9 +253,11 @@ void DataCollector::updateData() {
 
         // 更新充电状态
         updateChargingStatus(data.status_str);
-        {
+        if (!scenarioPathUnavailable.load(std::memory_order_acquire)) {
             std::lock_guard<std::mutex> configLock(configMutex);
             applyLimitLocked(currentConfig.targetLimit, "safety rule");
+        } else if (!scenarioUnavailableLogged.exchange(true, std::memory_order_acq_rel)) {
+            LOG_WARN("scenario_fcc path unavailable, skip safety-rule write");
         }
 
         // 检查并恢复充电限制
@@ -345,6 +358,11 @@ void DataCollector::updateChargingStatus(const std::string& status) {
 }
 
 bool DataCollector::startStatusMonitoring() {
+    if (statusPathUnavailable.load(std::memory_order_acquire)) {
+        LOG_WARN("Status monitoring skipped: status path unavailable");
+        return true;
+    }
+
     if (statusInotifyFd >= 0) {
         LOG_WARN("Status monitoring already started");
         return true;
@@ -358,15 +376,23 @@ bool DataCollector::startStatusMonitoring() {
     }
     
     // 添加监控
-    statusWatchFd = inotify_add_watch(statusInotifyFd, BATTERY_STATUS_PATH.c_str(), IN_MODIFY);
+    statusWatchFd = inotify_add_watch(statusInotifyFd, batteryStatusPath.c_str(), IN_MODIFY);
     if (statusWatchFd < 0) {
+        if (errno == ENOENT || errno == ENOTDIR || errno == EACCES || errno == EPERM) {
+            LOG_WARN("Status monitoring disabled for unavailable path: " + batteryStatusPath +
+                     " (errno=" + std::to_string(errno) + ")");
+            statusPathUnavailable.store(true, std::memory_order_release);
+            close(statusInotifyFd);
+            statusInotifyFd = -1;
+            return true;
+        }
         LOG_ERROR("Failed to add inotify watch for status monitoring");
         close(statusInotifyFd);
         statusInotifyFd = -1;
         return false;
     }
     
-    LOG_INFO("Status monitoring started for " + BATTERY_STATUS_PATH);
+    LOG_INFO("Status monitoring started for " + batteryStatusPath);
     return true;
 }
 
@@ -442,7 +468,18 @@ bool DataCollector::writeFile(const std::string& path, const std::string& conten
 }
 
 bool DataCollector::writeScenarioFcc(int value) {
-    return writeFile(SCENARIO_FCC_PATH, std::to_string(value));
+    if (scenarioPathUnavailable.load(std::memory_order_acquire)) {
+        if (!scenarioUnavailableLogged.exchange(true, std::memory_order_acq_rel)) {
+            LOG_WARN("Skipping scenario_fcc write: path unavailable");
+        }
+        return false;
+    }
+    if (scenarioFccPath.empty()) {
+        LOG_ERROR("Cannot write scenario_fcc: profile path is empty");
+        scenarioPathUnavailable.store(true, std::memory_order_release);
+        return false;
+    }
+    return writeFile(scenarioFccPath, std::to_string(value));
 }
 
 bool DataCollector::applyLimitLocked(int requestedLimit, const std::string& reason) {
@@ -488,6 +525,11 @@ bool DataCollector::setChargeLimit(int limit) {
 
 bool DataCollector::startScenarioMonitoring() {
     std::lock_guard<std::mutex> lock(configMutex);
+
+    if (scenarioPathUnavailable.load(std::memory_order_acquire)) {
+        LOG_WARN("Scenario monitoring skipped: scenario_fcc path unavailable");
+        return true;
+    }
     
     if (scenarioMonitoring) {
         LOG_WARN("Scenario monitoring already started");
@@ -502,8 +544,17 @@ bool DataCollector::startScenarioMonitoring() {
     }
     
     // 添加监控
-    scenarioWatchFd = inotify_add_watch(scenarioInotifyFd, SCENARIO_FCC_PATH.c_str(), IN_MODIFY);
+    scenarioWatchFd = inotify_add_watch(scenarioInotifyFd, scenarioFccPath.c_str(), IN_MODIFY);
     if (scenarioWatchFd < 0) {
+        if (errno == ENOENT || errno == ENOTDIR || errno == EACCES || errno == EPERM) {
+            LOG_WARN("Scenario monitoring disabled for unavailable path: " + scenarioFccPath +
+                     " (errno=" + std::to_string(errno) + ")");
+            scenarioPathUnavailable.store(true, std::memory_order_release);
+            close(scenarioInotifyFd);
+            scenarioInotifyFd = -1;
+            scenarioMonitoring = false;
+            return true;
+        }
         LOG_ERROR("Failed to add inotify watch");
         close(scenarioInotifyFd);
         scenarioInotifyFd = -1;
@@ -511,7 +562,7 @@ bool DataCollector::startScenarioMonitoring() {
     }
     
     scenarioMonitoring = true;
-    LOG_INFO("Scenario monitoring started for " + SCENARIO_FCC_PATH);
+    LOG_INFO("Scenario monitoring started for " + scenarioFccPath);
     return true;
 }
 

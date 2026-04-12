@@ -41,6 +41,8 @@ private:
 
     struct DeviceProfile {
         std::string name{"generic"};
+        std::string batteryStatusPath{Config::BATTERY_STATUS_PATH};
+        std::string scenarioFccPath{Config::SCENARIO_FCC_PATH};
         std::vector<FieldSpec> fields;
     };
 
@@ -69,7 +71,8 @@ private:
     int statusInotifyFd{-1};
     int statusWatchFd{-1};
     std::atomic<bool> isCharging{true};
-    const std::string BATTERY_STATUS_PATH = Config::BATTERY_STATUS_PATH;
+    std::string batteryStatusPath{Config::BATTERY_STATUS_PATH};
+    std::atomic<bool> statusPathUnavailable{false};
     
     // 刷新触发标记
     std::atomic<bool> dataIsStale{false};    // 充电状态变化时置位，绕过 WRITE_COOLDOWN
@@ -82,7 +85,9 @@ private:
     int scenarioInotifyFd{-1};
     int scenarioWatchFd{-1};
     bool scenarioMonitoring{false};
-    const std::string SCENARIO_FCC_PATH = Config::SCENARIO_FCC_PATH;
+    std::string scenarioFccPath{Config::SCENARIO_FCC_PATH};
+    std::atomic<bool> scenarioPathUnavailable{false};
+    std::atomic<bool> scenarioUnavailableLogged{false};
     std::mutex updateMutex;
     const std::chrono::milliseconds WRITE_COOLDOWN{1000};
     std::chrono::steady_clock::time_point lastUpdateTime;
