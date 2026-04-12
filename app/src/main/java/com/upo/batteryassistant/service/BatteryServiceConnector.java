@@ -10,6 +10,8 @@ import org.json.JSONObject;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -42,6 +44,7 @@ public class BatteryServiceConnector {
     private DataInputStream proxyInput = null; // Proxy连接的输入流
     private DataOutputStream proxyOutput = null; // Proxy连接的输出流
     private final Object proxyLock = new Object(); // 用于同步Proxy连接访问
+    private final AtomicReference<JSONObject> cachedDaemonCapabilities = new AtomicReference<>(null);
     
     public interface BatteryDataListener {
         void onBatteryDataChanged(BatteryData data);
@@ -603,7 +606,8 @@ public class BatteryServiceConnector {
         try {
             JSONObject request = new JSONObject();
             request.put("type", "get_battery_status");
-            return sendRequestToProxy(request)
+            return ensureDaemonCapabilitiesCached()
+                .thenCompose(ignored -> sendRequestToProxy(request))
                 .thenApply(response -> {
                     if (response != null && response.optBoolean("success")) {
                         try {
@@ -648,6 +652,92 @@ public class BatteryServiceConnector {
             Log.e(TAG, "Failed to create request", e);
             return CompletableFuture.completedFuture(false);
         }
+    }
+
+    /**
+     * 获取 daemon 能力快照（字段级可读/可写）
+     */
+    public CompletableFuture<JSONObject> getDaemonCapabilities() {
+        try {
+            JSONObject request = new JSONObject();
+            request.put("type", "get_daemon_capabilities");
+            return sendRequestToProxy(request)
+                .thenApply(response -> {
+                    if (response != null && response.optBoolean("success")) {
+                        JSONObject data = response.optJSONObject("data");
+                        if (data != null) {
+                            cachedDaemonCapabilities.set(data);
+                        }
+                        return data;
+                    }
+                    Log.w(TAG, "Failed to get daemon capabilities: " +
+                        (response != null ? response.optString("error", "unknown") : "null response"));
+                    return null;
+                });
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to create capabilities request", e);
+            return CompletableFuture.completedFuture(null);
+        }
+    }
+
+    public JSONObject getCachedDaemonCapabilities() {
+        return cachedDaemonCapabilities.get();
+    }
+
+    public CompletableFuture<Boolean> ensureDaemonCapabilitiesCached() {
+        JSONObject cached = cachedDaemonCapabilities.get();
+        if (cached != null) {
+            return CompletableFuture.completedFuture(true);
+        }
+        return getDaemonCapabilities().thenApply(capabilities -> {
+            if (capabilities == null) {
+                Log.w(TAG, "Capabilities cache missing and fetch failed, continue battery read");
+                return false;
+            }
+            return true;
+        });
+    }
+
+    /**
+     * 拉取并打印 daemon 能力信息（仅日志用途）
+     */
+    public void fetchDaemonCapabilitiesAndLog() {
+        getDaemonCapabilities().thenAccept(capabilities -> {
+            if (capabilities == null) {
+                Log.w(TAG, "Daemon capabilities unavailable");
+                return;
+            }
+
+            String profileName = capabilities.optString("profile_name", "unknown");
+            JSONObject readable = capabilities.optJSONObject("readable_fields");
+            JSONObject writable = capabilities.optJSONObject("writable_fields");
+
+            Log.i(TAG, "Daemon capabilities profile=" + profileName);
+            Log.i(TAG, "Daemon capabilities readable_fields=" + jsonObjectToLogMap(readable));
+            Log.i(TAG, "Daemon capabilities writable_fields=" + jsonObjectToLogMap(writable));
+        }).exceptionally(e -> {
+            Log.e(TAG, "Failed to fetch daemon capabilities", e);
+            return null;
+        });
+    }
+
+    private String jsonObjectToLogMap(JSONObject obj) {
+        if (obj == null) {
+            return "{}";
+        }
+        StringBuilder sb = new StringBuilder("{");
+        Iterator<String> keys = obj.keys();
+        boolean first = true;
+        while (keys.hasNext()) {
+            String key = keys.next();
+            if (!first) {
+                sb.append(", ");
+            }
+            sb.append(key).append("=").append(obj.optBoolean(key, false));
+            first = false;
+        }
+        sb.append("}");
+        return sb.toString();
     }
     
     /**

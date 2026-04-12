@@ -147,6 +147,8 @@ public class BatteryInfoManager {
     private boolean fillAdvancedInfoIfRootAvailable(BatteryInfo info) {
         BatteryData data = null;
         try {
+            // 正式读取前先确保能力缓存已建立；失败不阻断读数。
+            serviceConnector.ensureDaemonCapabilitiesCached().get(1, TimeUnit.SECONDS);
             data = serviceConnector.getBatteryStatus().get(1, TimeUnit.SECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             android.util.Log.e("BatteryInfoManager", "Magisk Service request timed out");
@@ -205,6 +207,15 @@ public class BatteryInfoManager {
     public void ensureBridgeStarted() {
         if (serviceConnector != null) {
             serviceConnector.ensureBridgeStarted();
+        }
+    }
+
+    /**
+     * 拉取并记录 daemon 能力信息（仅日志用途）
+     */
+    public void logDaemonCapabilities() {
+        if (serviceConnector != null) {
+            serviceConnector.fetchDaemonCapabilitiesAndLog();
         }
     }
 

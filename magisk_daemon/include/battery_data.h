@@ -2,6 +2,7 @@
 #define BATTERY_DATA_H
 
 #include <string>
+#include <unordered_map>
 #include <json/json.h>
 
 struct BatteryData {
@@ -50,40 +51,49 @@ struct BatteryData {
     int nt_abnormal_status = -1;     // 异常状态
 
     BatteryData() = default;
-    
-    Json::Value toJson() const {
+
+    Json::Value toJson(const std::unordered_map<std::string, bool>& readableFields) const {
+        auto shouldInclude = [&readableFields](const char* key) {
+            auto it = readableFields.find(key);
+            if (it == readableFields.end()) {
+                return true;
+            }
+            return it->second;
+        };
+
         Json::Value json;
         json["version"] = Json::Value::Int(1);
         json["timestamp"] = Json::Value::Int64(timestamp);
-        json["capacity"] = Json::Value::Int(capacity);
-        json["voltage_now"] = Json::Value::Int(voltage_now);
-        json["voltage_max"] = Json::Value::Int(voltage_max);
-        json["voltage_ocv"] = Json::Value::Int(voltage_ocv);
-        json["current_now"] = Json::Value::Int(current_now);
-        json["current_avg"] = Json::Value::Int(current_avg);
-        json["temp_battery"] = Json::Value::Int(temp_battery);
+
+        if (shouldInclude("capacity")) json["capacity"] = Json::Value::Int(capacity);
+        if (shouldInclude("voltage_now")) json["voltage_now"] = Json::Value::Int(voltage_now);
+        if (shouldInclude("voltage_max")) json["voltage_max"] = Json::Value::Int(voltage_max);
+        if (shouldInclude("voltage_ocv")) json["voltage_ocv"] = Json::Value::Int(voltage_ocv);
+        if (shouldInclude("current_now")) json["current_now"] = Json::Value::Int(current_now);
+        if (shouldInclude("current_avg")) json["current_avg"] = Json::Value::Int(current_avg);
+        if (shouldInclude("temp_battery")) json["temp_battery"] = Json::Value::Int(temp_battery);
         // json["temp_usb"] = Json::Value::Int(temp_usb);
         // json["temp_usb_gpio"] = Json::Value::Int(temp_usb_gpio);
-        json["health"] = Json::Value::Int(health);
-        json["status_str"] = status_str;
-        json["charge_type_str"] = charge_type_str;
-        json["charge_counter"] = Json::Value::Int(charge_counter);
-        json["cycle_count"] = Json::Value::Int(cycle_count);
-        json["charge_full"] = Json::Value::Int(charge_full);
-        json["charge_design"] = Json::Value::Int(charge_design);
+        if (shouldInclude("health")) json["health"] = Json::Value::Int(health);
+        if (shouldInclude("status_str")) json["status_str"] = status_str;
+        if (shouldInclude("charge_type_str")) json["charge_type_str"] = charge_type_str;
+        if (shouldInclude("charge_counter")) json["charge_counter"] = Json::Value::Int(charge_counter);
+        if (shouldInclude("cycle_count")) json["cycle_count"] = Json::Value::Int(cycle_count);
+        if (shouldInclude("charge_full")) json["charge_full"] = Json::Value::Int(charge_full);
+        if (shouldInclude("charge_design")) json["charge_design"] = Json::Value::Int(charge_design);
         // json["battery_resistance"] = Json::Value::Int(battery_resistance);
-        json["usb_online"] = Json::Value::Int(usb_online);
-        json["usb_voltage_now"] = Json::Value::Int(usb_voltage_now);
-        json["usb_voltage_max"] = Json::Value::Int(usb_voltage_max);
-        json["in_current_now"] = Json::Value::Int(in_current_now);
-        json["usb_current_max"] = Json::Value::Int(usb_current_max);
+        if (shouldInclude("usb_online")) json["usb_online"] = Json::Value::Int(usb_online);
+        if (shouldInclude("usb_voltage_now")) json["usb_voltage_now"] = Json::Value::Int(usb_voltage_now);
+        if (shouldInclude("usb_voltage_max")) json["usb_voltage_max"] = Json::Value::Int(usb_voltage_max);
+        if (shouldInclude("in_current_now")) json["in_current_now"] = Json::Value::Int(in_current_now);
+        if (shouldInclude("usb_current_max")) json["usb_current_max"] = Json::Value::Int(usb_current_max);
         // json["usb_input_current_limit"] = Json::Value::Int(usb_input_current_limit);
-        json["usb_type"] = usb_type;
-        json["wireless_online"] = Json::Value::Int(wireless_online);
-        json["wireless_voltage_now"] = Json::Value::Int(wireless_voltage_now);
-        json["wireless_voltage_max"] = Json::Value::Int(wireless_voltage_max);
-        json["wireless_current_max"] = Json::Value::Int(wireless_current_max);
-        json["wireless_type"] = wireless_type;
+        if (shouldInclude("usb_type")) json["usb_type"] = usb_type;
+        if (shouldInclude("wireless_online")) json["wireless_online"] = Json::Value::Int(wireless_online);
+        if (shouldInclude("wireless_voltage_now")) json["wireless_voltage_now"] = Json::Value::Int(wireless_voltage_now);
+        if (shouldInclude("wireless_voltage_max")) json["wireless_voltage_max"] = Json::Value::Int(wireless_voltage_max);
+        if (shouldInclude("wireless_current_max")) json["wireless_current_max"] = Json::Value::Int(wireless_current_max);
+        if (shouldInclude("wireless_type")) json["wireless_type"] = wireless_type;
         // json["wireless_boost_en"] = Json::Value::Int(wireless_boost_en);
         // json["wls_tx_volt"] = Json::Value::Int(wls_tx_volt);
         // json["wls_tx_curr"] = Json::Value::Int(wls_tx_curr);
@@ -91,10 +101,15 @@ struct BatteryData {
         // json["wls_rev_fod"] = Json::Value::Int(wls_rev_fod);
         // json["restrict_chg"] = Json::Value::Int(restrict_chg);
         // json["restrict_cur"] = Json::Value::Int(restrict_cur);
-        json["scenario_fcc"] = Json::Value::Int(scenario_fcc);
+        if (shouldInclude("scenario_fcc")) json["scenario_fcc"] = Json::Value::Int(scenario_fcc);
         // json["nt_otg_enable"] = Json::Value::Int(nt_otg_enable);
-        json["nt_abnormal_status"] = Json::Value::Int(nt_abnormal_status);
+        if (shouldInclude("nt_abnormal_status")) json["nt_abnormal_status"] = Json::Value::Int(nt_abnormal_status);
         return json;
+    }
+
+    Json::Value toJson() const {
+        static const std::unordered_map<std::string, bool> kIncludeAllFields;
+        return toJson(kIncludeAllFields);
     }
     
     bool operator==(const BatteryData& other) const {

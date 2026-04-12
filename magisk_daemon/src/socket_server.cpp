@@ -357,6 +357,11 @@ std::string SocketServer::processRequest(const std::string& requestData) {
         if (type == "get_battery_status") {
             return processStatusQuery(request);
         }
+
+        // 能力查询：返回字段级可用性快照
+        if (type == "get_daemon_capabilities") {
+            return processCapabilitiesQuery(request);
+        }
         
         // 轻量级测试指令
         if (type == "ping") {
@@ -414,14 +419,46 @@ std::string SocketServer::processSetChargeLimit(const Json::Value& request) {
 }
 
 std::string SocketServer::processStatusQuery(const Json::Value& request) {
+    (void)request;
+
     Json::Value response;
     response["success"] = true;
 
     // 阻塞查询
     BatteryData data = DataCollector::getInstance().getCurrentData();
+    DataCollector::CapabilitySnapshotView snapshot = DataCollector::getInstance().getCapabilitySnapshot();
+
+    response["data"] = data.toJson(snapshot.readableFields);
     
-    response["data"] = data.toJson();
-    
+    Json::StreamWriterBuilder builder;
+    return Json::writeString(builder, response);
+}
+
+std::string SocketServer::processCapabilitiesQuery(const Json::Value& request) {
+    (void)request;
+
+    Json::Value response;
+    response["success"] = true;
+
+    DataCollector::CapabilitySnapshotView snapshot = DataCollector::getInstance().getCapabilitySnapshot();
+
+    Json::Value data(Json::objectValue);
+    data["profile_name"] = snapshot.profileName;
+
+    Json::Value readableFields(Json::objectValue);
+    for (const auto& entry : snapshot.readableFields) {
+        readableFields[entry.first] = entry.second;
+    }
+    data["readable_fields"] = readableFields;
+
+    Json::Value writableFields(Json::objectValue);
+    for (const auto& entry : snapshot.writableFields) {
+        writableFields[entry.first] = entry.second;
+    }
+    data["writable_fields"] = writableFields;
+
+    response["data"] = data;
+
     Json::StreamWriterBuilder builder;
     return Json::writeString(builder, response);
 }
