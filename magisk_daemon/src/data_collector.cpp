@@ -21,7 +21,7 @@
 namespace {
 constexpr int LOW_BATTERY_THRESHOLD = 30;
 constexpr int LOW_BATTERY_MIN_LIMIT = 2000;
-constexpr int DISCONNECTED_DEFAULT_LIMIT = 2500;
+constexpr int DISCONNECTED_DEFAULT_LIMIT = 3000;
 
 std::string toLowerCopy(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(),
