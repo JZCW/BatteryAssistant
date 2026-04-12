@@ -38,7 +38,6 @@ set(JSONCPP_LIBRARIES jsoncpp_static)
 set(SOURCES
     src/daemon.cpp
     src/data_collector.cpp
-    src/cache_manager.cpp
     src/socket_server.cpp
     src/logger.cpp
 )
@@ -47,7 +46,6 @@ set(SOURCES
 set(DEBUG_SOURCES
     src/daemon_debug.cpp
     src/data_collector.cpp
-    src/cache_manager.cpp
     src/socket_server.cpp
     src/logger.cpp
 )
@@ -85,7 +83,10 @@ target_include_directories(batteryAssistant_debug PRIVATE ${JSONCPP_INCLUDE_DIRS
 target_compile_options(batteryAssistant_debug PRIVATE ${JSONCPP_CFLAGS_OTHER})
 
 # 链接socket代理的库
-target_link_libraries(batteryProxy dl)
+target_link_libraries(batteryProxy 
+    dl
+    ${JSONCPP_LIBRARIES}
+)
 target_include_directories(batteryProxy PRIVATE ${JSONCPP_INCLUDE_DIRS})
 
 # 安装规则

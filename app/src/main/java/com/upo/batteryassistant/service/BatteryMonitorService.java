@@ -391,7 +391,7 @@ public class BatteryMonitorService extends Service {
             }
         }
 
-        BatteryInfo currentInfo = batteryInfoManager.getCurrentBatteryInfo();
+        BatteryInfo currentInfo = batteryInfoManager.getCurrentBatteryInfo(newState.isCharging() != stateInfo.isCharging()); // 充电状态变化时强制刷新
         if (currentInfo == null) {
             persistHeartbeat("batteryInfo:null");
             return nextUpdateInterval;

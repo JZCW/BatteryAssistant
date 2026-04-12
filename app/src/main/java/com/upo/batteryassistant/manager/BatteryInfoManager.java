@@ -44,29 +44,30 @@ public class BatteryInfoManager {
 
     /**
      * 获取当前电池信息
+     * @param forceRefresh 是否强制刷新
      */
     public BatteryInfo getCurrentBatteryInfo() {
-        if (cache != null && (System.currentTimeMillis() - cache.getTimestamp()) < 2000) {
+        return getCurrentBatteryInfo(false);
+    }
+    public BatteryInfo getCurrentBatteryInfo(boolean forceRefresh) {
+        if ((!forceRefresh) && (cache != null) && ((System.currentTimeMillis() - cache.getTimestamp()) < 2000)) {
             return cache;
         }
 
         BatteryInfo info = new BatteryInfo();
 
-        fillBasicInfo(info);
+        boolean isGetData = false;
+        if (serviceConnector.isProxyRunning()) {
+            isGetData = fillAdvancedInfoIfRootAvailable(info);
+        }
 
-        // ========== Magisk Service 高级信息填充 ==========
-        // fillAdvancedInfoIfRootAvailable(info);
-
-        new Thread(() -> {
-            try {
-                serviceConnector.testConnection(); // 保持连接活跃（在子线程中执行，以免阻塞UI）
-            } catch (Exception ignored) {
-                // 忽略任何测试连接时抛出的异常
-            }
-        }).start();
+        // 如果没有成功从daemon获取数据，则使用系统API获取基础信息
+        if (!isGetData) {
+            fillBasicInfo(info);
+        }
 
         cache = info;
-        return info;
+        return cache;
     }
 
     /**
@@ -140,65 +141,60 @@ public class BatteryInfoManager {
     }
 
     /**
-     * 从 Magisk Service 读取信息并填充到 BatteryInfo
+     * 从 daemon 读取信息并填充到 BatteryInfo
      * @return true表示获取成功，false表示获取失败
      */
     private boolean fillAdvancedInfoIfRootAvailable(BatteryInfo info) {
-        android.util.Log.d("BatteryInfoManager", "Attempting to get advanced battery info from Magisk Service");
-        
-        // 尝试使用Magisk Service获取高级信息
+        BatteryData data = null;
         try {
-            // 首先运行详细诊断
-            // String diagnostics = serviceConnector.testConnectionWithDiagnostics();
-            // android.util.Log.d("BatteryInfoManager", "Socket diagnostics:\n" + diagnostics);
-            
-            // 连接到Magisk Service
-            android.util.Log.d("BatteryInfoManager", "Attempting to connect to Magisk Service...");
-            if (serviceConnector.connect()) {
-                android.util.Log.d("BatteryInfoManager", "Connected to Magisk Service successfully, requesting battery status...");
-                
-                BatteryData data = serviceConnector.getBatteryStatus().get(2, TimeUnit.SECONDS);
-                if (data != null) {
-                    android.util.Log.d("BatteryInfoManager", "Received battery data from Magisk Service");
-                    // // 填充高级电池信息
-                    // info.setAdvBattCapacity(data.getCapacity());
-                    // info.setAdvBattTempDeciC(data.getTemperature());
-                    // info.setAdvBattVoltageNowUv(data.getVoltageNow());
-                    // info.setAdvBattCurrentNowUa((int) data.getCurrentNow());
-                    // info.setAdvBattStatusText(data.getStatus());
-                    // info.setAdvBattHealthText(data.getHealth());
-                    // info.setAdvBattTechnology(data.getTechnology());
-                    // info.setAdvBattChargeCounterUah(data.getChargeCounter());
-                    // info.setAdvBattChargeFullUah(data.getChargeFull());
-                    // info.setAdvBattCycleCount(data.getCycleCount());
-                    // info.setAdvBattChargeCtrlStartThr(data.getChargeStartThreshold());
-                    // info.setAdvBattChargeCtrlEndThr(data.getChargeEndThreshold());
-                    // info.setAdvBattChargeCtrlLimit(data.getChargeLimit());
-                    
-                    // // USB信息
-                    // info.setAdvUsbOnline(data.isUsbOnline());
-                    // info.setAdvUsbVoltageNowUv(data.getUsbVoltageNow());
-                    // info.setAdvUsbCurrentNowUa((int) data.getUsbCurrentNow());
-                    
-                    // // 无线充电信息
-                    // info.setAdvWlsOnline(data.isWirelessOnline());
-                    // info.setAdvWlsVoltageNowUv(data.getWirelessVoltageNow());
-                    // info.setAdvWlsCurrentNowUa((int) data.getWirelessCurrentNow());
-                    
-                    android.util.Log.i("BatteryInfoManager", "Successfully filled advanced battery info from Magisk Service");
-                    return true;
-                } else {
-                    android.util.Log.w("BatteryInfoManager", "Magisk Service returned null data");
-                }
-            } else {
-                android.util.Log.w("BatteryInfoManager", "Failed to connect to Magisk Service");
-            }
+            data = serviceConnector.getBatteryStatus().get(1, TimeUnit.SECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
             android.util.Log.e("BatteryInfoManager", "Magisk Service request timed out");
         } catch (Exception e) {
             android.util.Log.e("BatteryInfoManager", "Magisk Service unavailable", e);
         }
-        
+
+        if (data != null) {
+            info.setTimestamp(data.getTimestamp());
+            info.setLevel(data.getCapacity());
+            info.setTemperature(data.getTempBattery());
+            info.setVoltage(data.getVoltageNow());
+            info.setCurrent(data.getCurrentNow());
+            info.setCurrentAverage(data.getCurrentAverage());
+            info.setHealth(data.getHealth());
+            info.setStatus(data.getStatus());
+            info.setChargeCounter(data.getChargeCounter());
+            info.setCycleCount(data.getCycleCount());
+            info.setFullCapacity(data.getChargeFull());
+            info.setDesignCapacity(data.getChargeDesign());
+            info.setUsbOnline(data.isUsbOnline());
+            info.setUsbVoltageNow(data.getUsbVoltageNow());
+            info.setUsbCurrentMax(data.getUsbCurrentMax());
+            info.setUsbCurrentMax(data.getUsbCurrentMax());
+            info.setWirelessOnline(data.isWirelessOnline());
+            info.setWirelessVoltageNow(data.getWirelessVoltageNow());
+            info.setWirelessVoltageMax(data.getWirelessVoltageMax());
+            info.setWirelessCurrentMax(data.getWirelessCurrentMax());
+            info.setInCurrentNow(data.getCurrentNow());
+            info.setScenarioFcc(data.getScenarioFcc());
+
+            // TODO
+            //基础信息有的
+            // private int health_api = -1;           // API健康状态
+            // private long chargeTimeRemaining = -1; // 剩余充电时间，单位：毫秒（-1表示无法计算）
+            
+            //高级信息未使用的
+            // private int version;
+            // private int voltage_max;           // 最大电池电压(μV)
+            // private int voltage_ocv;           // 电池开路电压(μV) //最低电压？
+            // private String charge_type_str; // 充电类型文本 "Fast", "Standard", "N/A"
+            // private String usb_type;       // [Unknown] SDP DCP CDP ACA C PD PD_DRP PD_PPS BrickID
+            // private String wireless_type;       // [Unknown] BPP
+            // private int nt_abnormal_status;     // 异常状态
+
+            return true;
+        }
+
         return false;
     }
     

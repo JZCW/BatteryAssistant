@@ -6,12 +6,11 @@ $BOOTMODE || abort "
 !!! ONLY support ARM64
 !!! 仅支持 ARM64"
 
-module_id="$(grep_prop id $MODPATH/module.prop)"
 module_name="$(grep_prop name $MODPATH/module.prop)"
 module_version="$(grep_prop version $MODPATH/module.prop)"
 
 # 设置可执行权限
-chmod a+x $MODPATH/$module_id
+chmod a+x $MODPATH/batteryAssistant
 chmod a+x $MODPATH/batteryProxy
 chmod a+x $MODPATH/service.sh
 

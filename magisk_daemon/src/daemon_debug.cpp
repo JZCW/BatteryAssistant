@@ -2,7 +2,6 @@
 #include <signal.h>
 #include <unistd.h>
 #include "data_collector.h"
-#include "cache_manager.h"
 #include "battery_data.h"
 
 volatile sig_atomic_t running = 1;
@@ -66,12 +65,13 @@ int main() {
     std::cout << std::endl;
     
     try {
-        // 初始化组件
-        CacheManager::getInstance();
-        
         // 启动数据采集器
         DataCollector& dataCollector = DataCollector::getInstance();
-        dataCollector.start();
+      if (!dataCollector.start()) {
+        // start 失败时立即退出，避免持续打印默认值误导调试结论。
+        std::cerr << "Failed to start data collector" << std::endl;
+        return 1;
+      }
         
         // 模拟客户端连接，使采集器以1秒间隔采集数据
         dataCollector.onClientConnected();
@@ -84,8 +84,7 @@ int main() {
             sleep(2);
             
             // 从缓存获取最新数据
-            BatteryData data = CacheManager::getInstance().getBatteryData(false); // 不标记为已读
-            
+            BatteryData data = dataCollector.getCurrentData();
             printBatteryData(data);
         }
         
