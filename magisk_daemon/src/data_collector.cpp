@@ -152,10 +152,43 @@ bool DataCollector::isPathReadableCached(const std::string& path) const {
     return it->second;
 }
 
+std::unordered_map<std::string, bool> DataCollector::buildAllBatteryDataFieldMap(bool defaultValue) const {
+    std::unordered_map<std::string, bool> fields;
+    fields["timestamp"] = true;
+    fields["capacity"] = defaultValue;
+    fields["voltage_now"] = defaultValue;
+    fields["voltage_max"] = defaultValue;
+    fields["voltage_ocv"] = defaultValue;
+    fields["current_now"] = defaultValue;
+    fields["current_avg"] = defaultValue;
+    fields["temp_battery"] = defaultValue;
+    fields["health"] = defaultValue;
+    fields["status_str"] = defaultValue;
+    fields["charge_type_str"] = defaultValue;
+    fields["charge_counter"] = defaultValue;
+    fields["cycle_count"] = defaultValue;
+    fields["charge_full"] = defaultValue;
+    fields["charge_design"] = defaultValue;
+    fields["usb_online"] = defaultValue;
+    fields["usb_voltage_now"] = defaultValue;
+    fields["usb_voltage_max"] = defaultValue;
+    fields["in_current_now"] = defaultValue;
+    fields["usb_current_max"] = defaultValue;
+    fields["usb_type"] = defaultValue;
+    fields["wireless_online"] = defaultValue;
+    fields["wireless_voltage_now"] = defaultValue;
+    fields["wireless_voltage_max"] = defaultValue;
+    fields["wireless_current_max"] = defaultValue;
+    fields["wireless_type"] = defaultValue;
+    fields["scenario_fcc"] = defaultValue;
+    fields["nt_abnormal_status"] = defaultValue;
+    return fields;
+}
+
 void DataCollector::probeAccessibilityOnce() {
     std::unordered_map<std::string, bool> readableCache;
-    int totalReadablePaths = 0;
-    int readableCount = 0;
+    std::unordered_map<std::string, bool> readableFields = buildAllBatteryDataFieldMap(false);
+    std::unordered_map<std::string, bool> writableFields = buildAllBatteryDataFieldMap(false);
 
     for (const FieldSpec& spec : activeProfile.fields) {
         if (!spec.path || spec.path[0] == '\0') {
@@ -164,14 +197,25 @@ void DataCollector::probeAccessibilityOnce() {
 
         std::string path(spec.path);
         if (readableCache.find(path) != readableCache.end()) {
+            auto fieldIt = readableFields.find(spec.key);
+            if (fieldIt != readableFields.end()) {
+                fieldIt->second = fieldIt->second || readableCache[path];
+            }
             continue;
         }
 
-        ++totalReadablePaths;
         bool readable = (access(path.c_str(), R_OK) == 0);
         readableCache[path] = readable;
-        if (readable) {
-            ++readableCount;
+        auto fieldIt = readableFields.find(spec.key);
+        if (fieldIt == readableFields.end()) {
+            readableFields[spec.key] = readable;
+        } else {
+            fieldIt->second = fieldIt->second || readable;
+        }
+
+        if (spec.isControlPath) {
+            bool writable = (access(path.c_str(), W_OK) == 0);
+            writableFields[spec.key] = writable;
         }
     }
 
@@ -179,10 +223,17 @@ void DataCollector::probeAccessibilityOnce() {
     bool scenarioReadable = !scenarioFccPath.empty() && (access(scenarioFccPath.c_str(), R_OK) == 0);
     bool scenarioWritable = !scenarioFccPath.empty() && (access(scenarioFccPath.c_str(), W_OK) == 0);
 
+    readableFields["status_str"] = statusReadable;
+    readableFields["scenario_fcc"] = scenarioReadable;
+    writableFields["scenario_fcc"] = scenarioWritable;
+
     {
         std::lock_guard<std::mutex> lock(accessibilityMutex);
         readablePathCache = std::move(readableCache);
         accessibilityProbed = true;
+        capabilitySnapshot.profileName = activeProfile.name;
+        capabilitySnapshot.readableFields = std::move(readableFields);
+        capabilitySnapshot.writableFields = std::move(writableFields);
     }
 
     statusPathUnavailable.store(!statusReadable, std::memory_order_release);
@@ -190,12 +241,18 @@ void DataCollector::probeAccessibilityOnce() {
     scenarioWriteUnavailable.store(!scenarioWritable, std::memory_order_release);
 
     LOG_INFO("Accessibility probe summary: profile=" + activeProfile.name +
-             ", total_paths=" + std::to_string(totalReadablePaths) +
-             ", readable=" + std::to_string(readableCount) +
-             ", unreadable=" + std::to_string(totalReadablePaths - readableCount) +
              ", status_readable=" + std::string(statusReadable ? "true" : "false") +
              ", scenario_readable=" + std::string(scenarioReadable ? "true" : "false") +
              ", scenario_writable=" + std::string(scenarioWritable ? "true" : "false"));
+}
+
+DataCollector::CapabilitySnapshotView DataCollector::getCapabilitySnapshot() const {
+    std::lock_guard<std::mutex> lock(accessibilityMutex);
+    CapabilitySnapshotView view;
+    view.profileName = capabilitySnapshot.profileName;
+    view.readableFields = capabilitySnapshot.readableFields;
+    view.writableFields = capabilitySnapshot.writableFields;
+    return view;
 }
 
 bool DataCollector::start() {

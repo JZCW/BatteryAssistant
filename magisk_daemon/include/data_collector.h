@@ -28,6 +28,12 @@ struct ChargeConfig {
 
 class DataCollector {
 private:
+    struct CapabilitySnapshot {
+        std::string profileName{"generic"};
+        std::unordered_map<std::string, bool> readableFields;
+        std::unordered_map<std::string, bool> writableFields;
+    };
+
     using IntFieldPtr = int BatteryData::*;
     using StringFieldPtr = std::string BatteryData::*;
 
@@ -97,6 +103,7 @@ private:
     std::unordered_map<std::string, bool> readablePathCache;
     bool accessibilityProbed{false};
     mutable std::mutex accessibilityMutex;
+    CapabilitySnapshot capabilitySnapshot;
     
     void collectLoop();
     BatteryData readAllFiles();
@@ -106,6 +113,7 @@ private:
     void applyFieldSpec(const FieldSpec& spec, BatteryData& data);
     void probeAccessibilityOnce();
     bool isPathReadableCached(const std::string& path) const;
+    std::unordered_map<std::string, bool> buildAllBatteryDataFieldMap(bool defaultValue) const;
     std::string getSystemProperty(const char* key) const;
     std::string readDeviceFingerprint() const;
     DeviceProfile detectDeviceProfile(const std::string& fingerprint) const;
@@ -126,6 +134,12 @@ private:
     void stopScenarioMonitoring();
     
 public:
+    struct CapabilitySnapshotView {
+        std::string profileName{"generic"};
+        std::unordered_map<std::string, bool> readableFields;
+        std::unordered_map<std::string, bool> writableFields;
+    };
+
     static DataCollector& getInstance() {
         // Meyers' Singleton：C++11 保证局部静态量线程安全初始化，
         // 析构由运行时管理，消除跨编译单元静态成员析构顺序不确定的风险。
@@ -145,6 +159,7 @@ public:
     bool checkScenarioChange(int fd);
     void onChargeStatusChanged(int fd);
     BatteryData getCurrentData();
+    CapabilitySnapshotView getCapabilitySnapshot() const;
     int getStatusInotifyFd() const { return statusInotifyFd; }
     
     // 充电控制公共方法

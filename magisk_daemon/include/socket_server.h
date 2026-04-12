@@ -34,6 +34,7 @@ private:
     std::string processRequest(const std::string& requestData);
     std::string processSetChargeLimit(const Json::Value& request);
     std::string processStatusQuery(const Json::Value& request);
+    std::string processCapabilitiesQuery(const Json::Value& request);
     std::string processOtherRequest(const Json::Value& request);
     std::string processPingRequest(const Json::Value& request);
     

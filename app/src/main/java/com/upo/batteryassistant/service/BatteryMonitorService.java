@@ -114,6 +114,7 @@ public class BatteryMonitorService extends Service {
         // 尝试启动 bridge 守护进程（无 root 环境会静默跳过）
         try {
             batteryInfoManager.ensureBridgeStarted();
+            batteryInfoManager.logDaemonCapabilities();
         } catch (Exception e) {
             Log.w(TAG, "Failed to start bridge, ignored", e);
         }
