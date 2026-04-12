@@ -69,6 +69,7 @@ std::vector<DataCollector::FieldSpec> DataCollector::buildGenericFieldSpecs() co
         {"current_now", "/sys/class/power_supply/battery/current_now", DataType::INT, 1000, false, &BatteryData::current_now},
         {"current_avg", "/sys/class/power_supply/battery/current_avg", DataType::INT, 1000, false, &BatteryData::current_avg},
         {"temp_battery", "/sys/class/power_supply/battery/temp", DataType::INT, 1, false, &BatteryData::temp_battery},
+        // {"temp_usb", "/sys/class/power_supply/usb/temp", DataType::INT, 1, false, &BatteryData::temp_usb},
         {"status_str", "/sys/class/power_supply/battery/status", DataType::STRING, 1, false, &BatteryData::status_str},
         {"charge_type_str", "/sys/class/power_supply/battery/charge_type", DataType::STRING, 1, false, &BatteryData::charge_type_str},
         {"charge_counter", "/sys/class/power_supply/battery/charge_counter", DataType::INT, 1000, false, &BatteryData::charge_counter},
@@ -78,22 +79,33 @@ std::vector<DataCollector::FieldSpec> DataCollector::buildGenericFieldSpecs() co
         {"usb_voltage_max", "/sys/class/power_supply/usb/voltage_max", DataType::INT, 1000, false, &BatteryData::usb_voltage_max},
         {"in_current_now", "/sys/class/power_supply/usb/current_now", DataType::INT, 1000, false, &BatteryData::in_current_now},
         {"usb_current_max", "/sys/class/power_supply/usb/current_max", DataType::INT, 1000, false, &BatteryData::usb_current_max},
+        // {"usb_input_current_limit", "/sys/class/power_supply/usb/input_current_limit", DataType::INT, 1, false, &BatteryData::usb_input_current_limit},
         {"usb_type", "/sys/class/power_supply/usb/usb_type", DataType::STRING, 1, false, &BatteryData::usb_type},
         {"wireless_online", "/sys/class/power_supply/wireless/online", DataType::INT, 1, false, &BatteryData::wireless_online},
         {"wireless_voltage_now", "/sys/class/power_supply/wireless/voltage_now", DataType::INT, 1000, false, &BatteryData::wireless_voltage_now},
         {"wireless_voltage_max", "/sys/class/power_supply/wireless/voltage_max", DataType::INT, 1000, false, &BatteryData::wireless_voltage_max},
         {"wireless_current_max", "/sys/class/power_supply/wireless/current_max", DataType::INT, 1000, false, &BatteryData::wireless_current_max},
+        // {"wireless_boost_en", "/sys/class/qcom-battery/wireless_boost_en", DataType::INT, 1, false, &BatteryData::wireless_boost_en},
+        // {"wls_tx_volt", "/sys/class/qcom-battery/wls_volt_tx", DataType::INT, 1 , false, &BatteryData::wls_tx_volt};
+        // {"wls_tx_curr", "/sys/class/qcom-battery/wls_curr_tx", DataType::INT, 1 , false, &BatteryData::wls_tx_curr};
+        // {"wls_rev_status", "/sys/class/qcom-battery/wls_reverse_status", DataType::INT, 1 , false, &BatteryData::wls_rev_status};
+        // {"wls_rev_fod", "/sys/class/qcom-battery/wls_reverse_fod", DataType::INT, 1 , false, &BatteryData::wls_rev_fod};
+        // {"restrict_chg", "/sys/class/qcom-battery/restrict_chg", DataType::INT, 1 , false, &BatteryData::restrict_chg};
+        // {"restrict_cur", "/sys/class/qcom-battery/restrict_cur", DataType::INT, 1 , false, &BatteryData::restrict_cur};
     };
 }
 
-std::vector<DataCollector::FieldSpec> DataCollector::buildNtQcomFieldSpecs() const {
+std::vector<DataCollector::FieldSpec> DataCollector::buildNothingFieldSpecs() const {
     std::vector<FieldSpec> fields = buildGenericFieldSpecs();
     fields.insert(fields.begin(), FieldSpec{"capacity", "/proc/charger/real_soc", DataType::INT, 1, false, &BatteryData::capacity});
+    // fields.push_back({"temp_usb_gpio", "/proc/charger/usb_temp_gpio", DataType::INT, 1, false, &BatteryData::temp_usb_gpio});
     fields.push_back({"health", "/proc/charger/battery_health", DataType::INT, 1, false, &BatteryData::health});
     fields.push_back({"charge_full", "/proc/charger/nt_quse", DataType::INT, 1000, false, &BatteryData::charge_full});
     fields.push_back({"charge_design", "/proc/charger/nt_qmax", DataType::INT, 1000, false, &BatteryData::charge_design});
+    // fields.push_back({"battery_resistance", "/proc/charger/nt_resistance", DataType::INT, 1, false, &BatteryData::battery_resistance});
     fields.push_back({"wireless_type", "/sys/class/qcom-battery/wireless_type", DataType::STRING, 1, false, &BatteryData::wireless_type});
     fields.push_back({"scenario_fcc", "/proc/charger/scenario_fcc", DataType::INT, 1, true, &BatteryData::scenario_fcc});
+    // fields.push_back({"nt_otg_enable", "/proc/charger/nt_otg_enable", DataType::INT, 1, false, &BatteryData::nt_otg_enable});
     fields.push_back({"nt_abnormal_status", "/proc/charger/nt_abnormal_status", DataType::INT, 1, false, &BatteryData::nt_abnormal_status});
     return fields;
 }
@@ -104,12 +116,9 @@ DataCollector::DeviceProfile DataCollector::detectDeviceProfile(const DeviceIden
                            identity.device + " " + identity.model + " " +
                            identity.fingerprint;
     haystack = toLowerCopy(haystack);
-    if (haystack.find("oppo") != std::string::npos ||
-            haystack.find("oneplus") != std::string::npos ||
-            haystack.find("realme") != std::string::npos ||
-            haystack.find("oplus") != std::string::npos) {
-        profile.name = "nt_qcom";
-        profile.fields = buildNtQcomFieldSpecs();
+    if (haystack.find("nothing") != std::string::npos) {
+        profile.name = "nothing";
+        profile.fields = buildNothingFieldSpecs();
         return profile;
     }
 
@@ -278,18 +287,7 @@ BatteryData DataCollector::readAllFiles() {
     }
 
     // 保留字段（设备上已验证有效，当前模型暂未启用，后续阶段会接入能力与动态字段体系）
-    // readFile("/sys/class/power_supply/usb/temp", data.temp_usb, DataType::INT);
-    // readFile("/proc/charger/usb_temp_gpio", data.temp_usb_gpio, DataType::INT);
-    // readFile("/proc/charger/nt_resistance", data.battery_resistance, DataType::INT);
-    // readFile("/sys/class/power_supply/usb/input_current_limit", data.usb_input_current_limit, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wireless_boost_en", data.wireless_boost_en, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_volt_tx", data.wls_tx_volt, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_curr_tx", data.wls_tx_curr, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_reverse_status", data.wls_rev_status, DataType::INT);
-    // readFile("/sys/class/qcom-battery/wls_reverse_fod", data.wls_rev_fod, DataType::INT);
-    // readFile("/sys/class/qcom-battery/restrict_chg", data.restrict_chg, DataType::INT);
-    // readFile("/sys/class/qcom-battery/restrict_cur", data.restrict_cur, DataType::INT);
-    // readFile("/proc/charger/nt_otg_enable", data.nt_otg_enable, DataType::INT);
+
 
     data.timestamp = getCurrentTimestamp();
     

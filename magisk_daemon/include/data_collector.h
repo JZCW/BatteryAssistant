@@ -107,7 +107,7 @@ private:
     DeviceIdentity readDeviceIdentity() const;
     DeviceProfile detectDeviceProfile(const DeviceIdentity& identity) const;
     std::vector<FieldSpec> buildGenericFieldSpecs() const;
-    std::vector<FieldSpec> buildNtQcomFieldSpecs() const;
+    std::vector<FieldSpec> buildNothingFieldSpecs() const;
     long getCurrentTimestamp();
     void updateChargingStatus(const std::string& status);
     
