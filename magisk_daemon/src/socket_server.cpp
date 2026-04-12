@@ -419,13 +419,16 @@ std::string SocketServer::processSetChargeLimit(const Json::Value& request) {
 }
 
 std::string SocketServer::processStatusQuery(const Json::Value& request) {
+    (void)request;
+
     Json::Value response;
     response["success"] = true;
 
     // 阻塞查询
     BatteryData data = DataCollector::getInstance().getCurrentData();
-    
-    response["data"] = data.toJson();
+    DataCollector::CapabilitySnapshotView snapshot = DataCollector::getInstance().getCapabilitySnapshot();
+
+    response["data"] = data.toJson(snapshot.readableFields);
     
     Json::StreamWriterBuilder builder;
     return Json::writeString(builder, response);
