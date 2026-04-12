@@ -1,5 +1,7 @@
 #include "data_collector.h"
 #include "logger.h"
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 #include <filesystem>
 #include <thread>
@@ -8,10 +10,23 @@
 #include <unistd.h>
 #include <climits>
 
+#if __has_include(<sys/system_properties.h>)
+#include <sys/system_properties.h>
+#define BATTERY_ASSISTANT_HAS_ANDROID_PROPERTIES 1
+#else
+#define BATTERY_ASSISTANT_HAS_ANDROID_PROPERTIES 0
+#endif
+
 namespace {
 constexpr int LOW_BATTERY_THRESHOLD = 30;
 constexpr int LOW_BATTERY_MIN_LIMIT = 2000;
 constexpr int DISCONNECTED_DEFAULT_LIMIT = 2500;
+
+std::string toLowerCopy(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    return value;
+}
 }
 
 DataCollector::DataCollector() : statusInotifyFd(-1), statusWatchFd(-1), isCharging(true), scenarioInotifyFd(-1), scenarioWatchFd(-1), scenarioMonitoring(false) {
@@ -22,9 +37,114 @@ DataCollector::~DataCollector() {
     stop();
 }
 
+std::string DataCollector::getSystemProperty(const char* key) const {
+#if BATTERY_ASSISTANT_HAS_ANDROID_PROPERTIES
+    char value[PROP_VALUE_MAX] = {0};
+    if (__system_property_get(key, value) <= 0) {
+        return "";
+    }
+    return value;
+#else
+    (void)key;
+    return "";
+#endif
+}
+
+DataCollector::DeviceIdentity DataCollector::readDeviceIdentity() const {
+    DeviceIdentity identity;
+    identity.brand = getSystemProperty("ro.product.brand");
+    identity.manufacturer = getSystemProperty("ro.product.manufacturer");
+    identity.device = getSystemProperty("ro.product.device");
+    identity.model = getSystemProperty("ro.product.model");
+    identity.fingerprint = getSystemProperty("ro.build.fingerprint");
+    return identity;
+}
+
+std::vector<DataCollector::FieldSpec> DataCollector::buildGenericFieldSpecs() const {
+    return {
+        {"capacity", "/sys/class/power_supply/battery/capacity", DataType::INT, 1, false, &BatteryData::capacity},
+        {"voltage_now", "/sys/class/power_supply/battery/voltage_now", DataType::INT, 1000, false, &BatteryData::voltage_now},
+        {"voltage_max", "/sys/class/power_supply/battery/voltage_max", DataType::INT, 1000, false, &BatteryData::voltage_max},
+        {"voltage_ocv", "/sys/class/power_supply/battery/voltage_ocv", DataType::INT, 1000, false, &BatteryData::voltage_ocv},
+        {"current_now", "/sys/class/power_supply/battery/current_now", DataType::INT, 1000, false, &BatteryData::current_now},
+        {"current_avg", "/sys/class/power_supply/battery/current_avg", DataType::INT, 1000, false, &BatteryData::current_avg},
+        {"temp_battery", "/sys/class/power_supply/battery/temp", DataType::INT, 1, false, &BatteryData::temp_battery},
+        {"status_str", "/sys/class/power_supply/battery/status", DataType::STRING, 1, false, &BatteryData::status_str},
+        {"charge_type_str", "/sys/class/power_supply/battery/charge_type", DataType::STRING, 1, false, &BatteryData::charge_type_str},
+        {"charge_counter", "/sys/class/power_supply/battery/charge_counter", DataType::INT, 1000, false, &BatteryData::charge_counter},
+        {"cycle_count", "/sys/class/power_supply/battery/cycle_count", DataType::INT, 1, false, &BatteryData::cycle_count},
+        {"usb_online", "/sys/class/power_supply/usb/online", DataType::INT, 1, false, &BatteryData::usb_online},
+        {"usb_voltage_now", "/sys/class/power_supply/usb/voltage_now", DataType::INT, 1000, false, &BatteryData::usb_voltage_now},
+        {"usb_voltage_max", "/sys/class/power_supply/usb/voltage_max", DataType::INT, 1000, false, &BatteryData::usb_voltage_max},
+        {"in_current_now", "/sys/class/power_supply/usb/current_now", DataType::INT, 1000, false, &BatteryData::in_current_now},
+        {"usb_current_max", "/sys/class/power_supply/usb/current_max", DataType::INT, 1000, false, &BatteryData::usb_current_max},
+        {"usb_type", "/sys/class/power_supply/usb/usb_type", DataType::STRING, 1, false, &BatteryData::usb_type},
+        {"wireless_online", "/sys/class/power_supply/wireless/online", DataType::INT, 1, false, &BatteryData::wireless_online},
+        {"wireless_voltage_now", "/sys/class/power_supply/wireless/voltage_now", DataType::INT, 1000, false, &BatteryData::wireless_voltage_now},
+        {"wireless_voltage_max", "/sys/class/power_supply/wireless/voltage_max", DataType::INT, 1000, false, &BatteryData::wireless_voltage_max},
+        {"wireless_current_max", "/sys/class/power_supply/wireless/current_max", DataType::INT, 1000, false, &BatteryData::wireless_current_max},
+    };
+}
+
+std::vector<DataCollector::FieldSpec> DataCollector::buildNtQcomFieldSpecs() const {
+    std::vector<FieldSpec> fields = buildGenericFieldSpecs();
+    fields.insert(fields.begin(), FieldSpec{"capacity", "/proc/charger/real_soc", DataType::INT, 1, false, &BatteryData::capacity});
+    fields.push_back({"health", "/proc/charger/battery_health", DataType::INT, 1, false, &BatteryData::health});
+    fields.push_back({"charge_full", "/proc/charger/nt_quse", DataType::INT, 1000, false, &BatteryData::charge_full});
+    fields.push_back({"charge_design", "/proc/charger/nt_qmax", DataType::INT, 1000, false, &BatteryData::charge_design});
+    fields.push_back({"wireless_type", "/sys/class/qcom-battery/wireless_type", DataType::STRING, 1, false, &BatteryData::wireless_type});
+    fields.push_back({"scenario_fcc", "/proc/charger/scenario_fcc", DataType::INT, 1, true, &BatteryData::scenario_fcc});
+    fields.push_back({"nt_abnormal_status", "/proc/charger/nt_abnormal_status", DataType::INT, 1, false, &BatteryData::nt_abnormal_status});
+    return fields;
+}
+
+DataCollector::DeviceProfile DataCollector::detectDeviceProfile(const DeviceIdentity& identity) const {
+    DeviceProfile profile;
+    std::string haystack = identity.brand + " " + identity.manufacturer + " " +
+                           identity.device + " " + identity.model + " " +
+                           identity.fingerprint;
+    haystack = toLowerCopy(haystack);
+    if (haystack.find("oppo") != std::string::npos ||
+            haystack.find("oneplus") != std::string::npos ||
+            haystack.find("realme") != std::string::npos ||
+            haystack.find("oplus") != std::string::npos) {
+        profile.name = "nt_qcom";
+        profile.fields = buildNtQcomFieldSpecs();
+        return profile;
+    }
+
+    profile.name = "generic";
+    profile.fields = buildGenericFieldSpecs();
+    return profile;
+}
+
+void DataCollector::applyFieldSpec(const FieldSpec& spec, BatteryData& data) {
+    if (std::holds_alternative<IntFieldPtr>(spec.target)) {
+        IntFieldPtr ptr = std::get<IntFieldPtr>(spec.target);
+        int& field = data.*ptr;
+        readFile(spec.path, field, DataType::INT);
+        if (spec.scaleDivisor > 1 && field != -1 && field != BatteryData::INVALID_VALUE) {
+            field /= spec.scaleDivisor;
+        }
+        return;
+    }
+
+    StringFieldPtr ptr = std::get<StringFieldPtr>(spec.target);
+    std::string& field = data.*ptr;
+    readFile(spec.path, field, DataType::STRING);
+}
+
 bool DataCollector::start() {
     if (running) return true;
     running = true;
+
+    deviceIdentity = readDeviceIdentity();
+    activeProfile = detectDeviceProfile(deviceIdentity);
+    LOG_INFO("Detected device profile: " + activeProfile.name);
+    LOG_INFO("Device identity snapshot: brand=" + deviceIdentity.brand +
+             ", manufacturer=" + deviceIdentity.manufacturer +
+             ", device=" + deviceIdentity.device +
+             ", model=" + deviceIdentity.model);
 
     // 启动充电控制监控
     if (!startScenarioMonitoring()) {
@@ -145,51 +265,23 @@ void DataCollector::updateData() {
 BatteryData DataCollector::readAllFiles() {
     BatteryData data;
 
-    // 读取电池文件
-    readFile("/proc/charger/real_soc", data.capacity, DataType::INT);
-    readFile("/sys/class/power_supply/battery/voltage_now", data.voltage_now, DataType::INT);
-    if (data.voltage_now != -1) data.voltage_now /= 1000;
-    readFile("/sys/class/power_supply/battery/voltage_max", data.voltage_max, DataType::INT);
-    if (data.voltage_max != -1) data.voltage_max /= 1000;
-    readFile("/sys/class/power_supply/battery/voltage_ocv", data.voltage_ocv, DataType::INT);
-    if (data.voltage_ocv != -1) data.voltage_ocv /= 1000;
-    readFile("/sys/class/power_supply/battery/current_now", data.current_now, DataType::INT);
-    if (data.current_now != BatteryData::INVALID_VALUE) data.current_now /= 1000;
-    readFile("/sys/class/power_supply/battery/current_avg", data.current_avg, DataType::INT);
-    if (data.current_avg != BatteryData::INVALID_VALUE) data.current_avg /= 1000;
-    readFile("/sys/class/power_supply/battery/temp", data.temp_battery, DataType::INT);
+    const std::vector<FieldSpec>* fieldSpecs = &activeProfile.fields;
+    std::vector<FieldSpec> fallbackSpecs;
+    if (fieldSpecs->empty()) {
+        fallbackSpecs = buildGenericFieldSpecs();
+        fieldSpecs = &fallbackSpecs;
+        LOG_WARN("Active profile field specs empty, falling back to generic specs");
+    }
+
+    for (const FieldSpec& spec : *fieldSpecs) {
+        applyFieldSpec(spec, data);
+    }
+
+    // 保留字段（设备上已验证有效，当前模型暂未启用，后续阶段会接入能力与动态字段体系）
     // readFile("/sys/class/power_supply/usb/temp", data.temp_usb, DataType::INT);
     // readFile("/proc/charger/usb_temp_gpio", data.temp_usb_gpio, DataType::INT);
-    readFile("/proc/charger/battery_health", data.health, DataType::INT);
-    readFile("/sys/class/power_supply/battery/status", data.status_str, DataType::STRING);
-    readFile("/sys/class/power_supply/battery/charge_type", data.charge_type_str, DataType::STRING);
-    readFile("/sys/class/power_supply/battery/charge_counter", data.charge_counter, DataType::INT);
-    if (data.charge_counter != -1) data.charge_counter /= 1000;
-    readFile("/sys/class/power_supply/battery/cycle_count", data.cycle_count, DataType::INT);
-    readFile("/proc/charger/nt_quse", data.charge_full, DataType::INT);
-    if (data.charge_full != -1) data.charge_full /= 1000;
-    readFile("/proc/charger/nt_qmax", data.charge_design, DataType::INT);
-    if (data.charge_design != -1) data.charge_design /= 1000;
     // readFile("/proc/charger/nt_resistance", data.battery_resistance, DataType::INT);
-    readFile("/sys/class/power_supply/usb/online", data.usb_online, DataType::INT);
-    readFile("/sys/class/power_supply/usb/voltage_now", data.usb_voltage_now, DataType::INT);
-    if (data.usb_voltage_now != -1) data.usb_voltage_now /= 1000;
-    readFile("/sys/class/power_supply/usb/voltage_max", data.usb_voltage_max, DataType::INT);
-    if (data.usb_voltage_max != -1) data.usb_voltage_max /= 1000;
-    readFile("/sys/class/power_supply/usb/current_now", data.in_current_now, DataType::INT);
-    if (data.in_current_now != BatteryData::INVALID_VALUE) data.in_current_now /= 1000;
-    readFile("/sys/class/power_supply/usb/current_max", data.usb_current_max, DataType::INT);
-    if (data.usb_current_max != BatteryData::INVALID_VALUE) data.usb_current_max /= 1000;
     // readFile("/sys/class/power_supply/usb/input_current_limit", data.usb_input_current_limit, DataType::INT);
-    readFile("/sys/class/power_supply/usb/usb_type", data.usb_type, DataType::STRING);
-    readFile("/sys/class/power_supply/wireless/online", data.wireless_online, DataType::INT);
-    readFile("/sys/class/power_supply/wireless/voltage_now", data.wireless_voltage_now, DataType::INT);
-    if (data.wireless_voltage_now != -1) data.wireless_voltage_now /= 1000;
-    readFile("/sys/class/power_supply/wireless/voltage_max", data.wireless_voltage_max, DataType::INT);
-    if (data.wireless_voltage_max != -1) data.wireless_voltage_max /= 1000;
-    readFile("/sys/class/power_supply/wireless/current_max", data.wireless_current_max, DataType::INT);
-    if (data.wireless_current_max != BatteryData::INVALID_VALUE) data.wireless_current_max /= 1000;
-     readFile("/sys/class/qcom-battery/wireless_type", data.wireless_type, DataType::STRING);
     // readFile("/sys/class/qcom-battery/wireless_boost_en", data.wireless_boost_en, DataType::INT);
     // readFile("/sys/class/qcom-battery/wls_volt_tx", data.wls_tx_volt, DataType::INT);
     // readFile("/sys/class/qcom-battery/wls_curr_tx", data.wls_tx_curr, DataType::INT);
@@ -197,9 +289,7 @@ BatteryData DataCollector::readAllFiles() {
     // readFile("/sys/class/qcom-battery/wls_reverse_fod", data.wls_rev_fod, DataType::INT);
     // readFile("/sys/class/qcom-battery/restrict_chg", data.restrict_chg, DataType::INT);
     // readFile("/sys/class/qcom-battery/restrict_cur", data.restrict_cur, DataType::INT);
-    readFile("/proc/charger/scenario_fcc", data.scenario_fcc, DataType::INT);
     // readFile("/proc/charger/nt_otg_enable", data.nt_otg_enable, DataType::INT);
-    readFile("/proc/charger/nt_abnormal_status", data.nt_abnormal_status, DataType::INT);
 
     data.timestamp = getCurrentTimestamp();
     

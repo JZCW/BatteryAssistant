@@ -27,6 +27,31 @@ struct ChargeConfig {
 
 class DataCollector {
 private:
+    struct DeviceIdentity {
+        std::string brand;
+        std::string manufacturer;
+        std::string device;
+        std::string model;
+        std::string fingerprint;
+    };
+
+    using IntFieldPtr = int BatteryData::*;
+    using StringFieldPtr = std::string BatteryData::*;
+
+    struct FieldSpec {
+        const char* key;
+        const char* path;
+        DataType type;
+        int scaleDivisor;
+        bool isControlPath;
+        std::variant<IntFieldPtr, StringFieldPtr> target;
+    };
+
+    struct DeviceProfile {
+        std::string name{"generic"};
+        std::vector<FieldSpec> fields;
+    };
+
     DataCollector();
     ~DataCollector();
     
@@ -69,12 +94,20 @@ private:
     std::mutex updateMutex;
     const std::chrono::milliseconds WRITE_COOLDOWN{1000};
     std::chrono::steady_clock::time_point lastUpdateTime;
+    DeviceIdentity deviceIdentity;
+    DeviceProfile activeProfile;
     
     void collectLoop();
     BatteryData readAllFiles();
     void updateData();
     template<typename T>
     void readFile(const std::string& path, T& target, DataType type);
+    void applyFieldSpec(const FieldSpec& spec, BatteryData& data);
+    std::string getSystemProperty(const char* key) const;
+    DeviceIdentity readDeviceIdentity() const;
+    DeviceProfile detectDeviceProfile(const DeviceIdentity& identity) const;
+    std::vector<FieldSpec> buildGenericFieldSpecs() const;
+    std::vector<FieldSpec> buildNtQcomFieldSpecs() const;
     long getCurrentTimestamp();
     void updateChargingStatus(const std::string& status);
     
