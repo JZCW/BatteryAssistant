@@ -1,9 +1,6 @@
 package com.upo.batteryassistant.service;
 
 import android.app.AlarmManager;
-import android.app.Notification;
-import android.app.NotificationChannel;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
@@ -19,14 +16,11 @@ import android.os.PowerManager;
 import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.util.Log;
-import androidx.core.app.NotificationCompat;
-import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.data.StateInfo;
 
 import com.upo.batteryassistant.manager.BatteryInfoManager;
 import com.upo.batteryassistant.manager.ChargeHistoryManager;
-import com.upo.batteryassistant.ui.MainActivity;
 
 /**
  * 电池监控服务（前台服务）
@@ -34,8 +28,6 @@ import com.upo.batteryassistant.ui.MainActivity;
  */
 public class BatteryMonitorService extends Service {
     private static final String TAG = "BatteryMonitorService";
-    private static final String CHANNEL_ID = "BatteryMonitorChannel";
-    private static final int NOTIFICATION_ID = 1;
     private static final String PREFS_NAME = "battery_monitor_service_state";
     private static final String KEY_LAST_HEARTBEAT = "last_heartbeat";
     private static final String KEY_SERVICE_RUNNING = "service_running";
@@ -56,7 +48,7 @@ public class BatteryMonitorService extends Service {
     private BroadcastReceiver powerReceiver;
     private BroadcastReceiver screenStateReceiver;
     private BroadcastReceiver dozeReceiver;
-    private NotificationManager notificationManager;
+    private BatteryMonitorNotificationHelper notificationHelper;
     private PowerManager powerManager;
     private SharedPreferences servicePrefs;
     private IntentFilter batteryStatusFilter;
@@ -84,7 +76,7 @@ public class BatteryMonitorService extends Service {
 
         batteryInfoManager = BatteryInfoManager.getInstance(this);
         chargeHistoryManager = ChargeHistoryManager.getInstance(this);
-        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationHelper = new BatteryMonitorNotificationHelper(this);
         powerManager = (PowerManager) getSystemService(Context.POWER_SERVICE);
         servicePrefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         batteryStatusFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
@@ -95,7 +87,7 @@ public class BatteryMonitorService extends Service {
         Log.i(TAG, "Service onCreate, last heartbeat=" + servicePrefs.getLong(KEY_LAST_HEARTBEAT, -1));
 
         // 创建通知渠道（Android 8.0+）
-        createNotificationChannel();
+        notificationHelper.ensureChannel();
 
         // 初始化充放电历史管理器
         chargeHistoryManager.init();
@@ -126,7 +118,7 @@ public class BatteryMonitorService extends Service {
         Log.i(TAG, "onStartCommand source=" + startSource + ", startId=" + startId + ", flags=" + flags);
 
         if (!foregroundStarted) {
-            startForeground(NOTIFICATION_ID, createNotification(null));
+            startForeground(notificationHelper.getNotificationId(), notificationHelper.createNotification(null));
             foregroundStarted = true;
         } else {
             restartPeriodicUpdate();
@@ -159,24 +151,6 @@ public class BatteryMonitorService extends Service {
     @Override
     public IBinder onBind(Intent intent) {
         return null;
-    }
-
-    /**
-     * 创建通知渠道（Android 8.0+）
-     */
-    private void createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "电池监控",
-                NotificationManager.IMPORTANCE_LOW // 低优先级，不发出声音
-            );
-            channel.setDescription("显示电池状态信息");
-            channel.setShowBadge(false);
-            channel.enableLights(false);
-            channel.enableVibration(false);
-            notificationManager.createNotificationChannel(channel);
-        }
     }
 
     /**
@@ -409,61 +383,10 @@ public class BatteryMonitorService extends Service {
 
         // 根据策略决定是否更新通知
         if (shouldUpdateNotification) {
-            notificationManager.notify(NOTIFICATION_ID, createNotification(currentInfo));
+            notificationHelper.notifyBattery(currentInfo);
         }
 
         return nextUpdateInterval;
-    }
-
-    /**
-     * 创建通知
-     */
-    private Notification createNotification(BatteryInfo batteryInfo) {
-        Intent intent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_battery_notification) // 使用电池图标
-            .setContentIntent(pendingIntent)
-            .setOngoing(true) // 常驻通知
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .setShowWhen(false)
-            .setAutoCancel(false); // 不自动取消
-
-        if (batteryInfo != null) {
-            // 通知标题
-            String title = String.format("电池: %d%%", batteryInfo.getLevel());
-
-            // 通知内容
-            StringBuilder content = new StringBuilder();
-            content.append(batteryInfo.getStatusText());
-
-            if (batteryInfo.getVoltage() > 0) {
-                content.append(" | ").append(String.format("%.2fV", batteryInfo.getVoltageVolts()));
-            }
-
-            if (batteryInfo.getTemperature() > 0) {
-                content.append(" | ").append(String.format("%.1f°C", batteryInfo.getTemperatureCelsius()));
-            }
-
-            // 如果正在充电，显示剩余充电时间
-            if (batteryInfo.isCharging() && batteryInfo.getChargeTimeRemaining() >= 0) {
-                content.append("\n").append("预计充满: ").append(batteryInfo.getChargeTimeRemainingText());
-            }
-
-            builder.setContentTitle(title)
-                   .setContentText(content.toString())
-                   .setStyle(new NotificationCompat.BigTextStyle().bigText(content.toString()));
-        } else {
-            builder.setContentTitle("电池监控")
-                   .setContentText("正在获取电池信息...");
-        }
-
-        return builder.build();
     }
 
     public static Intent createStartIntent(Context context, String startSource) {
