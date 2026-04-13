@@ -141,7 +141,7 @@
     <style name="Theme.BatteryAssistant.EinkDark" parent="Theme.BatteryAssistant.Base.DayNight">
         <item name="baColorBrand">@color/black</item>
         <item name="baColorBrandVariant">@color/white</item>
-        <item name="baColorOnBrand">@color/black</item>
+        <item name="baColorOnBrand">@color/white</item>
         <item name="baColorSupport">@color/white</item>
         <item name="baColorSupportVariant">@color/white</item>
         <item name="baColorOnSupport">@color/black</item>

@@ -121,8 +121,26 @@ public class ChargeHistoryFragment extends Fragment {
 
     private void setupSwipeRefresh() {
         if (swipeRefreshLayout != null) {
+            int accentColor = resolveThemeColor(R.attr.baColorStatsAccent);
+            int progressBackgroundColor = resolveThemeColor(R.attr.baColorStatsCardBackground);
+            swipeRefreshLayout.setColorSchemeColors(accentColor);
+            swipeRefreshLayout.setProgressBackgroundColorSchemeColor(progressBackgroundColor);
             swipeRefreshLayout.setOnRefreshListener(this::onSwipeRefresh);
         }
+    }
+
+    private int resolveThemeColor(int attrResId) {
+        if (swipeRefreshLayout == null) {
+            return 0;
+        }
+        TypedValue typedValue = new TypedValue();
+        if (swipeRefreshLayout.getContext().getTheme().resolveAttribute(attrResId, typedValue, true)) {
+            if (typedValue.resourceId != 0) {
+                return swipeRefreshLayout.getContext().getColor(typedValue.resourceId);
+            }
+            return typedValue.data;
+        }
+        return 0;
     }
 
     private void onSwipeRefresh() {

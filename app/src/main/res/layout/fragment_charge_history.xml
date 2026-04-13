@@ -26,7 +26,7 @@
             android:gravity="center"
             android:padding="@dimen/spacing_lg"
             android:text="@string/charge_history_empty_state"
-            android:textColor="?attr/baColorSecondaryText"
+            android:textColor="?attr/baColorStatsSecondaryText"
             android:textSize="@dimen/text_size_section"
             android:visibility="gone" />
     </FrameLayout>

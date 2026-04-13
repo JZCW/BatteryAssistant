@@ -4,6 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="?attr/baColorStatsCardBackground"
     app:cardCornerRadius="12dp"
     app:cardUseCompatPadding="true"
     app:cardPreventCornerOverlap="true">
@@ -40,49 +41,56 @@
                 android:id="@+id/session_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body1"
+                android:textColor="?attr/baColorStatsPrimaryText" />
 
             <TextView
                 android:id="@+id/level_change"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?attr/baColorStatsPrimaryText" />
 
             <TextView
                 android:id="@+id/charge_counter_diff"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?attr/baColorStatsPrimaryText" />
 
             <TextView
                 android:id="@+id/estimated_capacity"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?attr/baColorStatsPrimaryText" />
 
             <TextView
                 android:id="@+id/cycle_count"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?attr/baColorStatsPrimaryText" />
 
             <TextView
                 android:id="@+id/capacity"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?attr/baColorStatsPrimaryText" />
 
             <TextView
                 android:id="@+id/max_level_change"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2" />
+                android:textAppearance="@style/TextAppearance.MaterialComponents.Body2"
+                android:textColor="?attr/baColorStatsPrimaryText" />
         </LinearLayout>
 
     </LinearLayout>

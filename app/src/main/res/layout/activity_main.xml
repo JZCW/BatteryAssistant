@@ -23,6 +23,7 @@
             android:background="?attr/baColorStatusBar"
             android:minHeight="?attr/actionBarSize"
             app:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
+            app:titleTextColor="?attr/colorOnPrimary"
             app:title="@string/app_name" />
     </LinearLayout>
 

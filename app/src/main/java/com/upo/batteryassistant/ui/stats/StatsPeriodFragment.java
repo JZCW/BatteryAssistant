@@ -137,6 +137,13 @@ public class StatsPeriodFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         swipeHelper = new SwipeRefreshHelper(view.findViewById(R.id.swipe_refresh));
+        androidx.swiperefreshlayout.widget.SwipeRefreshLayout swipeRefreshLayout = view.findViewById(R.id.swipe_refresh);
+        if (swipeRefreshLayout != null) {
+            int accentColor = resolveThemeColor(view, R.attr.baColorStatsAccent);
+            int progressBackgroundColor = resolveThemeColor(view, R.attr.baColorStatsCardBackground);
+            swipeRefreshLayout.setColorSchemeColors(accentColor);
+            swipeRefreshLayout.setProgressBackgroundColorSchemeColor(progressBackgroundColor);
+        }
         periodToggle = view.findViewById(R.id.stats_period_toggle);
         btnDaily = view.findViewById(R.id.btn_daily);
         btnWeekly = view.findViewById(R.id.btn_weekly);
@@ -842,6 +849,10 @@ public class StatsPeriodFragment extends Fragment {
      */
     private int resolveThemeColor(@NonNull View view, int attrResId) {
         Integer color = tryResolveThemeColor(view, attrResId);
+        if (color != null) {
+            return color;
+        }
+        color = tryResolveThemeColor(view, R.attr.baColorStatsPrimaryText);
         if (color != null) {
             return color;
         }
