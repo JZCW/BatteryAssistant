@@ -207,20 +207,26 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
             dozeChargeCounterDiffText.setText(R.string.common_unavailable);
         }
         
-        // 容量和周期信息
-        TextView estimatedCapacityText = findViewById(R.id.detail_estimated_capacity_text);
-        TextView cycleCountText = findViewById(R.id.detail_cycle_count_text);
-        
-        if (session.getEstimatedCapacity() > 0) {
-            estimatedCapacityText.setText(session.getEstimatedCapacity() + " mAh");
-        } else {
-            estimatedCapacityText.setText(R.string.common_no_data);
-        }
-        
-        if (session.getCycleCount() > 0) {
-            cycleCountText.setText(String.valueOf(session.getCycleCount()));
-        } else {
-            cycleCountText.setText(R.string.common_no_data);
+        // 容量和周期信息仅在充电会话中显示
+        View capacityCycleCard = findViewById(R.id.detail_capacity_cycle_card);
+        boolean isChargingSession = session.getSessionType() == 0;
+        capacityCycleCard.setVisibility(isChargingSession ? View.VISIBLE : View.GONE);
+
+        if (isChargingSession) {
+            TextView estimatedCapacityText = findViewById(R.id.detail_estimated_capacity_text);
+            TextView cycleCountText = findViewById(R.id.detail_cycle_count_text);
+
+            if (session.getEstimatedCapacity() > 0) {
+                estimatedCapacityText.setText(session.getEstimatedCapacity() + " mAh");
+            } else {
+                estimatedCapacityText.setText(R.string.common_no_data);
+            }
+
+            if (session.getCycleCount() > 0) {
+                cycleCountText.setText(String.valueOf(session.getCycleCount()));
+            } else {
+                cycleCountText.setText(R.string.common_no_data);
+            }
         }
         
         // 息屏非Doze信息（推断）
