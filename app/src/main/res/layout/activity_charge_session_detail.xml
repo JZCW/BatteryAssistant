@@ -33,7 +33,7 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:fitsSystemWindows="false"
-        android:background="?attr/baColorSurface">
+        android:background="?attr/baColorStatsBackground">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -52,7 +52,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -197,7 +198,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -312,7 +314,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -367,7 +370,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -423,7 +427,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -478,7 +483,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -534,7 +540,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
