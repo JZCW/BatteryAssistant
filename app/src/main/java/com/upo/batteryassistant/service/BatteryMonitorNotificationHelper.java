@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import androidx.core.app.NotificationCompat;
+import androidx.core.app.RemoteInput;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.ui.MainActivity;
@@ -19,6 +20,8 @@ import com.upo.batteryassistant.ui.MainActivity;
 public class BatteryMonitorNotificationHelper {
     private static final String CHANNEL_ID = "BatteryMonitorChannel";
     private static final int NOTIFICATION_ID = 1;
+    private static final int REQUEST_CODE_CONTENT = 0;
+    private static final int REQUEST_CODE_SET_CURRENT_INPUT = 100;
 
     private final Context appContext;
     private final NotificationManager notificationManager;
@@ -57,9 +60,10 @@ public class BatteryMonitorNotificationHelper {
 
     public Notification createNotification(BatteryInfo batteryInfo) {
         Intent intent = new Intent(appContext, MainActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent pendingIntent = PendingIntent.getActivity(
             appContext,
-            0,
+            REQUEST_CODE_CONTENT,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
@@ -95,11 +99,44 @@ public class BatteryMonitorNotificationHelper {
             builder.setContentTitle(title)
                 .setContentText(contentText)
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(contentText));
+
+            if (batteryInfo.isCharging()) {
+                builder.addAction(createSetCurrentAction());
+            }
         } else {
             builder.setContentTitle("电池监控")
                 .setContentText("正在获取电池信息...");
         }
 
         return builder.build();
+    }
+
+    private NotificationCompat.Action createSetCurrentAction() {
+        Intent intent = new Intent(appContext, BatteryMonitorService.class);
+        intent.setAction(BatteryMonitorService.ACTION_SET_CHARGE_CURRENT_FROM_NOTIFICATION);
+        intent.putExtra(BatteryMonitorService.EXTRA_START_SOURCE, BatteryMonitorService.START_SOURCE_NOTIFICATION_ACTION);
+
+        int pendingIntentFlags = PendingIntent.FLAG_UPDATE_CURRENT;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            pendingIntentFlags |= PendingIntent.FLAG_MUTABLE;
+        }
+        PendingIntent pendingIntent = PendingIntent.getService(
+            appContext,
+            REQUEST_CODE_SET_CURRENT_INPUT,
+            intent,
+            pendingIntentFlags
+        );
+
+        RemoteInput remoteInput = new RemoteInput.Builder(BatteryMonitorService.REMOTE_INPUT_KEY_CHARGE_CURRENT)
+            .setLabel("输入电流(mA)")
+            .build();
+
+        return new NotificationCompat.Action.Builder(
+            0,
+            "设置充电电流",
+            pendingIntent
+        ).addRemoteInput(remoteInput)
+            .setAllowGeneratedReplies(false)
+            .build();
     }
 }

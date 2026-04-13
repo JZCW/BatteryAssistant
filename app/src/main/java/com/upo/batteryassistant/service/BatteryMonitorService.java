@@ -16,6 +16,8 @@ import android.os.PowerManager;
 import android.os.BatteryManager;
 import android.os.SystemClock;
 import android.util.Log;
+import android.os.Bundle;
+import androidx.core.app.RemoteInput;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.data.StateInfo;
 
@@ -34,10 +36,14 @@ public class BatteryMonitorService extends Service {
     private static final String KEY_LAST_ALARM_AT = "last_alarm_at";
     public static final String ACTION_RECOVERY_CHECK = "com.upo.batteryassistant.action.RECOVERY_CHECK";
     public static final String EXTRA_START_SOURCE = "start_source";
+    public static final String ACTION_SET_CHARGE_CURRENT_FROM_NOTIFICATION = "com.upo.batteryassistant.action.SET_CHARGE_CURRENT_FROM_NOTIFICATION";
+    public static final String EXTRA_NOTIFICATION_CHARGE_CURRENT_MA = "notification_charge_current_ma";
+    public static final String REMOTE_INPUT_KEY_CHARGE_CURRENT = "remote_input_charge_current";
     public static final String START_SOURCE_APP = "app_launch";
     public static final String START_SOURCE_BOOT = "boot_receiver";
     public static final String START_SOURCE_ALARM = "recovery_alarm";
     public static final String START_SOURCE_BRIDGE = "bridge_watchdog";
+    public static final String START_SOURCE_NOTIFICATION_ACTION = "notification_action";
     private static final int RECOVERY_REQUEST_CODE = 1001;
     private static final long RECOVERY_CHECK_INTERVAL_MS = 15 * 60 * 1000L;
     private static final long HEARTBEAT_STALE_THRESHOLD_MS = 20 * 60 * 1000L;
@@ -117,6 +123,8 @@ public class BatteryMonitorService extends Service {
         String startSource = getStartSource(intent);
         Log.i(TAG, "onStartCommand source=" + startSource + ", startId=" + startId + ", flags=" + flags);
 
+        handleNotificationCurrentAction(intent);
+
         if (!foregroundStarted) {
             startForeground(notificationHelper.getNotificationId(), notificationHelper.createNotification(null));
             foregroundStarted = true;
@@ -126,6 +134,48 @@ public class BatteryMonitorService extends Service {
         persistHeartbeat("onStartCommand");
         scheduleRecoveryCheck("onStartCommand");
         return START_STICKY; // 服务被杀死后自动重启
+    }
+
+    private void handleNotificationCurrentAction(Intent intent) {
+        if (intent == null || !ACTION_SET_CHARGE_CURRENT_FROM_NOTIFICATION.equals(intent.getAction())) {
+            return;
+        }
+
+        int targetCurrent = resolveTargetCurrentFromIntent(intent);
+        if (targetCurrent < 500 || targetCurrent > 10000) {
+            Log.w(TAG, "Ignore out-of-range notification current value=" + targetCurrent + " (expected 500-10000)");
+            return;
+        }
+
+        batteryInfoManager.setChargeLimit(targetCurrent)
+            .thenAccept(success -> {
+                Log.i(TAG, "Notification set current=" + targetCurrent + "mA, success=" + success);
+                if (success) {
+                    BatteryInfo latest = batteryInfoManager.getCurrentBatteryInfo(true);
+                    notificationHelper.notifyBattery(latest);
+                }
+            })
+            .exceptionally(e -> {
+                Log.e(TAG, "Failed to set current from notification", e);
+                return null;
+            });
+    }
+
+    private int resolveTargetCurrentFromIntent(Intent intent) {
+        Bundle remoteInputResults = RemoteInput.getResultsFromIntent(intent);
+        if (remoteInputResults != null) {
+            CharSequence input = remoteInputResults.getCharSequence(REMOTE_INPUT_KEY_CHARGE_CURRENT);
+            if (input != null) {
+                String text = input.toString().trim();
+                try {
+                    return Integer.parseInt(text);
+                } catch (NumberFormatException e) {
+                    Log.w(TAG, "Invalid remote input current: " + text);
+                    return -1;
+                }
+            }
+        }
+        return intent.getIntExtra(EXTRA_NOTIFICATION_CHARGE_CURRENT_MA, -1);
     }
 
     @Override
