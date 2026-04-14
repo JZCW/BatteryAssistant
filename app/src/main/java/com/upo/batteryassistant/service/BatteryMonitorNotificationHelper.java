@@ -121,20 +121,20 @@ public class BatteryMonitorNotificationHelper {
     }
 
     /**
-     * 生成一张 24×24 dp 对应像素的位图，将电量百分比数字绘制在中央。
+     * 生成一张 48x48 dp 对应像素的位图，将电量百分比数字绘制在中央。
      * 系统通知栏会对图标做白色蒙版处理，因此只需绘制白色内容即可。
      */
     private Bitmap createLevelBitmap(int level) {
         float density = appContext.getResources().getDisplayMetrics().density;
-        int sizePx = Math.round(24 * density);
+        int sizePx = Math.round(48 * density);
         int safeLevel = Math.max(0, Math.min(100, level));
 
         Bitmap bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888);
         Canvas canvas = new Canvas(bitmap);
 
         // 绘制环形进度条（底环 + 进度弧）
-        float strokeWidth = density * 2.2f;
-        float margin = strokeWidth / 2f + density * 1.2f;
+        float strokeWidth = density * 4f;
+        float margin = strokeWidth / 2f + density * 0f;
         RectF ringBounds = new RectF(margin, margin, sizePx - margin, sizePx - margin);
 
         Paint ringTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -157,7 +157,7 @@ public class BatteryMonitorNotificationHelper {
         textPaint.setColor(Color.WHITE);
         textPaint.setTypeface(Typeface.DEFAULT_BOLD);
         // 字号根据位数自适应
-        float textSize = safeLevel == 100 ? sizePx * 0.33f : sizePx * 0.40f;
+        float textSize = safeLevel == 100 ? sizePx * 0.38f : sizePx * 0.50f;
         textPaint.setTextSize(textSize);
         textPaint.setTextAlign(Paint.Align.CENTER);
         // 垂直居中（在图标中心）
