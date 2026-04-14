@@ -87,19 +87,25 @@ public class BatteryMonitorNotificationHelper {
             .setAutoCancel(false);
 
         if (batteryInfo != null) {
-            String title = String.format("电池: %d%%", batteryInfo.getLevel());
+            String title = batteryInfo.getStatusText();
+            //TODO add 预计时间/剩余电量
 
             StringBuilder content = new StringBuilder();
-            content.append(batteryInfo.getStatusText());
 
-            if (batteryInfo.getVoltage() > 0) {
-                content.append(" | ").append(String.format("%.2fV", batteryInfo.getVoltageVolts()));
+            if (batteryInfo.getCurrent() != Integer.MIN_VALUE) {
+                content.append(String.format("%d mA", batteryInfo.getCurrent()));
+            } else {
+                content.append("?? mA");
             }
 
+            content.append(" | ");
             if (batteryInfo.getTemperature() > 0) {
-                content.append(" | ").append(String.format("%.1f°C", batteryInfo.getTemperatureCelsius()));
+                content.append(String.format("%.1f°C", batteryInfo.getTemperatureCelsius()));
+            } else {
+                content.append("??°C");
             }
 
+            //TODO remove
             if (batteryInfo.isCharging() && batteryInfo.getChargeTimeRemaining() >= 0) {
                 content.append("\n").append("预计充满: ").append(batteryInfo.getChargeTimeRemainingText());
             }
