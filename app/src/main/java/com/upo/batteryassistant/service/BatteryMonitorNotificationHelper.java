@@ -6,9 +6,16 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.Typeface;
 import android.os.Build;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.RemoteInput;
+import androidx.core.graphics.drawable.IconCompat;
 import com.upo.batteryassistant.R;
 import com.upo.batteryassistant.data.BatteryInfo;
 import com.upo.batteryassistant.ui.MainActivity;
@@ -69,7 +76,9 @@ public class BatteryMonitorNotificationHelper {
         );
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(appContext, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_battery_notification)
+            .setSmallIcon(batteryInfo != null
+                    ? IconCompat.createWithBitmap(createLevelBitmap(batteryInfo.getLevel()))
+                    : IconCompat.createWithResource(appContext, R.drawable.ic_battery_notification))
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -109,6 +118,54 @@ public class BatteryMonitorNotificationHelper {
         }
 
         return builder.build();
+    }
+
+    /**
+     * 生成一张 24×24 dp 对应像素的位图，将电量百分比数字绘制在中央。
+     * 系统通知栏会对图标做白色蒙版处理，因此只需绘制白色内容即可。
+     */
+    private Bitmap createLevelBitmap(int level) {
+        float density = appContext.getResources().getDisplayMetrics().density;
+        int sizePx = Math.round(24 * density);
+        int safeLevel = Math.max(0, Math.min(100, level));
+
+        Bitmap bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888);
+        Canvas canvas = new Canvas(bitmap);
+
+        // 绘制环形进度条（底环 + 进度弧）
+        float strokeWidth = density * 2.2f;
+        float margin = strokeWidth / 2f + density * 1.2f;
+        RectF ringBounds = new RectF(margin, margin, sizePx - margin, sizePx - margin);
+
+        Paint ringTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ringTrackPaint.setColor(Color.argb(90, 255, 255, 255));
+        ringTrackPaint.setStyle(Paint.Style.STROKE);
+        ringTrackPaint.setStrokeWidth(strokeWidth);
+        ringTrackPaint.setStrokeCap(Paint.Cap.ROUND);
+        canvas.drawArc(ringBounds, 0f, 360f, false, ringTrackPaint);
+
+        Paint ringProgressPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        ringProgressPaint.setColor(Color.WHITE);
+        ringProgressPaint.setStyle(Paint.Style.STROKE);
+        ringProgressPaint.setStrokeWidth(strokeWidth);
+        ringProgressPaint.setStrokeCap(Paint.Cap.ROUND);
+        float sweepAngle = 360f * safeLevel / 100f;
+        canvas.drawArc(ringBounds, -90f, sweepAngle, false, ringProgressPaint);
+
+        // 绘制电量数字
+        Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        textPaint.setColor(Color.WHITE);
+        textPaint.setTypeface(Typeface.DEFAULT_BOLD);
+        // 字号根据位数自适应
+        float textSize = safeLevel == 100 ? sizePx * 0.33f : sizePx * 0.40f;
+        textPaint.setTextSize(textSize);
+        textPaint.setTextAlign(Paint.Align.CENTER);
+        // 垂直居中（在图标中心）
+        float centerX = sizePx / 2f;
+        float centerY = sizePx / 2f - (textPaint.descent() + textPaint.ascent()) / 2f;
+        canvas.drawText(String.valueOf(safeLevel), centerX, centerY, textPaint);
+
+        return bitmap;
     }
 
     private NotificationCompat.Action createSetCurrentAction() {
