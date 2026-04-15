@@ -79,9 +79,7 @@ public class BatteryInfoManager {
             return false;
         }
 
-        if (!onlyFillInvalid || isMissingTimestamp(info.getTimestamp())) {
-            info.setTimestamp(System.currentTimeMillis());
-        }
+        info.setTimestamp(System.currentTimeMillis());  // timestamp 统一使用实时值，避免会话计时异常
 
         int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
         if (!onlyFillInvalid || isMissingInt(info.getLevel())) {
@@ -167,7 +165,7 @@ public class BatteryInfoManager {
         }
 
         if (data != null) {
-            info.setTimestamp(data.getTimestamp());
+            // info.setTimestamp(data.getTimestamp());  // timestamp 统一使用实时值，避免会话计时异常
             info.setLevel(data.getCapacity());
             info.setTemperature(data.getTempBattery());
             info.setVoltage(data.getVoltageNow());
@@ -215,10 +213,6 @@ public class BatteryInfoManager {
 
     private boolean isMissingCurrent(int value) {
         return value == Integer.MIN_VALUE;
-    }
-
-    private boolean isMissingTimestamp(long value) {
-        return value <= 0;
     }
     
     /**
