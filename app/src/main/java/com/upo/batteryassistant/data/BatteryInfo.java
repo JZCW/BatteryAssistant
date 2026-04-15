@@ -131,6 +131,10 @@ public class BatteryInfo {
         this.status = status;
     }
 
+    public int getStatus() {
+        return status;
+    }
+
     public int getCurrentAverage() {
         return currentAverage;
     }

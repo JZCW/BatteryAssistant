@@ -21,7 +21,7 @@
 namespace {
 constexpr int LOW_BATTERY_THRESHOLD = 30;
 constexpr int LOW_BATTERY_MIN_LIMIT = 2000;
-constexpr int DISCONNECTED_DEFAULT_LIMIT = 2500;
+constexpr int DISCONNECTED_DEFAULT_LIMIT = 3000;
 
 std::string toLowerCopy(std::string value) {
     std::transform(value.begin(), value.end(), value.begin(),
@@ -645,8 +645,17 @@ bool DataCollector::setChargeLimit(int limit) {
         return false;
     }
 
+    int normalizedLimit = limit;
+    if (limit > 0) {
+        long long rounded = ((static_cast<long long>(limit) + 49LL) / 50LL) * 50LL;
+        if (rounded > static_cast<long long>(INT_MAX)) {
+            return false;
+        }
+        normalizedLimit = static_cast<int>(rounded);
+    }
+
     std::lock_guard<std::mutex> lock(configMutex);
-    return applyLimitLocked(limit, "app request");
+    return applyLimitLocked(normalizedLimit, "app request");
 }
 
 bool DataCollector::startScenarioMonitoring() {
