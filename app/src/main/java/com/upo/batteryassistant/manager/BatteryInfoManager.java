@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
  * 负责获取和管理电池信息
  */
 public class BatteryInfoManager {
+    private static final String TAG = "BatteryInfoManager";
     private static BatteryInfoManager instance;
     private Context context;
     private BatteryServiceConnector serviceConnector;
@@ -75,66 +76,84 @@ public class BatteryInfoManager {
      * @return true表示获取成功，false表示获取失败
      */
     private boolean fillBasicInfo(BatteryInfo info) {
+        return fillBasicInfo(info, false);
+    }
+
+    private boolean fillBasicInfo(BatteryInfo info, boolean onlyFillInvalid) {
         IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = context.registerReceiver(null, filter);
         if (batteryStatus == null) {
             return false;
         }
 
-        info.setTimestamp(System.currentTimeMillis());
+        if (!onlyFillInvalid || isMissingTimestamp(info.getTimestamp())) {
+            info.setTimestamp(System.currentTimeMillis());
+        }
 
         int level = batteryStatus.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
-        int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
-        if (level >= 0 && scale > 0) {
-            // 计算电量百分比
-            info.setLevel((int) (level*100 / scale));
-        } else if (level >= 0) {
-            // 如果scale无效，直接使用level值
-            info.setLevel(level);
+        if (!onlyFillInvalid || isMissingInt(info.getLevel())) {
+            int scale = batteryStatus.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            if (level >= 0 && scale > 0) {
+                // 计算电量百分比
+                info.setLevel((int) (level*100 / scale));
+            } else if (level >= 0) {
+                // 如果scale无效，直接使用level值
+                info.setLevel(level);
+            }
         }
 
         // 温度（0.1°C）
-        info.setTemperature(batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1));
+        if (!onlyFillInvalid || isMissingInt(info.getTemperature())) {
+            info.setTemperature(batteryStatus.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1));
+        }
 
         // 电压（毫伏）
-        info.setVoltage(batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1));
+        if (!onlyFillInvalid || isMissingInt(info.getVoltage())) {
+            info.setVoltage(batteryStatus.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1));
+        }
 
         // 健康状态
         info.setHealthApi(batteryStatus.getIntExtra(BatteryManager.EXTRA_HEALTH, -1));
 
         // 充电状态
-        info.setStatus(batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1));
+        if (!onlyFillInvalid || isMissingInt(info.getStatus())) {
+            info.setStatus(batteryStatus.getIntExtra(BatteryManager.EXTRA_STATUS, -1));
+        }
 
         // // 插电方式
         // info.setPlugged(batteryStatus.getIntExtra(BatteryManager.EXTRA_PLUGGED, -1));
 
         // 循环次数
-        info.setCycleCount(batteryStatus.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1));
+        if (!onlyFillInvalid || isMissingInt(info.getCycleCount())) {
+            info.setCycleCount(batteryStatus.getIntExtra(BatteryManager.EXTRA_CYCLE_COUNT, -1));
+        }
 
         // ========== 使用BatteryManager获取高级属性 ==========
         BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
         if (batteryManager != null) {
             // 当前电流（毫安）
             int currentNow = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW);
-            if (currentNow != Integer.MIN_VALUE) {
+            if ((!onlyFillInvalid || isMissingCurrent(info.getCurrent())) && currentNow != Integer.MIN_VALUE) {
                 info.setCurrent((int) (currentNow/1000.0f));
             }
 
             // 平均电流（毫安）
             int currentAverage = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_AVERAGE);
-            if (currentAverage != Integer.MIN_VALUE) {
+            if ((!onlyFillInvalid || isMissingCurrent(info.getCurrentAverage())) && currentAverage != Integer.MIN_VALUE) {
                 info.setCurrentAverage((int) (currentAverage/1000.0f));
             }
 
             // 充电计数器（毫安时）
             long chargeCounter = batteryManager.getLongProperty(BatteryManager.BATTERY_PROPERTY_CHARGE_COUNTER);
-            if (chargeCounter != Long.MIN_VALUE) {
+            if ((!onlyFillInvalid || isMissingInt(info.getChargeCounter())) && chargeCounter != Long.MIN_VALUE) {
                 info.setChargeCounter((int) (chargeCounter/1000.0f));
             }
 
             // 剩余充电时间
             long chargeTimeRemaining = batteryManager.computeChargeTimeRemaining();
-            info.setChargeTimeRemaining(chargeTimeRemaining);
+            if (!onlyFillInvalid || info.getChargeTimeRemaining() < 0) {
+                info.setChargeTimeRemaining(chargeTimeRemaining);
+            }
         }
 
         return true;
@@ -151,9 +170,9 @@ public class BatteryInfoManager {
             serviceConnector.ensureDaemonCapabilitiesCached().get(1, TimeUnit.SECONDS);
             data = serviceConnector.getBatteryStatus().get(1, TimeUnit.SECONDS);
         } catch (java.util.concurrent.TimeoutException e) {
-            android.util.Log.e("BatteryInfoManager", "Magisk Service request timed out");
+            android.util.Log.e(TAG, "Magisk Service request timed out");
         } catch (Exception e) {
-            android.util.Log.e("BatteryInfoManager", "Magisk Service unavailable", e);
+            android.util.Log.e(TAG, "Magisk Service unavailable", e);
         }
 
         if (data != null) {
@@ -172,13 +191,13 @@ public class BatteryInfoManager {
             info.setUsbOnline(data.isUsbOnline());
             info.setUsbVoltageNow(data.getUsbVoltageNow());
             info.setUsbCurrentMax(data.getUsbCurrentMax());
-            info.setUsbCurrentMax(data.getUsbCurrentMax());
             info.setWirelessOnline(data.isWirelessOnline());
             info.setWirelessVoltageNow(data.getWirelessVoltageNow());
             info.setWirelessVoltageMax(data.getWirelessVoltageMax());
             info.setWirelessCurrentMax(data.getWirelessCurrentMax());
-            info.setInCurrentNow(data.getCurrentNow());
+            info.setInCurrentNow(data.getInCurrentNow());
             info.setScenarioFcc(data.getScenarioFcc());
+            fillBasicInfo(info, true);
 
             // TODO
             //基础信息有的
@@ -198,6 +217,18 @@ public class BatteryInfoManager {
         }
 
         return false;
+    }
+
+    private boolean isMissingInt(int value) {
+        return value < 0;
+    }
+
+    private boolean isMissingCurrent(int value) {
+        return value == Integer.MIN_VALUE;
+    }
+
+    private boolean isMissingTimestamp(long value) {
+        return value <= 0;
     }
     
     /**
