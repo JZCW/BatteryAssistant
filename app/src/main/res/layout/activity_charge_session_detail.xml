@@ -33,7 +33,7 @@
         android:layout_weight="1"
         android:clipToPadding="false"
         android:fitsSystemWindows="false"
-        android:background="?attr/baColorSurface">
+        android:background="?attr/baColorStatsBackground">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -45,6 +45,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_md"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -52,7 +53,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -60,7 +62,7 @@
                     android:text="@string/detail_section_basic_info"
                     android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
-                    android:textColor="?attr/baColorPrimaryText" />
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_type_text"
@@ -69,13 +71,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_type"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_type_value"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_section" />
+                    android:textSize="@dimen/text_size_section"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_time_text_label"
@@ -84,13 +87,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_start_time"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_time_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_time_text_label"
@@ -99,13 +103,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_end_time"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_time_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_duration_text_label"
@@ -114,13 +119,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_duration"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_pause_time_text_label"
@@ -129,13 +135,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_pause_time"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_pause_time_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_ongoing_text_label"
@@ -144,13 +151,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_status"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_ongoing_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_counter_text_label"
@@ -159,13 +167,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_counter"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_counter_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_id_text_label"
@@ -174,13 +183,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_record_id"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_id_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
             </LinearLayout>
 
@@ -190,6 +200,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_md"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -197,7 +208,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -205,7 +217,7 @@
                     android:text="@string/detail_section_level_info"
                     android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
-                    android:textColor="?attr/baColorPrimaryText" />
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_level_text_label"
@@ -214,13 +226,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_start_level"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_level_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_level_text_label"
@@ -229,13 +242,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_end_level"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_level_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_level_change_text_label"
@@ -244,13 +258,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_level_change"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_level_change_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_charge_counter_text_label"
@@ -259,13 +274,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_start_charge_counter"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_start_charge_counter_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_charge_counter_text_label"
@@ -274,13 +290,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_end_charge_counter"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_end_charge_counter_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_charge_counter_diff_text_label"
@@ -289,13 +306,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_charge_counter_diff"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
             </LinearLayout>
 
@@ -305,6 +323,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_md"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -312,7 +331,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -320,7 +340,7 @@
                     android:text="@string/detail_section_temperature_info"
                     android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
-                    android:textColor="?attr/baColorPrimaryText" />
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_max_temp_text_label"
@@ -329,13 +349,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_max_temperature"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_max_temp_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_min_temp_text_label"
@@ -344,13 +365,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_min_temperature"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_min_temp_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
             </LinearLayout>
 
@@ -360,6 +382,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_md"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -367,7 +390,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -375,7 +399,7 @@
                     android:text="@string/detail_section_screen_info"
                     android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
-                    android:textColor="?attr/baColorPrimaryText" />
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_screen_on_duration_text_label"
@@ -384,13 +408,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_screen_on_duration"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_screen_on_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
 
                 <TextView
@@ -400,13 +425,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_screen_on_counter_diff"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_screen_on_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
             </LinearLayout>
 
@@ -416,6 +442,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_md"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -423,7 +450,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -431,7 +459,7 @@
                     android:text="@string/detail_section_doze_info"
                     android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
-                    android:textColor="?attr/baColorPrimaryText" />
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_doze_duration_text_label"
@@ -440,13 +468,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_doze_duration"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_doze_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_doze_charge_counter_diff_text_label"
@@ -455,13 +484,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_doze_counter_diff"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_doze_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
             </LinearLayout>
 
@@ -471,6 +501,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_md"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -478,7 +509,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -486,7 +518,7 @@
                     android:text="@string/detail_section_nondoze_info"
                     android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
-                    android:textColor="?attr/baColorPrimaryText" />
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_nondoze_duration_text_label"
@@ -495,13 +527,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_nondoze_duration"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_nondoze_duration_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_nondoze_charge_counter_diff_text_label"
@@ -510,22 +543,25 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_nondoze_counter_diff"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_nondoze_charge_counter_diff_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
 
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/detail_capacity_cycle_card"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_md"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -533,7 +569,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="wrap_content"
@@ -541,7 +578,7 @@
                     android:text="@string/detail_section_capacity_cycle"
                     android:textSize="@dimen/text_size_section"
                     android:textStyle="bold"
-                    android:textColor="?attr/baColorPrimaryText" />
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_estimated_capacity_text_label"
@@ -550,13 +587,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_estimated_capacity"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_estimated_capacity_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
                 <TextView
                     android:id="@+id/detail_cycle_count_text_label"
@@ -565,13 +603,14 @@
                     android:layout_marginTop="@dimen/spacing_sm"
                     android:text="@string/detail_label_cycle_count"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText" />
+                    android:textColor="?attr/baColorStatsSecondaryText" />
 
                 <TextView
                     android:id="@+id/detail_cycle_count_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body" />
+                    android:textSize="@dimen/text_size_body"
+                    android:textColor="?attr/baColorStatsPrimaryText" />
 
             </LinearLayout>
 

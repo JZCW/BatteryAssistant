@@ -11,7 +11,9 @@
     <string name="stats_level_change_value">电量变化：%1$s</string>
     <string name="stats_charge_counter_diff_value">充电计数变化：%1$s</string>
     <string name="stats_estimated_capacity_value">估算容量：%1$d mAh</string>
+    <string name="stats_estimated_capacity_text_value">估算容量：%1$s</string>
     <string name="stats_cycle_count_value">循环次数：%1$d</string>
+    <string name="stats_cycle_count_text_value">循环次数：%1$s</string>
     <string name="stats_signed_value_with_unit">%1$+d %2$s</string>
     <string name="stats_chart_no_data">暂无图表数据</string>
     <string name="stats_chart_dataset_label">电量变化趋势</string>

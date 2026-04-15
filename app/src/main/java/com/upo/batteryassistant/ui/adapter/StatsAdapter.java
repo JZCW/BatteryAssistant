@@ -104,10 +104,27 @@ public class StatsAdapter extends RecyclerView.Adapter<StatsAdapter.ViewHolder> 
                 entry.getTotalChargeCounterDiff(), "mAh");
             chargeCounterDiff.setText(resources.getString(R.string.stats_charge_counter_diff_value, counterDiffFormatted));
 
-            estimatedCapacity.setText(resources.getString(R.string.stats_estimated_capacity_value, entry.getEstimatedCapacity()));
-            cycleCount.setText(resources.getString(R.string.stats_cycle_count_value, entry.getCycleCount()));
-            capacity.setText(resources.getString(R.string.stats_estimated_capacity_value, entry.getCapacity()));
-            maxLevelChange.setText(resources.getString(R.string.stats_level_change_value, entry.getMaxLevelChange()) + "%");
+            estimatedCapacity.setText(formatOptionalPositiveValue(resources,
+                entry.getEstimatedCapacity(), R.string.stats_estimated_capacity_value));
+            cycleCount.setText(formatOptionalPositiveValue(resources,
+                entry.getCycleCount(), R.string.stats_cycle_count_value));
+            capacity.setText(formatOptionalPositiveValue(resources,
+                entry.getCapacity(), R.string.stats_estimated_capacity_value));
+            maxLevelChange.setText(formatOptionalLevelChange(resources, entry.getMaxLevelChange()));
+        }
+
+        private String formatOptionalPositiveValue(Resources resources, int value, int valueFormatResId) {
+            if (value <= 0) {
+                return resources.getString(R.string.common_no_data);
+            }
+            return resources.getString(valueFormatResId, value);
+        }
+
+        private String formatOptionalLevelChange(Resources resources, int value) {
+            if (value <= 0) {
+                return resources.getString(R.string.common_no_data);
+            }
+            return resources.getString(R.string.stats_level_change_value, value + "%");
         }
     }
 }

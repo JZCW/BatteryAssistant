@@ -1,24 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- 组件特定语义：列表/图表 -->
     <!-- 列表高亮背景色 -->
     <attr name="baColorListItemHighlight" format="color" />
     <!-- 图表高亮颜色 -->
     <attr name="baColorChartHighlight" format="color" />
 
-    <!-- 统计页面背景、卡片、文字与强调色语义属性，便于多主题扩展 -->
+    <!-- 统计页语义：背景、卡片、文字、强调色 -->
     <attr name="baColorStatsBackground" format="color" />
     <attr name="baColorStatsCardBackground" format="color" />
     <attr name="baColorStatsPrimaryText" format="color" />
     <attr name="baColorStatsSecondaryText" format="color" />
     <attr name="baColorStatsAccent" format="color" />
 
-    <!-- 全局品牌、表面与文本语义属性 -->
+    <!-- 全局语义：品牌/辅助色（映射到 Material colorPrimary/colorSecondary） -->
     <attr name="baColorBrand" format="color" />
     <attr name="baColorBrandVariant" format="color" />
     <attr name="baColorOnBrand" format="color" />
     <attr name="baColorSupport" format="color" />
     <attr name="baColorSupportVariant" format="color" />
     <attr name="baColorOnSupport" format="color" />
+
+    <!-- 全局语义：页面容器、状态栏、文本/分割线 -->
     <attr name="baColorStatusBar" format="color" />
     <attr name="baColorAppBackground" format="color" />
     <attr name="baColorSurface" format="color" />

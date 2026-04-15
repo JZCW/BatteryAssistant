@@ -36,6 +36,8 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?attr/baColorStatsPrimaryText"
+                        app:strokeColor="?attr/baColorStatsAccent"
                         android:text="@string/stats_tab_daily" />
 
                     <com.google.android.material.button.MaterialButton
@@ -43,6 +45,8 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?attr/baColorStatsPrimaryText"
+                        app:strokeColor="?attr/baColorStatsAccent"
                         android:text="@string/stats_tab_weekly" />
 
                     <com.google.android.material.button.MaterialButton
@@ -50,6 +54,8 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?attr/baColorStatsPrimaryText"
+                        app:strokeColor="?attr/baColorStatsAccent"
                         android:text="@string/stats_tab_monthly" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
@@ -184,6 +190,8 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?attr/baColorStatsPrimaryText"
+                        app:strokeColor="?attr/baColorStatsAccent"
                         android:text="@string/stats_capacity_range_3m" />
 
                     <com.google.android.material.button.MaterialButton
@@ -191,6 +199,8 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?attr/baColorStatsPrimaryText"
+                        app:strokeColor="?attr/baColorStatsAccent"
                         android:text="@string/stats_capacity_range_12m" />
 
                     <com.google.android.material.button.MaterialButton
@@ -198,6 +208,8 @@
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:textColor="?attr/baColorStatsPrimaryText"
+                        app:strokeColor="?attr/baColorStatsAccent"
                         android:text="@string/stats_capacity_range_all" />
 
                 </com.google.android.material.button.MaterialButtonToggleGroup>
@@ -223,6 +235,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
                     android:contentDescription="@string/a11y_view_charge_history"
+                    android:textColor="?attr/baColorStatsPrimaryText"
+                    app:strokeColor="?attr/baColorStatsAccent"
                     android:text="@string/btn_charge_history"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
 

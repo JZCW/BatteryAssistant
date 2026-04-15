@@ -6,7 +6,8 @@
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:background="?attr/baColorStatsBackground">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view"
@@ -25,7 +26,7 @@
             android:gravity="center"
             android:padding="@dimen/spacing_lg"
             android:text="@string/charge_history_empty_state"
-            android:textColor="?attr/baColorSecondaryText"
+            android:textColor="?attr/baColorStatsSecondaryText"
             android:textSize="@dimen/text_size_section"
             android:visibility="gone" />
     </FrameLayout>

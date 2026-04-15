@@ -6,7 +6,8 @@
     android:layout_height="match_parent"
     android:padding="@dimen/spacing_lg"
     android:paddingTop="0dp"
-    android:fitsSystemWindows="false">
+    android:fitsSystemWindows="false"
+    android:background="?attr/baColorStatsBackground">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -19,6 +20,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/battery_info_title"
+            android:textColor="?attr/baColorStatsPrimaryText"
             android:textSize="@dimen/text_size_display"
             android:textStyle="bold"
             android:paddingTop="@dimen/spacing_lg"
@@ -29,6 +31,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="@dimen/spacing_lg"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -36,14 +39,15 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/battery_info_level_label"
                     android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorSecondaryText"
+                    android:textColor="?attr/baColorStatsSecondaryText"
                     android:alpha="0.6" />
 
                 <TextView
@@ -51,6 +55,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="--"
+                    android:textColor="?attr/baColorStatsPrimaryText"
                     android:textSize="@dimen/text_size_hero"
                     android:textStyle="bold"
                     android:paddingTop="@dimen/spacing_sm" />
@@ -61,6 +66,7 @@
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            app:cardBackgroundColor="?attr/baColorStatsCardBackground"
             app:cardCornerRadius="@dimen/spacing_sm"
             app:cardElevation="@dimen/spacing_xs">
 
@@ -68,12 +74,14 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="@dimen/spacing_lg">
+                android:padding="@dimen/spacing_lg"
+                android:background="?attr/baColorStatsCardBackground">
 
                 <TextView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:text="@string/battery_info_detail_title"
+                    android:textColor="?attr/baColorStatsPrimaryText"
                     android:textSize="@dimen/text_size_title"
                     android:textStyle="bold"
                     android:paddingBottom="@dimen/spacing_lg" />
@@ -90,6 +98,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_status_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -97,6 +106,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -119,6 +129,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_voltage_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -126,6 +137,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -148,6 +160,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_temperature_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -155,6 +168,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -177,6 +191,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_current_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -184,6 +199,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -206,6 +222,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_current_average_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -213,6 +230,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -235,6 +253,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_health_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -242,6 +261,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -264,6 +284,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_health_api_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -271,6 +292,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -293,6 +315,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_plugged_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -300,6 +323,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -322,6 +346,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_charge_time_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -329,6 +354,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -351,6 +377,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_charge_counter_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -358,6 +385,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -380,6 +408,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_cycle_count_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -387,6 +416,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -409,6 +439,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_full_capacity_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -416,6 +447,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>
@@ -438,6 +470,7 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:text="@string/battery_info_design_capacity_label"
+                        android:textColor="?attr/baColorStatsSecondaryText"
                         android:textSize="@dimen/text_size_body" />
 
                     <TextView
@@ -445,6 +478,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="--"
+                        android:textColor="?attr/baColorStatsPrimaryText"
                         android:textSize="@dimen/text_size_body"
                         android:textStyle="bold" />
                 </LinearLayout>

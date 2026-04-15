@@ -16,6 +16,8 @@
     <string name="stats_capacity_range_12m">Last 12 months</string>
     <string name="stats_capacity_range_all">All time</string>
     <string name="stats_capacity_detail">%1$s  Estimated capacity: %2$d mAh</string>
+    <string name="stats_estimated_capacity_text_value">Estimated capacity: %1$s</string>
+    <string name="stats_cycle_count_text_value">Cycle count: %1$s</string>
 
     <string name="btn_charge_history">View charge history</string>
     <string name="charge_history_jump_to_date">Jump to date</string>
