@@ -90,10 +90,6 @@ public class BatteryInfo {
         this.health_api = health;
     }
 
-    public int getHealthApi() {
-        return health_api;
-    }
-
     public String getHealthText() {
         switch (health_api) {
             case android.os.BatteryManager.BATTERY_HEALTH_GOOD:

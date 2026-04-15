@@ -62,10 +62,7 @@ public class BatteryInfoManager {
             isGetData = fillAdvancedInfoIfRootAvailable(info);
         }
 
-        // 如果没有成功从daemon获取数据，则使用系统API获取基础信息
-        if (!isGetData) {
-            fillBasicInfo(info);
-        }
+        fillBasicInfo(info, isGetData);
 
         cache = info;
         return cache;
@@ -75,10 +72,6 @@ public class BatteryInfoManager {
      * 使用系统API获取基础电池信息
      * @return true表示获取成功，false表示获取失败
      */
-    private boolean fillBasicInfo(BatteryInfo info) {
-        return fillBasicInfo(info, false);
-    }
-
     private boolean fillBasicInfo(BatteryInfo info, boolean onlyFillInvalid) {
         IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         Intent batteryStatus = context.registerReceiver(null, filter);
@@ -151,9 +144,7 @@ public class BatteryInfoManager {
 
             // 剩余充电时间
             long chargeTimeRemaining = batteryManager.computeChargeTimeRemaining();
-            if (!onlyFillInvalid || info.getChargeTimeRemaining() < 0) {
-                info.setChargeTimeRemaining(chargeTimeRemaining);
-            }
+            info.setChargeTimeRemaining(chargeTimeRemaining);
         }
 
         return true;
@@ -197,7 +188,6 @@ public class BatteryInfoManager {
             info.setWirelessCurrentMax(data.getWirelessCurrentMax());
             info.setInCurrentNow(data.getInCurrentNow());
             info.setScenarioFcc(data.getScenarioFcc());
-            fillBasicInfo(info, true);
 
             // TODO
             //基础信息有的
