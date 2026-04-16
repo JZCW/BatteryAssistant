@@ -144,6 +144,7 @@ public class BatteryMonitorService extends Service {
         unregisterScreenStateReceiver();
         unregisterDozeReceiver();
         stopNotificationUpdate();
+        chargeHistoryManager.shutdown();
         markServiceRunning(false);
         foregroundStarted = false;
         scheduleRecoveryCheck("onDestroy");

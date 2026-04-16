@@ -1,6 +1,7 @@
 package com.upo.batteryassistant.manager;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.upo.batteryassistant.data.BatteryInfo;
@@ -33,6 +34,13 @@ public class ChargeHistoryManager {
 
     private static ChargeHistoryManager instance;
     private BatteryDatabaseHelper dbHelper;
+    private Context appContext;
+
+    // 运行态快照（持久化到 SharedPreferences，用于跨进程会话恢复）
+    private static final String PREFS_NAME = "charge_history_manager_state";
+    private static final String KEY_SNAP_TIMESTAMP     = "snap_timestamp";
+    private static final String KEY_SNAP_LEVEL         = "snap_level";
+    private static final String KEY_SNAP_CHARGE_COUNTER = "snap_charge_counter";
 
     // 持久化间隔配置
     private static final long PERSIST_INTERVAL = 60 * 1000; // 60秒
@@ -55,7 +63,8 @@ public class ChargeHistoryManager {
     private Future<Long> currentSessionInsertFuture;
 
     private ChargeHistoryManager(Context context) {
-        this.dbHelper = new BatteryDatabaseHelper(context.getApplicationContext());
+        this.appContext = context.getApplicationContext();
+        this.dbHelper = new BatteryDatabaseHelper(appContext);
     }
 
     /**
@@ -77,6 +86,60 @@ public class ChargeHistoryManager {
      */
     public void init() {
         firstInit = true;
+        restoreLastBatteryInfoSnapshot();
+    }
+
+    /**
+     * 退出前保存（服务销毁时调用）
+     */
+    public void shutdown() {
+        forcePersistNowSync();
+        saveLastBatteryInfoSnapshot();
+    }
+
+    // ---- 运行态快照持久化 ----
+
+    private void saveLastBatteryInfoSnapshot() {
+        BatteryInfo info;
+        synchronized (cacheLock) {
+            info = lastBatteryInfoCache;
+        }
+        SharedPreferences prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        if (info == null) {
+            prefs.edit().remove(KEY_SNAP_TIMESTAMP).remove(KEY_SNAP_LEVEL).remove(KEY_SNAP_CHARGE_COUNTER).apply();
+            return;
+        }
+        prefs.edit()
+            .putLong(KEY_SNAP_TIMESTAMP, info.getTimestamp())
+            .putInt(KEY_SNAP_LEVEL, info.getLevel())
+            .putInt(KEY_SNAP_CHARGE_COUNTER, info.getChargeCounter())
+            .apply();
+        Log.d(TAG, "Saved lastBatteryInfo snapshot: level=" + info.getLevel()
+            + " chargeCounter=" + info.getChargeCounter()
+            + " ts=" + info.getTimestamp());
+    }
+
+    private void restoreLastBatteryInfoSnapshot() {
+        SharedPreferences prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long ts = prefs.getLong(KEY_SNAP_TIMESTAMP, -1L);
+        if (ts < 0) {
+            return;
+        }
+        BatteryInfo info = new BatteryInfo();
+        info.setTimestamp(ts);
+        info.setLevel(prefs.getInt(KEY_SNAP_LEVEL, -1));
+        info.setChargeCounter(prefs.getInt(KEY_SNAP_CHARGE_COUNTER, -1));
+        synchronized (cacheLock) {
+            lastBatteryInfoCache = info;
+        }
+        Log.d(TAG, "Restored lastBatteryInfo snapshot: level=" + info.getLevel()
+            + " chargeCounter=" + info.getChargeCounter()
+            + " ts=" + ts);
+    }
+
+    private void clearLastBatteryInfoSnapshot() {
+        appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit().clear().apply();
     }
 
     /**
@@ -460,6 +523,7 @@ public class ChargeHistoryManager {
         currentSessionCache = null;
         lastBatteryInfoCache = null;
         currentSessionInsertFuture = null;
+        clearLastBatteryInfoSnapshot();
     }
 
     /**
