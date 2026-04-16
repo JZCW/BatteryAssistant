@@ -466,17 +466,10 @@ public class ChargeHistoryManager {
      * 判断是否应该恢复会话
      */
     private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo, boolean isCharging) {
-        // 检查间隔时间是否过长（超过5分钟）
-        long duration = currentInfo.getTimestamp() - ongoingSession.getStartTimestamp();
-        if (duration > 5 * 60 * 1000) {
-            Log.d(TAG, "间隔时间过长，不恢复会话: " + duration + "ms");
-            return false;
-        }
-
-        // 检查先前持续时间是否过长（超过20分钟）
-        long previousDuration = ongoingSession.getEndTimestamp() - ongoingSession.getStartTimestamp();
-        if (previousDuration > 20 * 60 * 1000) {
-            Log.d(TAG, "先前持续时间过长，不恢复会话: " + previousDuration + "ms");
+        // 检查充电状态是否一致
+        boolean sessionCharging = (ongoingSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
+        if (isCharging != sessionCharging) {
+            Log.d(TAG, "充电状态不一致，不恢复会话");
             return false;
         }
 
@@ -493,13 +486,30 @@ public class ChargeHistoryManager {
             return false;
         }
 
-        // 检查充电状态是否一致
-        boolean sessionCharging = (ongoingSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
-        if (isCharging != sessionCharging) {
-            Log.d(TAG, "充电状态不一致，不恢复会话");
+        long duration = currentInfo.getTimestamp() - ongoingSession.getStartTimestamp();
+
+        // 如果间隔小于30s 视为连续
+        if (duration < 30 * 1000) {
+            Log.i(TAG, "恢复进行中的会话，短间隔分状态仍有效");
+            return true;
+        }
+
+        // 检查间隔时间是否过长（超过5分钟）
+        if (duration > 5 * 60 * 1000) {
+            Log.d(TAG, "间隔时间过长，不恢复会话: " + duration + "ms");
             return false;
         }
 
+        // 检查先前持续时间是否过长（超过20分钟）
+        long previousDuration = ongoingSession.getEndTimestamp() - ongoingSession.getStartTimestamp();
+        if (previousDuration > 20 * 60 * 1000) {
+            Log.d(TAG, "先前持续时间过长，不恢复会话: " + previousDuration + "ms");
+            return false;
+        }
+
+        // 恢复会话，但标记分状态无效
+        Log.i(TAG, "恢复进行中的会话，分状态标记为无效");
+        ongoingSession.markInvalid();
         return true;
     }
 
@@ -532,11 +542,7 @@ public class ChargeHistoryManager {
 
         // 检查是否可以恢复
         if (shouldRestoreSession(ongoingSession, currentInfo, isCharging)) {
-            // 恢复会话，但标记分状态无效
-            ongoingSession.markInvalid();
             currentSessionCache = ongoingSession;
-
-            Log.i(TAG, "恢复进行中的会话，分状态标记为无效");
         } else {
             // 不能恢复，结束并创建新会话
             ongoingSession.setOngoing(false);
