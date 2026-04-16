@@ -138,6 +138,7 @@ public class BatteryMonitorService extends Service {
 
     @Override
     public void onDestroy() {
+        //FIXME 不会执行到？只可能强行结束
         Log.w(TAG, "Service onDestroy");
         super.onDestroy();
         unregisterPowerReceiver();
