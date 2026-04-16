@@ -36,12 +36,6 @@ public class ChargeHistoryManager {
     private BatteryDatabaseHelper dbHelper;
     private Context appContext;
 
-    // 运行态快照（持久化到 SharedPreferences，用于跨进程会话恢复）
-    private static final String PREFS_NAME = "charge_history_manager_state";
-    private static final String KEY_SNAP_TIMESTAMP     = "snap_timestamp";
-    private static final String KEY_SNAP_LEVEL         = "snap_level";
-    private static final String KEY_SNAP_CHARGE_COUNTER = "snap_charge_counter";
-
     // 持久化间隔配置
     private static final long PERSIST_INTERVAL = 60 * 1000; // 60秒
     private static final int PERSIST_LEVEL_THRESHOLD = 1; // 电量变化1%触发持久化
@@ -86,7 +80,6 @@ public class ChargeHistoryManager {
      */
     public void init() {
         firstInit = true;
-        restoreLastBatteryInfoSnapshot();
     }
 
     /**
@@ -94,52 +87,6 @@ public class ChargeHistoryManager {
      */
     public void shutdown() {
         forcePersistNowSync();
-        saveLastBatteryInfoSnapshot();
-    }
-
-    // ---- 运行态快照持久化 ----
-
-    private void saveLastBatteryInfoSnapshot() {
-        BatteryInfo info;
-        synchronized (cacheLock) {
-            info = lastBatteryInfoCache;
-        }
-        SharedPreferences prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        if (info == null) {
-            prefs.edit().remove(KEY_SNAP_TIMESTAMP).remove(KEY_SNAP_LEVEL).remove(KEY_SNAP_CHARGE_COUNTER).apply();
-            return;
-        }
-        prefs.edit()
-            .putLong(KEY_SNAP_TIMESTAMP, info.getTimestamp())
-            .putInt(KEY_SNAP_LEVEL, info.getLevel())
-            .putInt(KEY_SNAP_CHARGE_COUNTER, info.getChargeCounter())
-            .apply();
-        Log.d(TAG, "Saved lastBatteryInfo snapshot: level=" + info.getLevel()
-            + " chargeCounter=" + info.getChargeCounter()
-            + " ts=" + info.getTimestamp());
-    }
-
-    private void restoreLastBatteryInfoSnapshot() {
-        SharedPreferences prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        long ts = prefs.getLong(KEY_SNAP_TIMESTAMP, -1L);
-        if (ts < 0) {
-            return;
-        }
-        BatteryInfo info = new BatteryInfo();
-        info.setTimestamp(ts);
-        info.setLevel(prefs.getInt(KEY_SNAP_LEVEL, -1));
-        info.setChargeCounter(prefs.getInt(KEY_SNAP_CHARGE_COUNTER, -1));
-        synchronized (cacheLock) {
-            lastBatteryInfoCache = info;
-        }
-        Log.d(TAG, "Restored lastBatteryInfo snapshot: level=" + info.getLevel()
-            + " chargeCounter=" + info.getChargeCounter()
-            + " ts=" + ts);
-    }
-
-    private void clearLastBatteryInfoSnapshot() {
-        appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit().clear().apply();
     }
 
     /**
@@ -236,7 +183,7 @@ public class ChargeHistoryManager {
         synchronized (cacheLock) {
             // 如果是首次初始化，尝试恢复异常中断的会话
             if (firstInit) {
-                recoverOngoingSessions(currentInfo, currentState.isCharging());
+                recoverOngoingSessions(currentInfo, currentState);
                 recoverDailyStatsCache(currentInfo);
                 firstInit = false;
             }
@@ -523,16 +470,15 @@ public class ChargeHistoryManager {
         currentSessionCache = null;
         lastBatteryInfoCache = null;
         currentSessionInsertFuture = null;
-        clearLastBatteryInfoSnapshot();
     }
 
     /**
      * 判断是否应该恢复会话
      */
-    private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo, boolean isCharging) {
+    private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo, StateInfo currentState) {
         // 检查充电状态是否一致
         boolean sessionCharging = (ongoingSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
-        if (isCharging != sessionCharging) {
+        if (currentState.isCharging() != sessionCharging) {
             Log.d(TAG, "充电状态不一致，不恢复会话");
             return false;
         }
@@ -550,11 +496,22 @@ public class ChargeHistoryManager {
             return false;
         }
 
-        long duration = currentInfo.getTimestamp() - ongoingSession.getStartTimestamp();
+        long duration = currentInfo.getTimestamp() - ongoingSession.getEndTimestamp();
 
         // 如果间隔小于30s 视为连续
         if (duration < 30 * 1000) {
             Log.i(TAG, "恢复进行中的会话，短间隔分状态仍有效");
+
+            // 提供一个假的历史数据作为起点
+            BatteryInfo info = new BatteryInfo();
+            info.setTimestamp(ongoingSession.getEndTimestamp());
+            info.setLevel(ongoingSession.getEndLevel());
+            info.setChargeCounter(ongoingSession.getEndChargeCounter());
+            lastBatteryInfoCache = info;
+            lastScreenOn = currentState.isScreenOn();
+            lastIsCharging = currentState.isCharging();
+            lastIsIdle = currentState.isIdle();
+
             return true;
         }
 
@@ -580,7 +537,7 @@ public class ChargeHistoryManager {
     /**
      * 恢复异常中断的会话
      */
-    private void recoverOngoingSessions(BatteryInfo currentInfo, boolean isCharging) {
+    private void recoverOngoingSessions(BatteryInfo currentInfo, StateInfo currentState) {
         List<ChargeSession> ongoingSessions = runDbTask(() -> dbHelper.getOngoingSessions());
         if (ongoingSessions == null) {
             return;
@@ -605,7 +562,7 @@ public class ChargeHistoryManager {
         ChargeSession ongoingSession = ongoingSessions.get(0);
 
         // 检查是否可以恢复
-        if (shouldRestoreSession(ongoingSession, currentInfo, isCharging)) {
+        if (shouldRestoreSession(ongoingSession, currentInfo, currentState)) {
             currentSessionCache = ongoingSession;
         } else {
             // 不能恢复，结束并创建新会话
