@@ -250,19 +250,15 @@ public class ChargeSession implements Serializable {
      */
     public void markInvalid() {
         this.setScreenOnDuration(-1);
-        this.setScreenOnChargeCounterDiff(-1);
         this.setDozeDuration(-1);
-        this.setDozeChargeCounterDiff(-1);
     }
 
     /**
      * 判断分状态数据是否无效
      */
     public boolean isSessionInvalid() {
-        return this.getScreenOnDuration() == -1 ||
-               this.getScreenOnChargeCounterDiff() == -1 ||
-               this.getDozeDuration() == -1 ||
-               this.getDozeChargeCounterDiff() == -1;
+        return this.getScreenOnDuration() < 0 ||
+               this.getDozeDuration() < 0;
     }
 }
 

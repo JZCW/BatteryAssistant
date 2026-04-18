@@ -180,12 +180,14 @@ public class BatteryMonitorService extends Service {
 
     @Override
     public void onDestroy() {
+        //FIXME 不会执行到？只可能强行结束
         Log.w(TAG, "Service onDestroy");
         super.onDestroy();
         unregisterPowerReceiver();
         unregisterScreenStateReceiver();
         unregisterDozeReceiver();
         stopNotificationUpdate();
+        chargeHistoryManager.shutdown();
         markServiceRunning(false);
         foregroundStarted = false;
         scheduleRecoveryCheck("onDestroy");
@@ -425,8 +427,9 @@ public class BatteryMonitorService extends Service {
         // 更新当前会话缓存
         stateInfo.setCharging(newState.isCharging());
         stateInfo.setScreenOn(newState.isScreenOn());
+        stateInfo.setIdle(newState.isIdle());
         chargeHistoryManager.updateCurrentSession(currentInfo, stateInfo);
-        stateInfo.setIdle(newState.isIdle()); // 先触发任务再更新doze状态
+
 
         persistHeartbeat("updateBatteryInfo");
         Log.d(TAG, "更新电池信息 " + stateInfo.toString());

@@ -1,6 +1,7 @@
 package com.upo.batteryassistant.manager;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.upo.batteryassistant.data.BatteryInfo;
@@ -33,6 +34,7 @@ public class ChargeHistoryManager {
 
     private static ChargeHistoryManager instance;
     private BatteryDatabaseHelper dbHelper;
+    private Context appContext;
 
     // 持久化间隔配置
     private static final long PERSIST_INTERVAL = 60 * 1000; // 60秒
@@ -55,7 +57,8 @@ public class ChargeHistoryManager {
     private Future<Long> currentSessionInsertFuture;
 
     private ChargeHistoryManager(Context context) {
-        this.dbHelper = new BatteryDatabaseHelper(context.getApplicationContext());
+        this.appContext = context.getApplicationContext();
+        this.dbHelper = new BatteryDatabaseHelper(appContext);
     }
 
     /**
@@ -77,6 +80,13 @@ public class ChargeHistoryManager {
      */
     public void init() {
         firstInit = true;
+    }
+
+    /**
+     * 退出前保存（服务销毁时调用）
+     */
+    public void shutdown() {
+        forcePersistNowSync();
     }
 
     /**
@@ -173,7 +183,7 @@ public class ChargeHistoryManager {
         synchronized (cacheLock) {
             // 如果是首次初始化，尝试恢复异常中断的会话
             if (firstInit) {
-                recoverOngoingSessions(currentInfo, currentState.isCharging());
+                recoverOngoingSessions(currentInfo, currentState);
                 recoverDailyStatsCache(currentInfo);
                 firstInit = false;
             }
@@ -187,7 +197,18 @@ public class ChargeHistoryManager {
             }
 
             long now = currentInfo.getTimestamp();
-            long duration = now - currentSessionCache.getEndTimestamp();
+            long prevEnd = currentSessionCache.getEndTimestamp();
+            long duration = now - prevEnd;
+
+            // [分状态调试] 每次更新打印时间基准和状态快照
+            Log.d(TAG, "updateCurrentSession: counter=" + currentSessionCache.getCounter()
+                + " now=" + now + " prevEnd=" + prevEnd + " duration=" + duration
+                + " lastScreenOn=" + lastScreenOn + " lastIsIdle=" + lastIsIdle
+                + " lastIsCharging=" + lastIsCharging
+                + " curCC=" + currentInfo.getChargeCounter()
+                + " lastCC=" + (lastBatteryInfoCache != null ? lastBatteryInfoCache.getChargeCounter() : "null")
+                + " screenOnAcc=" + currentSessionCache.getScreenOnDuration()
+                + " dozeAcc=" + currentSessionCache.getDozeDuration());
 
             // 更新基础信息
             currentSessionCache.setPauseTimestamp(now);
@@ -221,12 +242,16 @@ public class ChargeHistoryManager {
                         currentSessionCache.getDozeDuration() + duration);
                     currentSessionCache.setDozeChargeCounterDiff(
                         currentSessionCache.getDozeChargeCounterDiff() + chargeCounterDiff);
+                    Log.d(TAG, "  → 计入Doze: +duration=" + duration + " +ccDiff=" + chargeCounterDiff);
                 } else {
                     if (lastScreenOn) {
                         currentSessionCache.setScreenOnDuration(
                             currentSessionCache.getScreenOnDuration() + duration);
                         currentSessionCache.setScreenOnChargeCounterDiff(
                             currentSessionCache.getScreenOnChargeCounterDiff() + chargeCounterDiff);
+                        Log.d(TAG, "  → 计入亮屏: +duration=" + duration + " +ccDiff=" + chargeCounterDiff);
+                    } else {
+                        Log.d(TAG, "  → 计入息屏非Doze(不累积): duration=" + duration + " ccDiff=" + chargeCounterDiff);
                     }
                 }
             }
@@ -443,17 +468,6 @@ public class ChargeHistoryManager {
             }
         });
 
-        // 更新统计数据中的估算信息
-        if (dailyStatsCache != null) {
-            int level = session.getLevelChange();
-            if ((level > 0) && (level > dailyStatsCache.getMaxLevelChange())) {
-                dailyStatsCache.setMaxLevelChange(level);
-                int count = session.getChargeCounterDiff();
-                int capacity = count*100/level;
-                dailyStatsCache.setEstimatedCapacity(capacity);
-            }
-        }
-
         Log.i(TAG, "结束会话: " + session.getSessionTypeText());
 
         // 清空缓存
@@ -465,18 +479,11 @@ public class ChargeHistoryManager {
     /**
      * 判断是否应该恢复会话
      */
-    private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo, boolean isCharging) {
-        // 检查间隔时间是否过长（超过5分钟）
-        long duration = currentInfo.getTimestamp() - ongoingSession.getStartTimestamp();
-        if (duration > 5 * 60 * 1000) {
-            Log.d(TAG, "间隔时间过长，不恢复会话: " + duration + "ms");
-            return false;
-        }
-
-        // 检查先前持续时间是否过长（超过20分钟）
-        long previousDuration = ongoingSession.getEndTimestamp() - ongoingSession.getStartTimestamp();
-        if (previousDuration > 20 * 60 * 1000) {
-            Log.d(TAG, "先前持续时间过长，不恢复会话: " + previousDuration + "ms");
+    private boolean shouldRestoreSession(ChargeSession ongoingSession, BatteryInfo currentInfo, StateInfo currentState) {
+        // 检查充电状态是否一致
+        boolean sessionCharging = (ongoingSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
+        if (currentState.isCharging() != sessionCharging) {
+            Log.d(TAG, "充电状态不一致，不恢复会话");
             return false;
         }
 
@@ -493,20 +500,48 @@ public class ChargeHistoryManager {
             return false;
         }
 
-        // 检查充电状态是否一致
-        boolean sessionCharging = (ongoingSession.getSessionType() == DatabaseContract.ChargeSessionEntry.SESSION_TYPE_CHARGE);
-        if (isCharging != sessionCharging) {
-            Log.d(TAG, "充电状态不一致，不恢复会话");
+        long duration = currentInfo.getTimestamp() - ongoingSession.getEndTimestamp();
+
+        // 如果间隔小于30s 视为连续
+        if (duration < 30 * 1000) {
+            Log.i(TAG, "恢复进行中的会话，短间隔分状态仍有效");
+
+            // 提供一个假的历史数据作为起点
+            BatteryInfo info = new BatteryInfo();
+            info.setTimestamp(ongoingSession.getEndTimestamp());
+            info.setLevel(ongoingSession.getEndLevel());
+            info.setChargeCounter(ongoingSession.getEndChargeCounter());
+            lastBatteryInfoCache = info;
+            lastScreenOn = currentState.isScreenOn();
+            lastIsCharging = currentState.isCharging();
+            lastIsIdle = currentState.isIdle();
+
+            return true;
+        }
+
+        // 检查间隔时间是否过长（超过5分钟）
+        if (duration > 5 * 60 * 1000) {
+            Log.d(TAG, "间隔时间过长，不恢复会话: " + duration + "ms");
             return false;
         }
 
+        // 检查先前持续时间是否过长（超过20分钟）
+        long previousDuration = ongoingSession.getEndTimestamp() - ongoingSession.getStartTimestamp();
+        if (previousDuration > 20 * 60 * 1000) {
+            Log.d(TAG, "先前持续时间过长，不恢复会话: " + previousDuration + "ms");
+            return false;
+        }
+
+        // 恢复会话，但标记分状态无效
+        Log.i(TAG, "恢复进行中的会话，分状态标记为无效");
+        ongoingSession.markInvalid();
         return true;
     }
 
     /**
      * 恢复异常中断的会话
      */
-    private void recoverOngoingSessions(BatteryInfo currentInfo, boolean isCharging) {
+    private void recoverOngoingSessions(BatteryInfo currentInfo, StateInfo currentState) {
         List<ChargeSession> ongoingSessions = runDbTask(() -> dbHelper.getOngoingSessions());
         if (ongoingSessions == null) {
             return;
@@ -531,12 +566,8 @@ public class ChargeHistoryManager {
         ChargeSession ongoingSession = ongoingSessions.get(0);
 
         // 检查是否可以恢复
-        if (shouldRestoreSession(ongoingSession, currentInfo, isCharging)) {
-            // 恢复会话，但标记分状态无效
-            ongoingSession.markInvalid();
+        if (shouldRestoreSession(ongoingSession, currentInfo, currentState)) {
             currentSessionCache = ongoingSession;
-
-            Log.i(TAG, "恢复进行中的会话，分状态标记为无效");
         } else {
             // 不能恢复，结束并创建新会话
             ongoingSession.setOngoing(false);
@@ -637,6 +668,17 @@ public class ChargeHistoryManager {
         // 更新其他数据(取最大值)
         dailyStatsCache.setCapacity(Math.max(dailyStatsCache.getCapacity(), currentInfo.getFullCapacity()));
         dailyStatsCache.setCycleCount(Math.max(dailyStatsCache.getCycleCount(), currentInfo.getCycleCount()));
+
+        // 更新估算信息
+        int level = currentSessionCache.getLevelChange();
+        Log.d(TAG, "updateDailyStats: levelChange=" + level + " MaxLevelChange=" + dailyStatsCache.getMaxLevelChange());
+        if ((level > 0) && (level > dailyStatsCache.getMaxLevelChange())) {
+            Log.d(TAG, "updateDailyStats: new maxLevelChange=" + level);
+            dailyStatsCache.setMaxLevelChange(level);
+            int count = currentSessionCache.getChargeCounterDiff();
+            int capacity = count*100/level;
+            dailyStatsCache.setEstimatedCapacity(capacity);
+        }
     }
 
     /**
