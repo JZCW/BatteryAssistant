@@ -403,8 +403,9 @@ public class BatteryMonitorService extends Service {
         // 更新当前会话缓存
         stateInfo.setCharging(newState.isCharging());
         stateInfo.setScreenOn(newState.isScreenOn());
+        stateInfo.setIdle(newState.isIdle());
         chargeHistoryManager.updateCurrentSession(currentInfo, stateInfo);
-        stateInfo.setIdle(newState.isIdle()); // 先触发任务再更新doze状态
+
 
         persistHeartbeat("updateBatteryInfo");
         Log.d(TAG, "更新电池信息 " + stateInfo.toString());
