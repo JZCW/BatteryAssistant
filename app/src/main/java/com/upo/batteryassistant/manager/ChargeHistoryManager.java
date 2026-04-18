@@ -197,7 +197,18 @@ public class ChargeHistoryManager {
             }
 
             long now = currentInfo.getTimestamp();
-            long duration = now - currentSessionCache.getEndTimestamp();
+            long prevEnd = currentSessionCache.getEndTimestamp();
+            long duration = now - prevEnd;
+
+            // [分状态调试] 每次更新打印时间基准和状态快照
+            Log.d(TAG, "updateCurrentSession: counter=" + currentSessionCache.getCounter()
+                + " now=" + now + " prevEnd=" + prevEnd + " duration=" + duration
+                + " lastScreenOn=" + lastScreenOn + " lastIsIdle=" + lastIsIdle
+                + " lastIsCharging=" + lastIsCharging
+                + " curCC=" + currentInfo.getChargeCounter()
+                + " lastCC=" + (lastBatteryInfoCache != null ? lastBatteryInfoCache.getChargeCounter() : "null")
+                + " screenOnAcc=" + currentSessionCache.getScreenOnDuration()
+                + " dozeAcc=" + currentSessionCache.getDozeDuration());
 
             // 更新基础信息
             currentSessionCache.setPauseTimestamp(now);
@@ -231,12 +242,16 @@ public class ChargeHistoryManager {
                         currentSessionCache.getDozeDuration() + duration);
                     currentSessionCache.setDozeChargeCounterDiff(
                         currentSessionCache.getDozeChargeCounterDiff() + chargeCounterDiff);
+                    Log.d(TAG, "  → 计入Doze: +duration=" + duration + " +ccDiff=" + chargeCounterDiff);
                 } else {
                     if (lastScreenOn) {
                         currentSessionCache.setScreenOnDuration(
                             currentSessionCache.getScreenOnDuration() + duration);
                         currentSessionCache.setScreenOnChargeCounterDiff(
                             currentSessionCache.getScreenOnChargeCounterDiff() + chargeCounterDiff);
+                        Log.d(TAG, "  → 计入亮屏: +duration=" + duration + " +ccDiff=" + chargeCounterDiff);
+                    } else {
+                        Log.d(TAG, "  → 计入息屏非Doze(不累积): duration=" + duration + " ccDiff=" + chargeCounterDiff);
                     }
                 }
             }
