@@ -34,7 +34,6 @@
     <string name="charge_history_level_change_label">Level change: %1$s</string>
     <string name="charge_history_start_level">Start: %1$d%%</string>
     <string name="charge_history_end_info">End: %1$d%% | Max %2$.1f°C | Min %3$.1f°C</string>
-    <string name="charge_history_item_cd">%1$s, %2$s, %3$s, %4$s</string>
 
     <string name="common_none">None</string>
     <string name="common_no_data">No data</string>
@@ -66,20 +65,6 @@
     <string name="battery_info_cycle_count_label">Cycle Count</string>
     <string name="battery_info_full_capacity_label">Full Capacity</string>
     <string name="battery_info_design_capacity_label">Design Capacity</string>
-
-    <string name="a11y_charge_history_list">Charge history list</string>
-    <string name="a11y_stats_bar_chart">Statistics bar chart</string>
-    <string name="a11y_stats_capacity_chart">Capacity scatter chart</string>
-    <string name="a11y_stats_period_toggle">Statistics period switch</string>
-    <string name="a11y_stats_capacity_toggle">Capacity range switch</string>
-    <string name="a11y_view_charge_history">View charge history</string>
-    <string name="a11y_battery_level">Battery level: %1$s</string>
-    <string name="a11y_battery_status">Battery status: %1$s</string>
-    <string name="a11y_battery_voltage">Battery voltage: %1$s</string>
-    <string name="a11y_battery_temperature">Battery temperature: %1$s</string>
-    <string name="a11y_battery_current">Battery current: %1$s</string>
-    <string name="a11y_battery_health">Battery health: %1$s</string>
-    <string name="a11y_field_value">%1$s: %2$s</string>
 
     <string name="action_theme">Theme</string>
     <string name="theme_follow_system">Follow system</string>

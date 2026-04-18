@@ -103,18 +103,18 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
 
         TextView endTimeText = findViewById(R.id.detail_end_time_text);
         endTimeText.setText(dateFormat.format(new Date(session.getEndTimestamp())));
-        
+
         View pauseTimeSectionView = findViewById(R.id.detail_pause_time_section);
         pauseTimeSectionView.setVisibility(isChargingSession ? View.VISIBLE : View.GONE);
         if (isChargingSession) {
             TextView pauseTimeText = findViewById(R.id.detail_pause_time_text);
             pauseTimeText.setText(dateFormat.format(new Date(session.getPauseTimestamp())));
         }
-        
+
         TextView durationText = findViewById(R.id.detail_duration_text);
         long duration = session.getEndTimestamp() - session.getStartTimestamp();
         durationText.setText(formatDuration(duration));
-        
+
         TextView ongoingText = findViewById(R.id.detail_ongoing_text);
         ongoingText.setText(session.isOngoing() ? R.string.status_ongoing : R.string.status_completed);
 
@@ -123,7 +123,7 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
 
         TextView idText = findViewById(R.id.detail_id_text);
         idText.setText(String.valueOf(session.getId()));
-        
+
         // 电量信息
         TextView startLevelText = findViewById(R.id.detail_start_level_text);
         TextView endLevelText = findViewById(R.id.detail_end_level_text);
@@ -247,29 +247,7 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
                 cycleCountText.setText(R.string.common_no_data);
             }
         }
-        
-        // ID信息和更新计数
-        TextView idText = findViewById(R.id.detail_id_text);
-        TextView counterText = findViewById(R.id.detail_counter_text);
-        idText.setText(String.valueOf(session.getId()));
-        counterText.setText(String.valueOf(session.getCounter()));
-
-        updateFieldAccessibility(typeText, typeValueText);
-        updateFieldAccessibility(findViewById(R.id.detail_start_time_text_label), startTimeText);
-        updateFieldAccessibility(findViewById(R.id.detail_end_time_text_label), endTimeText);
-        updateFieldAccessibility(findViewById(R.id.detail_pause_time_text_label), pauseTimeText);
-        updateFieldAccessibility(findViewById(R.id.detail_duration_text_label), durationText);
-        updateFieldAccessibility(findViewById(R.id.detail_ongoing_text_label), ongoingText);
-        updateFieldAccessibility(findViewById(R.id.detail_start_level_text_label), startLevelText);
-        updateFieldAccessibility(findViewById(R.id.detail_end_level_text_label), endLevelText);
-        updateFieldAccessibility(findViewById(R.id.detail_level_change_text_label), levelChangeText);
-        updateFieldAccessibility(findViewById(R.id.detail_max_temp_text_label), maxTempText);
-        updateFieldAccessibility(findViewById(R.id.detail_min_temp_text_label), minTempText);
-        updateFieldAccessibility(findViewById(R.id.detail_id_text_label), idText);
-        updateFieldAccessibility(findViewById(R.id.detail_counter_text_label), counterText);
     }
-    
-    
 
     private String formatDuration(long milliseconds) {
         long seconds = milliseconds / 1000;
@@ -293,12 +271,5 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
             return (isCharging ? "+" : "-") + "0" + unit;
         }
         return (value > 0 ? "+" : "") + value + unit;
-    }
-
-    private void updateFieldAccessibility(TextView labelView, TextView valueView) {
-        if (labelView == null || valueView == null) {
-            return;
-        }
-        valueView.setContentDescription(getString(R.string.a11y_field_value, labelView.getText(), valueView.getText()));
     }
 }

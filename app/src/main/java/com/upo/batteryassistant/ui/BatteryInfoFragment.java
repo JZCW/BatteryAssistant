@@ -185,14 +185,6 @@ public class BatteryInfoFragment extends Fragment {
                 } else {
                     tvDesignCapacity.setText(R.string.common_unavailable);
                 }
-
-                // 同步更新关键字段可访问性描述，确保读屏可读到当前值
-                tvLevel.setContentDescription(getString(R.string.a11y_battery_level, tvLevel.getText()));
-                tvStatus.setContentDescription(getString(R.string.a11y_battery_status, tvStatus.getText()));
-                tvVoltage.setContentDescription(getString(R.string.a11y_battery_voltage, tvVoltage.getText()));
-                tvTemperature.setContentDescription(getString(R.string.a11y_battery_temperature, tvTemperature.getText()));
-                tvCurrent.setContentDescription(getString(R.string.a11y_battery_current, tvCurrent.getText()));
-                tvHealth.setContentDescription(getString(R.string.a11y_battery_health, tvHealth.getText()));
             }
         });
     }
