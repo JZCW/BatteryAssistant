@@ -112,6 +112,30 @@
                     android:textSize="@dimen/text_size_body"
                     android:textColor="?attr/baColorStatsPrimaryText" />
 
+                <LinearLayout
+                    android:id="@+id/detail_pause_time_section"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/detail_pause_time_text_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_sm"
+                        android:text="@string/detail_label_pause_time"
+                        android:textSize="@dimen/text_size_body"
+                        android:textColor="?attr/baColorStatsSecondaryText" />
+
+                    <TextView
+                        android:id="@+id/detail_pause_time_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="@dimen/text_size_body"
+                        android:textColor="?attr/baColorStatsPrimaryText" />
+
+                </LinearLayout>
+
                 <TextView
                     android:id="@+id/detail_duration_text_label"
                     android:layout_width="wrap_content"
@@ -123,22 +147,6 @@
 
                 <TextView
                     android:id="@+id/detail_duration_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorStatsPrimaryText" />
-
-                <TextView
-                    android:id="@+id/detail_pause_time_text_label"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="@dimen/spacing_sm"
-                    android:text="@string/detail_label_pause_time"
-                    android:textSize="@dimen/text_size_body"
-                    android:textColor="?attr/baColorStatsSecondaryText" />
-
-                <TextView
-                    android:id="@+id/detail_pause_time_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:textSize="@dimen/text_size_body"
@@ -462,6 +470,55 @@
                         android:textSize="@dimen/text_size_body"
                         android:textColor="?attr/baColorStatsPrimaryText" />
 
+                    <!-- 分隔线 -->
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="@dimen/spacing_sm"
+                        android:layout_marginBottom="@dimen/spacing_xs"
+                        android:background="?attr/baColorDivider" />
+
+                    <!-- 息屏非Doze -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/detail_section_nondoze_info"
+                        android:textSize="@dimen/text_size_body"
+                        android:textStyle="bold"
+                        android:textColor="?attr/baColorStatsPrimaryText" />
+
+                    <TextView
+                        android:id="@+id/detail_nondoze_duration_text_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_xs"
+                        android:text="@string/detail_label_nondoze_duration"
+                        android:textSize="@dimen/text_size_body"
+                        android:textColor="?attr/baColorStatsSecondaryText" />
+
+                    <TextView
+                        android:id="@+id/detail_nondoze_duration_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="@dimen/text_size_body"
+                        android:textColor="?attr/baColorStatsPrimaryText" />
+
+                    <TextView
+                        android:id="@+id/detail_nondoze_charge_counter_diff_text_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="@dimen/spacing_xs"
+                        android:text="@string/detail_label_nondoze_counter_diff"
+                        android:textSize="@dimen/text_size_body"
+                        android:textColor="?attr/baColorStatsSecondaryText" />
+
+                    <TextView
+                        android:id="@+id/detail_nondoze_charge_counter_diff_text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textSize="@dimen/text_size_body"
+                        android:textColor="?attr/baColorStatsPrimaryText" />
+
                     <!-- Doze节（充电会话中隐藏） -->
                     <LinearLayout
                         android:id="@+id/detail_doze_section"
@@ -517,56 +574,6 @@
                             android:textColor="?attr/baColorStatsPrimaryText" />
 
                     </LinearLayout>
-
-                    <!-- 分隔线 -->
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:layout_marginTop="@dimen/spacing_sm"
-                        android:layout_marginBottom="@dimen/spacing_xs"
-                        android:background="?attr/baColorDivider" />
-
-                    <!-- 息屏非Doze -->
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/detail_section_nondoze_info"
-                        android:textSize="@dimen/text_size_body"
-                        android:textStyle="bold"
-                        android:textColor="?attr/baColorStatsPrimaryText" />
-
-                    <TextView
-                        android:id="@+id/detail_nondoze_duration_text_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacing_xs"
-                        android:text="@string/detail_label_nondoze_duration"
-                        android:textSize="@dimen/text_size_body"
-                        android:textColor="?attr/baColorStatsSecondaryText" />
-
-                    <TextView
-                        android:id="@+id/detail_nondoze_duration_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="@dimen/text_size_body"
-                        android:textColor="?attr/baColorStatsPrimaryText" />
-
-                    <TextView
-                        android:id="@+id/detail_nondoze_charge_counter_diff_text_label"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="@dimen/spacing_xs"
-                        android:text="@string/detail_label_nondoze_counter_diff"
-                        android:textSize="@dimen/text_size_body"
-                        android:textColor="?attr/baColorStatsSecondaryText" />
-
-                    <TextView
-                        android:id="@+id/detail_nondoze_charge_counter_diff_text"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="@dimen/text_size_body"
-                        android:textColor="?attr/baColorStatsPrimaryText" />
-
                 </LinearLayout>
 
             </LinearLayout>

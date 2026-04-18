@@ -94,27 +94,35 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
 
         // 基础信息
         TextView typeText = findViewById(R.id.detail_type_text);
+
         TextView typeValueText = findViewById(R.id.detail_type_value);
-        TextView startTimeText = findViewById(R.id.detail_start_time_text);
-        TextView endTimeText = findViewById(R.id.detail_end_time_text);
-        TextView durationText = findViewById(R.id.detail_duration_text);
-        TextView pauseTimeText = findViewById(R.id.detail_pause_time_text);
-        TextView ongoingText = findViewById(R.id.detail_ongoing_text);
-        
         typeValueText.setText(session.getSessionTypeText());
+
+        TextView startTimeText = findViewById(R.id.detail_start_time_text);
         startTimeText.setText(dateFormat.format(new Date(session.getStartTimestamp())));
+
+        TextView endTimeText = findViewById(R.id.detail_end_time_text);
         endTimeText.setText(dateFormat.format(new Date(session.getEndTimestamp())));
         
+        View pauseTimeSectionView = findViewById(R.id.detail_pause_time_section);
+        pauseTimeSectionView.setVisibility(isChargingSession ? View.VISIBLE : View.GONE);
+        if (isChargingSession) {
+            TextView pauseTimeText = findViewById(R.id.detail_pause_time_text);
+            pauseTimeText.setText(dateFormat.format(new Date(session.getPauseTimestamp())));
+        }
+        
+        TextView durationText = findViewById(R.id.detail_duration_text);
         long duration = session.getEndTimestamp() - session.getStartTimestamp();
         durationText.setText(formatDuration(duration));
         
-        if (session.getPauseTimestamp() > 0) {
-            pauseTimeText.setText(dateFormat.format(new Date(session.getPauseTimestamp())));
-        } else {
-            pauseTimeText.setText(R.string.common_none);
-        }
-        
+        TextView ongoingText = findViewById(R.id.detail_ongoing_text);
         ongoingText.setText(session.isOngoing() ? R.string.status_ongoing : R.string.status_completed);
+
+        TextView counterText = findViewById(R.id.detail_counter_text);
+        counterText.setText(String.valueOf(session.getCounter()));
+
+        TextView idText = findViewById(R.id.detail_id_text);
+        idText.setText(String.valueOf(session.getId()));
         
         // 电量信息
         TextView startLevelText = findViewById(R.id.detail_start_level_text);
@@ -178,7 +186,7 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         View stateStatsUnavailable = findViewById(R.id.detail_state_stats_unavailable);
         View stateStatsContent = findViewById(R.id.detail_state_stats_content);
 
-        boolean stateStatsAvailable = session.getScreenOnDuration() >= 0;
+        boolean stateStatsAvailable = !session.isSessionInvalid();
         stateStatsUnavailable.setVisibility(stateStatsAvailable ? View.GONE : View.VISIBLE);
         stateStatsContent.setVisibility(stateStatsAvailable ? View.VISIBLE : View.GONE);
 
@@ -198,16 +206,10 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
             dozeSectionView.setVisibility(isChargingSession ? View.GONE : View.VISIBLE);
 
             if (!isChargingSession) {
-                // Doze信息
                 TextView dozeDurationText = findViewById(R.id.detail_doze_duration_text);
                 TextView dozeChargeCounterDiffText = findViewById(R.id.detail_doze_charge_counter_diff_text);
 
-                if (session.getDozeDuration() >= 0) {
-                    dozeDurationText.setText(formatDuration(session.getDozeDuration()));
-                } else {
-                    dozeDurationText.setText(R.string.common_unavailable);
-                }
-
+                dozeDurationText.setText(formatDuration(session.getDozeDuration()));
                 dozeChargeCounterDiffText.setText(
                     formatSignedDiff(session.getDozeChargeCounterDiff(), isChargingSession, " mAh")
                 );
@@ -218,31 +220,13 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
             TextView nondozeChargeCounterDiffText = findViewById(R.id.detail_nondoze_charge_counter_diff_text);
 
             long totalDuration = session.getEndTimestamp() - session.getStartTimestamp();
-            int totalChargeCounterDiff = session.getChargeCounterDiff();
+            long nondozeDuration = totalDuration - session.getScreenOnDuration() - session.getDozeDuration();
+            int nondozeChargeCounterDiff = session.getChargeCounterDiff() - session.getScreenOnChargeCounterDiff() - session.getDozeChargeCounterDiff();
 
-            long nondozeDuration = -1;
-            if (session.getDozeDuration() >= 0) {
-                nondozeDuration = totalDuration - session.getScreenOnDuration() - session.getDozeDuration();
-            }
-
-            int nondozeChargeCounterDiff = Integer.MIN_VALUE;
-            if (session.getScreenOnChargeCounterDiff() >= 0 && session.getDozeChargeCounterDiff() >= 0) {
-                nondozeChargeCounterDiff = totalChargeCounterDiff - session.getScreenOnChargeCounterDiff() - session.getDozeChargeCounterDiff();
-            }
-
-            if (nondozeDuration >= 0) {
-                nondozeDurationText.setText(formatDuration(nondozeDuration));
-            } else {
-                nondozeDurationText.setText(R.string.common_unavailable);
-            }
-
-            if (nondozeChargeCounterDiff != Integer.MIN_VALUE) {
-                nondozeChargeCounterDiffText.setText(
-                    formatSignedDiff(nondozeChargeCounterDiff, isChargingSession, " mAh")
-                );
-            } else {
-                nondozeChargeCounterDiffText.setText(R.string.common_unavailable);
-            }
+            nondozeDurationText.setText(formatDuration(nondozeDuration));
+            nondozeChargeCounterDiffText.setText(
+                formatSignedDiff(nondozeChargeCounterDiff, isChargingSession, " mAh")
+            );
         }
         View capacityCycleCard = findViewById(R.id.detail_capacity_cycle_card);
         capacityCycleCard.setVisibility(isChargingSession ? View.VISIBLE : View.GONE);
@@ -273,8 +257,8 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
         updateFieldAccessibility(typeText, typeValueText);
         updateFieldAccessibility(findViewById(R.id.detail_start_time_text_label), startTimeText);
         updateFieldAccessibility(findViewById(R.id.detail_end_time_text_label), endTimeText);
-        updateFieldAccessibility(findViewById(R.id.detail_duration_text_label), durationText);
         updateFieldAccessibility(findViewById(R.id.detail_pause_time_text_label), pauseTimeText);
+        updateFieldAccessibility(findViewById(R.id.detail_duration_text_label), durationText);
         updateFieldAccessibility(findViewById(R.id.detail_ongoing_text_label), ongoingText);
         updateFieldAccessibility(findViewById(R.id.detail_start_level_text_label), startLevelText);
         updateFieldAccessibility(findViewById(R.id.detail_end_level_text_label), endLevelText);
