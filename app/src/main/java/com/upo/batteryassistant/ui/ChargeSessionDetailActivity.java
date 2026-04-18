@@ -171,45 +171,86 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
             minTempText.setText(R.string.common_unavailable);
         }
         
-        // 屏幕信息
-        TextView screenOnDurationText = findViewById(R.id.detail_screen_on_duration_text);
-        TextView screenOnChargeCounterDiffText = findViewById(R.id.detail_screen_on_charge_counter_diff_text);
-
-        if (session.getScreenOnDuration() >= 0) {
-            screenOnDurationText.setText(formatDuration(session.getScreenOnDuration()));
-        } else {
-            screenOnDurationText.setText(R.string.common_unavailable);
-        }
-
-        if (session.getScreenOnChargeCounterDiff() >= 0) {
-            screenOnChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, session.getScreenOnChargeCounterDiff()));
-        } else if (session.getScreenOnChargeCounterDiff() < 0) {
-            screenOnChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, session.getScreenOnChargeCounterDiff()));
-        } else {
-            screenOnChargeCounterDiffText.setText(R.string.common_unavailable);
-        }
-        
-        // Doze信息
-        TextView dozeDurationText = findViewById(R.id.detail_doze_duration_text);
-        TextView dozeChargeCounterDiffText = findViewById(R.id.detail_doze_charge_counter_diff_text);
-
-        if (session.getDozeDuration() >= 0) {
-            dozeDurationText.setText(formatDuration(session.getDozeDuration()));
-        } else {
-            dozeDurationText.setText(R.string.common_unavailable);
-        }
-
-        if (session.getDozeChargeCounterDiff() >= 0) {
-            dozeChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, session.getDozeChargeCounterDiff()));
-        } else if (session.getDozeChargeCounterDiff() < 0) {
-            dozeChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, session.getDozeChargeCounterDiff()));
-        } else {
-            dozeChargeCounterDiffText.setText(R.string.common_unavailable);
-        }
-        
-        // 容量和周期信息仅在充电会话中显示
-        View capacityCycleCard = findViewById(R.id.detail_capacity_cycle_card);
+        // 分状态统计信息（屏幕 / Doze / 息屏非Doze）
         boolean isChargingSession = session.getSessionType() == 0;
+        View stateStatsUnavailable = findViewById(R.id.detail_state_stats_unavailable);
+        View stateStatsContent = findViewById(R.id.detail_state_stats_content);
+
+        boolean stateStatsAvailable = session.getScreenOnDuration() >= 0;
+        stateStatsUnavailable.setVisibility(stateStatsAvailable ? View.GONE : View.VISIBLE);
+        stateStatsContent.setVisibility(stateStatsAvailable ? View.VISIBLE : View.GONE);
+
+        if (stateStatsAvailable) {
+            // 屏幕信息
+            TextView screenOnDurationText = findViewById(R.id.detail_screen_on_duration_text);
+            TextView screenOnChargeCounterDiffText = findViewById(R.id.detail_screen_on_charge_counter_diff_text);
+
+            screenOnDurationText.setText(formatDuration(session.getScreenOnDuration()));
+
+            if (session.getScreenOnChargeCounterDiff() >= 0) {
+                screenOnChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, session.getScreenOnChargeCounterDiff()));
+            } else {
+                screenOnChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, session.getScreenOnChargeCounterDiff()));
+            }
+
+            // Doze信息（充电会话中隐藏）
+            View dozeSectionView = findViewById(R.id.detail_doze_section);
+            dozeSectionView.setVisibility(isChargingSession ? View.GONE : View.VISIBLE);
+
+            if (!isChargingSession) {
+                // Doze信息
+                TextView dozeDurationText = findViewById(R.id.detail_doze_duration_text);
+                TextView dozeChargeCounterDiffText = findViewById(R.id.detail_doze_charge_counter_diff_text);
+
+                if (session.getDozeDuration() >= 0) {
+                    dozeDurationText.setText(formatDuration(session.getDozeDuration()));
+                } else {
+                    dozeDurationText.setText(R.string.common_unavailable);
+                }
+
+                if (session.getDozeChargeCounterDiff() >= 0) {
+                    dozeChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, session.getDozeChargeCounterDiff()));
+                } else if (session.getDozeChargeCounterDiff() < 0) {
+                    dozeChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, session.getDozeChargeCounterDiff()));
+                } else {
+                    dozeChargeCounterDiffText.setText(R.string.common_unavailable);
+                }
+            }
+
+            // 息屏非Doze信息（推断）
+            TextView nondozeDurationText = findViewById(R.id.detail_nondoze_duration_text);
+            TextView nondozeChargeCounterDiffText = findViewById(R.id.detail_nondoze_charge_counter_diff_text);
+
+            long totalDuration = session.getEndTimestamp() - session.getStartTimestamp();
+            int totalChargeCounterDiff = session.getChargeCounterDiff();
+
+            long nondozeDuration = -1;
+            if (session.getDozeDuration() >= 0) {
+                nondozeDuration = totalDuration - session.getScreenOnDuration() - session.getDozeDuration();
+            }
+
+            int nondozeChargeCounterDiff = Integer.MIN_VALUE;
+            if (session.getScreenOnChargeCounterDiff() >= 0 && session.getDozeChargeCounterDiff() >= 0) {
+                nondozeChargeCounterDiff = totalChargeCounterDiff - session.getScreenOnChargeCounterDiff() - session.getDozeChargeCounterDiff();
+            }
+
+            if (nondozeDuration >= 0) {
+                nondozeDurationText.setText(formatDuration(nondozeDuration));
+            } else {
+                nondozeDurationText.setText(R.string.common_unavailable);
+            }
+
+            if (nondozeChargeCounterDiff != Integer.MIN_VALUE) {
+                if (nondozeChargeCounterDiff >= 0) {
+                    nondozeChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, nondozeChargeCounterDiff));
+                } else {
+                    nondozeChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, nondozeChargeCounterDiff));
+                }
+            } else {
+                nondozeChargeCounterDiffText.setText(R.string.common_unavailable);
+            }
+        }
+        View capacityCycleCard = findViewById(R.id.detail_capacity_cycle_card);
         capacityCycleCard.setVisibility(isChargingSession ? View.VISIBLE : View.GONE);
 
         if (isChargingSession) {
@@ -229,42 +270,6 @@ public class ChargeSessionDetailActivity extends AppCompatActivity {
             }
         }
         
-        // 息屏非Doze信息（推断）
-        TextView nondozeDurationText = findViewById(R.id.detail_nondoze_duration_text);
-        TextView nondozeChargeCounterDiffText = findViewById(R.id.detail_nondoze_charge_counter_diff_text);
-
-        // 计算总时长和总电量变化
-        long totalDuration = session.getEndTimestamp() - session.getStartTimestamp();
-        int totalChargeCounterDiff = session.getChargeCounterDiff();
-
-        // 推断非Doze时长
-        long nondozeDuration = -1;
-        if (session.getScreenOnDuration() >= 0 && session.getDozeDuration() >= 0) {
-            nondozeDuration = totalDuration - session.getScreenOnDuration() - session.getDozeDuration();
-        }
-
-        // 推断非Doze电量变化
-        int nondozeChargeCounterDiff = -1;
-        if (session.getScreenOnChargeCounterDiff() >= 0 && session.getDozeChargeCounterDiff() >= 0) {
-            nondozeChargeCounterDiff = totalChargeCounterDiff - session.getScreenOnChargeCounterDiff() - session.getDozeChargeCounterDiff();
-        }
-
-        // 显示非Doze时长
-        if (nondozeDuration >= 0) {
-            nondozeDurationText.setText(formatDuration(nondozeDuration));
-        } else {
-            nondozeDurationText.setText(R.string.common_unavailable);
-        }
-
-        // 显示非Doze电量变化
-        if (nondozeChargeCounterDiff >= 0) {
-            nondozeChargeCounterDiffText.setText(getString(R.string.detail_positive_mah, nondozeChargeCounterDiff));
-        } else if (nondozeChargeCounterDiff < 0) {
-            nondozeChargeCounterDiffText.setText(getString(R.string.detail_signed_mah, nondozeChargeCounterDiff));
-        } else {
-            nondozeChargeCounterDiffText.setText(R.string.common_unavailable);
-        }
-
         // ID信息和更新计数
         TextView idText = findViewById(R.id.detail_id_text);
         TextView counterText = findViewById(R.id.detail_counter_text);

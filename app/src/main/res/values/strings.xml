@@ -106,7 +106,8 @@
     <string name="detail_section_temperature_info">温度信息</string>
     <string name="detail_label_max_temperature">最高温度</string>
     <string name="detail_label_min_temperature">最低温度</string>
-    <string name="detail_section_screen_info">屏幕信息</string>
+    <string name="detail_section_state_stats">分状态统计信息</string>
+    <string name="detail_section_screen_info">屏幕开启</string>
     <string name="detail_label_screen_on_duration">屏幕开启时长</string>
     <string name="detail_label_screen_on_counter_diff">屏幕开启电量变化(±mAh)</string>
     <string name="detail_section_doze_info">Doze信息</string>
