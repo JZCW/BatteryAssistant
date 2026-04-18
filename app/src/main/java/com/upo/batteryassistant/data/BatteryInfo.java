@@ -195,12 +195,20 @@ public class BatteryInfo {
         return usb_voltage_now;
     }
 
+    public float getUsbVoltageNowVolts() {
+        return usb_voltage_now / 1000.0f;
+    }
+
     public void setUsbVoltageNow(int usb_voltage_now) {
         this.usb_voltage_now = usb_voltage_now;
     }
 
     public int getUsbVoltageMax() {
         return usb_voltage_max;
+    }
+
+    public float getUsbVoltageMaxVolts() {
+        return usb_voltage_max / 1000.0f;
     }
 
     public void setUsbVoltageMax(int usb_voltage_max) {
@@ -235,12 +243,20 @@ public class BatteryInfo {
         return wireless_voltage_now;
     }
 
+    public float getWirelessVoltageNowVolts() {
+        return wireless_voltage_now / 1000.0f;
+    }
+
     public void setWirelessVoltageNow(int wireless_voltage_now) {
         this.wireless_voltage_now = wireless_voltage_now;
     }
 
     public int getWirelessVoltageMax() {
         return wireless_voltage_max;
+    }
+
+    public float getWirelessVoltageMaxVolts() {
+        return wireless_voltage_max / 1000.0f;
     }
 
     public void setWirelessVoltageMax(int wireless_voltage_max) {

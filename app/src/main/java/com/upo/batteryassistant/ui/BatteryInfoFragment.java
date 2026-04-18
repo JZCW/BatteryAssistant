@@ -38,6 +38,18 @@ public class BatteryInfoFragment extends Fragment {
     private TextView tvCycleCount;
     private TextView tvFullCapacity;
     private TextView tvDesignCapacity;
+    private TextView tvUsbOnline;
+    private TextView tvUsbVoltageNow;
+    private TextView tvUsbVoltageMax;
+    private TextView tvUsbCurrentMax;
+    private TextView tvUsbType;
+    private TextView tvWirelessOnline;
+    private TextView tvWirelessVoltageNow;
+    private TextView tvWirelessVoltageMax;
+    private TextView tvWirelessCurrentMax;
+    private TextView tvWirelessType;
+    private TextView tvInCurrentNow;
+    private TextView tvScenarioFcc;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -91,6 +103,18 @@ public class BatteryInfoFragment extends Fragment {
         tvCycleCount = view.findViewById(R.id.tv_cycle_count);
         tvFullCapacity = view.findViewById(R.id.tv_full_capacity);
         tvDesignCapacity = view.findViewById(R.id.tv_design_capacity);
+        tvUsbOnline = view.findViewById(R.id.tv_usb_online);
+        tvUsbVoltageNow = view.findViewById(R.id.tv_usb_voltage_now);
+        tvUsbVoltageMax = view.findViewById(R.id.tv_usb_voltage_max);
+        tvUsbCurrentMax = view.findViewById(R.id.tv_usb_current_max);
+        tvUsbType = view.findViewById(R.id.tv_usb_type);
+        tvWirelessOnline = view.findViewById(R.id.tv_wireless_online);
+        tvWirelessVoltageNow = view.findViewById(R.id.tv_wireless_voltage_now);
+        tvWirelessVoltageMax = view.findViewById(R.id.tv_wireless_voltage_max);
+        tvWirelessCurrentMax = view.findViewById(R.id.tv_wireless_current_max);
+        tvWirelessType = view.findViewById(R.id.tv_wireless_type);
+        tvInCurrentNow = view.findViewById(R.id.tv_in_current_now);
+        tvScenarioFcc = view.findViewById(R.id.tv_scenario_fcc);
     }
 
     private void updateBatteryInfo() {
@@ -185,8 +209,51 @@ public class BatteryInfoFragment extends Fragment {
                 } else {
                     tvDesignCapacity.setText(R.string.common_unavailable);
                 }
+
+                setOnlineStateText(tvUsbOnline, info.isUsbOnline());
+                setVoltageText(tvUsbVoltageNow, info.getUsbVoltageNow(), info.getUsbVoltageNowVolts());
+                setVoltageText(tvUsbVoltageMax, info.getUsbVoltageMax(), info.getUsbVoltageMaxVolts());
+                setCurrentText(tvUsbCurrentMax, info.getUsbCurrentMax());
+                setPlainText(tvUsbType, info.getUsbType());
+
+                setOnlineStateText(tvWirelessOnline, info.isWirelessOnline());
+                setVoltageText(tvWirelessVoltageNow, info.getWirelessVoltageNow(), info.getWirelessVoltageNowVolts());
+                setVoltageText(tvWirelessVoltageMax, info.getWirelessVoltageMax(), info.getWirelessVoltageMaxVolts());
+                setCurrentText(tvWirelessCurrentMax, info.getWirelessCurrentMax());
+                setPlainText(tvWirelessType, info.getWirelessType());
+
+                setCurrentText(tvInCurrentNow, info.getInCurrentNow());
+                setCurrentText(tvScenarioFcc, info.getScenarioFcc());
             }
         });
+    }
+
+    private void setOnlineStateText(TextView textView, boolean isOnline) {
+        textView.setText(isOnline ? R.string.battery_info_online : R.string.battery_info_offline);
+    }
+
+    private void setVoltageText(TextView textView, int rawValue, float voltageValue) {
+        if (rawValue != -1) {
+            textView.setText(getString(R.string.battery_voltage_value, voltageValue));
+        } else {
+            textView.setText(R.string.common_unavailable);
+        }
+    }
+
+    private void setCurrentText(TextView textView, int value) {
+        if (value != Integer.MIN_VALUE && value != -1) {
+            textView.setText(getString(R.string.battery_current_value, value));
+        } else {
+            textView.setText(R.string.common_unavailable);
+        }
+    }
+
+    private void setPlainText(TextView textView, String value) {
+        if (value != null && !value.trim().isEmpty()) {
+            textView.setText(value);
+        } else {
+            textView.setText(R.string.common_unavailable);
+        }
     }
 
     @Override

@@ -73,6 +73,7 @@
     <string name="battery_info_title">电池信息</string>
     <string name="battery_info_level_label">电量</string>
     <string name="battery_info_detail_title">详细信息</string>
+    <string name="battery_info_advanced_title">高级信息</string>
     <string name="battery_info_status_label">充电状态</string>
     <string name="battery_info_voltage_label">电压</string>
     <string name="battery_info_temperature_label">温度</string>
@@ -86,6 +87,20 @@
     <string name="battery_info_cycle_count_label">循环次数</string>
     <string name="battery_info_full_capacity_label">满电容量</string>
     <string name="battery_info_design_capacity_label">设计容量</string>
+    <string name="battery_info_usb_online_label">USB 在线</string>
+    <string name="battery_info_usb_voltage_now_label">USB 当前电压</string>
+    <string name="battery_info_usb_voltage_max_label">USB 最大电压</string>
+    <string name="battery_info_usb_current_max_label">USB 最大电流</string>
+    <string name="battery_info_usb_type_label">USB 类型</string>
+    <string name="battery_info_wireless_online_label">无线充在线</string>
+    <string name="battery_info_wireless_voltage_now_label">无线充当前电压</string>
+    <string name="battery_info_wireless_voltage_max_label">无线充最大电压</string>
+    <string name="battery_info_wireless_current_max_label">无线充最大电流</string>
+    <string name="battery_info_wireless_type_label">无线充类型</string>
+    <string name="battery_info_in_current_now_label">输入电流</string>
+    <string name="battery_info_scenario_fcc_label">场景快充电流</string>
+    <string name="battery_info_online">在线</string>
+    <string name="battery_info_offline">离线</string>
 
     <string name="detail_section_basic_info">基础信息</string>
     <string name="detail_label_type">类型</string>
