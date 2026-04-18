@@ -38,6 +38,11 @@
             android:exported="false"
             android:parentActivityName=".ui.MainActivity" />
 
+        <activity
+            android:name=".ui.AboutActivity"
+            android:exported="false"
+            android:parentActivityName=".ui.MainActivity" />
+
         <service
             android:name=".service.BatteryMonitorService"
             android:enabled="true"

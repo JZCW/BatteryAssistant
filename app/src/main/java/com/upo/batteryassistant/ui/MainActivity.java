@@ -1,5 +1,6 @@
 package com.upo.batteryassistant.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -199,6 +200,10 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.action_about) {
+            startActivity(new Intent(this, AboutActivity.class));
+            return true;
+        }
         if (item.getItemId() == R.id.action_theme) {
             showThemeChooser();
             return true;

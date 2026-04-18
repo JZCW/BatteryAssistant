@@ -144,4 +144,11 @@
     <string name="theme_oled_black">OLED 黑</string>
     <string name="theme_eink_light">E-Ink 浅色</string>
     <string name="theme_eink_dark">E-Ink 深色</string>
+
+    <!-- 关于页面 -->
+    <string name="action_about">关于</string>
+    <string name="about_title">关于</string>
+    <string name="about_app_version">应用版本</string>
+    <string name="about_daemon_version">Daemon版本</string>
+    <string name="about_daemon_unavailable">不可用</string>
 </resources>
