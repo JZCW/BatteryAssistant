@@ -1,0 +1,275 @@
+package com.upo.batteryassistant.ui;
+
+import android.os.Bundle;
+import android.view.View;
+import android.widget.TextView;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import com.google.android.material.appbar.MaterialToolbar;
+import com.upo.batteryassistant.R;
+import com.upo.batteryassistant.data.ChargeSession;
+import com.upo.batteryassistant.ui.util.ThemeHelper;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+/**
+ * 充放电阶段详情Activity
+ * 展示所有字段信息，便于调试
+ */
+public class ChargeSessionDetailActivity extends AppCompatActivity {
+    public static final String EXTRA_SESSION = "session";
+    
+    private SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault());
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        setTheme(ThemeHelper.getThemeResId(this));
+        ThemeHelper.applySavedTheme(this);
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_charge_session_detail);
+        setupActionBar();
+        applyWindowInsets();
+        
+        ChargeSession session = (ChargeSession) getIntent().getSerializableExtra(EXTRA_SESSION);
+        if (session == null) {
+            finish();
+            return;
+        }
+        
+        setupViews(session);
+    }
+
+    private void setupActionBar() {
+        MaterialToolbar toolbar = findViewById(R.id.detail_toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        }
+    }
+
+    private void applyWindowInsets() {
+        View root = findViewById(R.id.detail_root);
+        View appBarContainer = findViewById(R.id.detail_app_bar_container);
+        View scrollView = findViewById(R.id.detail_scroll_view);
+
+        final int appBarLeft = appBarContainer.getPaddingLeft();
+        final int appBarTop = appBarContainer.getPaddingTop();
+        final int appBarRight = appBarContainer.getPaddingRight();
+        final int appBarBottom = appBarContainer.getPaddingBottom();
+        final int scrollLeft = scrollView.getPaddingLeft();
+        final int scrollTop = scrollView.getPaddingTop();
+        final int scrollRight = scrollView.getPaddingRight();
+        final int scrollBottom = scrollView.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            appBarContainer.setPadding(
+                appBarLeft + systemBars.left,
+                appBarTop + systemBars.top,
+                appBarRight + systemBars.right,
+                appBarBottom
+            );
+            scrollView.setPadding(
+                scrollLeft + systemBars.left,
+                scrollTop,
+                scrollRight + systemBars.right,
+                scrollBottom + systemBars.bottom
+            );
+            return insets;
+        });
+        ViewCompat.requestApplyInsets(root);
+    }
+
+    @Override
+    public boolean onSupportNavigateUp() {
+        getOnBackPressedDispatcher().onBackPressed();
+        return true;
+    }
+    
+    private void setupViews(ChargeSession session) {
+        boolean isChargingSession = session.getSessionType() == 0;
+
+        // 基础信息
+        TextView typeText = findViewById(R.id.detail_type_text);
+
+        TextView typeValueText = findViewById(R.id.detail_type_value);
+        typeValueText.setText(session.getSessionTypeText());
+
+        TextView startTimeText = findViewById(R.id.detail_start_time_text);
+        startTimeText.setText(dateFormat.format(new Date(session.getStartTimestamp())));
+
+        TextView endTimeText = findViewById(R.id.detail_end_time_text);
+        endTimeText.setText(dateFormat.format(new Date(session.getEndTimestamp())));
+
+        View pauseTimeSectionView = findViewById(R.id.detail_pause_time_section);
+        pauseTimeSectionView.setVisibility(isChargingSession ? View.VISIBLE : View.GONE);
+        if (isChargingSession) {
+            TextView pauseTimeText = findViewById(R.id.detail_pause_time_text);
+            pauseTimeText.setText(dateFormat.format(new Date(session.getPauseTimestamp())));
+        }
+
+        TextView durationText = findViewById(R.id.detail_duration_text);
+        long duration = session.getEndTimestamp() - session.getStartTimestamp();
+        durationText.setText(formatDuration(duration));
+
+        TextView ongoingText = findViewById(R.id.detail_ongoing_text);
+        ongoingText.setText(session.isOngoing() ? R.string.status_ongoing : R.string.status_completed);
+
+        TextView counterText = findViewById(R.id.detail_counter_text);
+        counterText.setText(String.valueOf(session.getCounter()));
+
+        TextView idText = findViewById(R.id.detail_id_text);
+        idText.setText(String.valueOf(session.getId()));
+
+        // 电量信息
+        TextView startLevelText = findViewById(R.id.detail_start_level_text);
+        TextView endLevelText = findViewById(R.id.detail_end_level_text);
+        TextView levelChangeText = findViewById(R.id.detail_level_change_text);
+        TextView startChargeCounterText = findViewById(R.id.detail_start_charge_counter_text);
+        TextView endChargeCounterText = findViewById(R.id.detail_end_charge_counter_text);
+        TextView chargeCounterDiffText = findViewById(R.id.detail_charge_counter_diff_text);
+        
+        if (session.getStartLevel() >= 0) {
+            startLevelText.setText(session.getStartLevel() + "%");
+        } else {
+            startLevelText.setText(R.string.common_unavailable);
+        }
+
+        if (session.getEndLevel() >= 0) {
+            endLevelText.setText(session.getEndLevel() + "%");
+        } else {
+            endLevelText.setText(R.string.common_unavailable);
+        }
+
+        if (session.getStartLevel() >= 0 && session.getEndLevel() >= 0) {
+            int levelChange = session.getEndLevel() - session.getStartLevel();
+            levelChangeText.setText(formatSignedDiff(levelChange, isChargingSession, "%"));
+        } else {
+            levelChangeText.setText(R.string.common_unavailable);
+        }
+        
+        if (session.getStartChargeCounter() >= 0) {
+            startChargeCounterText.setText(session.getStartChargeCounter() + " mAh");
+        } else {
+            startChargeCounterText.setText(R.string.common_no_data);
+        }
+        
+        if (session.getEndChargeCounter() >= 0) {
+            endChargeCounterText.setText(session.getEndChargeCounter() + " mAh");
+        } else {
+            endChargeCounterText.setText(R.string.common_no_data);
+        }
+        
+        int counterDiff = session.getChargeCounterDiff();
+        chargeCounterDiffText.setText(formatSignedDiff(counterDiff, isChargingSession, " mAh"));
+        
+        // 温度信息
+        TextView maxTempText = findViewById(R.id.detail_max_temp_text);
+        TextView minTempText = findViewById(R.id.detail_min_temp_text);
+
+        if (session.getMaxTemperature() > 0) {
+            maxTempText.setText(String.format(Locale.getDefault(), "%.1f°C", session.getMaxTemperatureCelsius()));
+        } else {
+            maxTempText.setText(R.string.common_unavailable);
+        }
+
+        if (session.getMinTemperature() > 0) {
+            minTempText.setText(String.format(Locale.getDefault(), "%.1f°C", session.getMinTemperatureCelsius()));
+        } else {
+            minTempText.setText(R.string.common_unavailable);
+        }
+        
+        // 分状态统计信息（屏幕 / Doze / 息屏非Doze）
+        View stateStatsUnavailable = findViewById(R.id.detail_state_stats_unavailable);
+        View stateStatsContent = findViewById(R.id.detail_state_stats_content);
+
+        boolean stateStatsAvailable = !session.isSessionInvalid();
+        stateStatsUnavailable.setVisibility(stateStatsAvailable ? View.GONE : View.VISIBLE);
+        stateStatsContent.setVisibility(stateStatsAvailable ? View.VISIBLE : View.GONE);
+
+        if (stateStatsAvailable) {
+            // 屏幕信息
+            TextView screenOnDurationText = findViewById(R.id.detail_screen_on_duration_text);
+            TextView screenOnChargeCounterDiffText = findViewById(R.id.detail_screen_on_charge_counter_diff_text);
+
+            screenOnDurationText.setText(formatDuration(session.getScreenOnDuration()));
+
+            screenOnChargeCounterDiffText.setText(
+                formatSignedDiff(session.getScreenOnChargeCounterDiff(), isChargingSession, " mAh")
+            );
+
+            // Doze信息（充电会话中隐藏）
+            View dozeSectionView = findViewById(R.id.detail_doze_section);
+            dozeSectionView.setVisibility(isChargingSession ? View.GONE : View.VISIBLE);
+
+            if (!isChargingSession) {
+                TextView dozeDurationText = findViewById(R.id.detail_doze_duration_text);
+                TextView dozeChargeCounterDiffText = findViewById(R.id.detail_doze_charge_counter_diff_text);
+
+                dozeDurationText.setText(formatDuration(session.getDozeDuration()));
+                dozeChargeCounterDiffText.setText(
+                    formatSignedDiff(session.getDozeChargeCounterDiff(), isChargingSession, " mAh")
+                );
+            }
+
+            // 息屏非Doze信息（推断）
+            TextView nondozeDurationText = findViewById(R.id.detail_nondoze_duration_text);
+            TextView nondozeChargeCounterDiffText = findViewById(R.id.detail_nondoze_charge_counter_diff_text);
+
+            long totalDuration = session.getEndTimestamp() - session.getStartTimestamp();
+            long nondozeDuration = totalDuration - session.getScreenOnDuration() - session.getDozeDuration();
+            int nondozeChargeCounterDiff = session.getChargeCounterDiff() - session.getScreenOnChargeCounterDiff() - session.getDozeChargeCounterDiff();
+
+            nondozeDurationText.setText(formatDuration(nondozeDuration));
+            nondozeChargeCounterDiffText.setText(
+                formatSignedDiff(nondozeChargeCounterDiff, isChargingSession, " mAh")
+            );
+        }
+        View capacityCycleCard = findViewById(R.id.detail_capacity_cycle_card);
+        capacityCycleCard.setVisibility(isChargingSession ? View.VISIBLE : View.GONE);
+
+        if (isChargingSession) {
+            TextView estimatedCapacityText = findViewById(R.id.detail_estimated_capacity_text);
+            TextView cycleCountText = findViewById(R.id.detail_cycle_count_text);
+
+            if (session.getEstimatedCapacity() > 0) {
+                estimatedCapacityText.setText(session.getEstimatedCapacity() + " mAh");
+            } else {
+                estimatedCapacityText.setText(R.string.common_no_data);
+            }
+
+            if (session.getCycleCount() > 0) {
+                cycleCountText.setText(String.valueOf(session.getCycleCount()));
+            } else {
+                cycleCountText.setText(R.string.common_no_data);
+            }
+        }
+    }
+
+    private String formatDuration(long milliseconds) {
+        long seconds = milliseconds / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        long days = hours / 24;
+        
+        if (days > 0) {
+            return getString(R.string.detail_duration_days, days, hours % 24, minutes % 60);
+        } else if (hours > 0) {
+            return getString(R.string.detail_duration_hours, hours, minutes % 60);
+        } else if (minutes > 0) {
+            return getString(R.string.detail_duration_minutes, minutes);
+        } else {
+            return getString(R.string.detail_duration_seconds, seconds);
+        }
+    }
+
+    private String formatSignedDiff(int value, boolean isCharging, String unit) {
+        if (value == 0) {
+            return (isCharging ? "+" : "-") + "0" + unit;
+        }
+        return (value > 0 ? "+" : "") + value + unit;
+    }
+}

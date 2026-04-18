@@ -1,0 +1,76 @@
+<resources>
+    <string name="app_name">BatteryAssistant</string>
+
+    <string name="tab_battery_info">Battery Info</string>
+    <string name="tab_charge_history">Charge History</string>
+    <string name="tab_stats">Stats</string>
+
+    <string name="stats_tab_daily">Daily</string>
+    <string name="stats_tab_weekly">Weekly</string>
+    <string name="stats_tab_monthly">Monthly</string>
+    <string name="stats_empty_state">No statistics yet</string>
+    <string name="stats_chart_no_data">No chart data</string>
+    <string name="stats_chart_dataset_label">Level Change Trend</string>
+    <string name="stats_capacity_chart_title">Capacity Scatter (estimated_capacity)</string>
+    <string name="stats_capacity_range_3m">Last 3 months</string>
+    <string name="stats_capacity_range_12m">Last 12 months</string>
+    <string name="stats_capacity_range_all">All time</string>
+    <string name="stats_capacity_detail">%1$s  Estimated capacity: %2$d mAh</string>
+    <string name="stats_estimated_capacity_text_value">Estimated capacity: %1$s</string>
+    <string name="stats_cycle_count_text_value">Cycle count: %1$s</string>
+
+    <string name="btn_charge_history">View charge history</string>
+    <string name="charge_history_jump_to_date">Jump to date</string>
+    <string name="charge_history_select_date">Select date</string>
+    <string name="charge_history_jump_failed">Jump failed, please retry</string>
+    <string name="charge_history_jump_no_result">No sessions on this date</string>
+    <string name="charge_history_highlight_today">Jumped to: %1$s</string>
+    <string name="charge_history_empty_state">No charge history</string>
+    <string name="charge_history_load_failed">Failed to load history, try again later</string>
+    <string name="charge_history_time_range">%1$s - %2$s</string>
+    <string name="charge_history_duration_hours_minutes">%1$dh %2$dmin</string>
+    <string name="charge_history_duration_minutes">%1$dmin</string>
+    <string name="charge_history_duration_label">Duration: %1$s</string>
+    <string name="charge_history_level_change_label">Level change: %1$s</string>
+    <string name="charge_history_start_level">Start: %1$d%%</string>
+    <string name="charge_history_end_info">End: %1$d%% | Max %2$.1f°C | Min %3$.1f°C</string>
+
+    <string name="common_none">None</string>
+    <string name="common_no_data">No data</string>
+    <string name="common_unavailable">Unavailable</string>
+    <string name="status_ongoing">Ongoing</string>
+    <string name="status_completed">Completed</string>
+
+    <string name="battery_percent_value">%1$d%%</string>
+    <string name="battery_voltage_value">%1$.2f V</string>
+    <string name="battery_temperature_value">%1$.1f °C</string>
+    <string name="battery_current_value">%1$d mA</string>
+    <string name="battery_int_value">%1$d</string>
+    <string name="battery_charge_counter_value">%1$d mAh</string>
+    <string name="battery_cycle_count_value">%1$d cycles</string>
+
+    <string name="battery_info_title">Battery Info</string>
+    <string name="battery_info_level_label">Level</string>
+    <string name="battery_info_detail_title">Details</string>
+    <string name="battery_info_status_label">Status</string>
+    <string name="battery_info_voltage_label">Voltage</string>
+    <string name="battery_info_temperature_label">Temperature</string>
+    <string name="battery_info_current_label">Current</string>
+    <string name="battery_info_current_average_label">Average Current</string>
+    <string name="battery_info_health_label">Health</string>
+    <string name="battery_info_health_api_label">Health API</string>
+    <string name="battery_info_plugged_label">Plug Type</string>
+    <string name="battery_info_charge_time_label">Remaining Charge Time</string>
+    <string name="battery_info_charge_counter_label">Charge Counter</string>
+    <string name="battery_info_cycle_count_label">Cycle Count</string>
+    <string name="battery_info_full_capacity_label">Full Capacity</string>
+    <string name="battery_info_design_capacity_label">Design Capacity</string>
+
+    <string name="action_theme">Theme</string>
+    <string name="theme_follow_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_oled_black">OLED Black</string>
+    <string name="theme_eink_light">E-Ink Light</string>
+    <string name="theme_eink_dark">E-Ink Dark</string>
+</resources>

@@ -7,4 +7,57 @@
     <color name="teal_700">#FF018786</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="gray_900">#FF121212</color>
+    <color name="gray_800">#FF1E1E1E</color>
+    <color name="gray_700">#FF2C2C2C</color>
+    <color name="gray_300">#FFD0D0D0</color>
+    <color name="gray_100">#FFF5F5F5</color>
+    <!-- 列表条目高亮背景（沿用橙色半透明，供 attrs / 多主题使用） -->
+    <color name="list_item_highlight">#33FF9800</color>
+    <!-- 图表高亮颜色（默认使用白色，可按主题定制） -->
+    <color name="chart_highlight">#FFFFFFFF</color>
+    <color name="stats_background">#130A1F</color>
+    <color name="stats_card_background">#1E1230</color>
+    <color name="stats_primary_text">@color/white</color>
+    <color name="stats_secondary_text">#CABAF0</color>
+    <color name="stats_accent">@color/purple_500</color>
+
+    <color name="theme_light_background">#FFF7F7FB</color>
+    <color name="theme_light_surface">#FFFFFFFF</color>
+    <color name="theme_light_primary_text">#FF181825</color>
+    <color name="theme_light_secondary_text">#FF5B6172</color>
+    <color name="theme_light_stats_background">#FFF4F6FF</color>
+    <color name="theme_light_stats_card_background">#FFFFFFFF</color>
+    <color name="theme_light_chart_highlight">#FF3700B3</color>
+
+    <color name="theme_oled_background">#FF000000</color>
+    <color name="theme_oled_surface">#FF000000</color>
+    <color name="theme_oled_card_background">#FF000000</color>
+    <color name="theme_oled_primary_text">#FFFFFFFF</color>
+    <color name="theme_oled_secondary_text">#FFBDBDBD</color>
+    <color name="theme_oled_stats_background">#FF000000</color>
+    <color name="theme_oled_stats_card_background">#FF000000</color>
+    <color name="theme_oled_chart_highlight">#FFFFFFFF</color>
+
+    <color name="theme_eink_light_background">#FFFFFFFF</color>
+    <color name="theme_eink_light_surface">#FFFFFFFF</color>
+    <color name="theme_eink_light_primary_text">#FF000000</color>
+    <color name="theme_eink_light_secondary_text">#FF000000</color>
+    <color name="theme_eink_light_stats_background">#FFFFFFFF</color>
+    <color name="theme_eink_light_stats_card_background">#FFFFFFFF</color>
+    <color name="theme_eink_light_accent">#FF000000</color>
+    <color name="theme_eink_light_highlight">#FF000000</color>
+    <color name="theme_eink_light_list_highlight">#14000000</color>
+    <color name="theme_eink_light_stroke">#FFFFFFFF</color>
+
+    <color name="theme_eink_dark_background">#FF000000</color>
+    <color name="theme_eink_dark_surface">#FF000000</color>
+    <color name="theme_eink_dark_primary_text">#FFFFFFFF</color>
+    <color name="theme_eink_dark_secondary_text">#FFFFFFFF</color>
+    <color name="theme_eink_dark_stats_background">#FF000000</color>
+    <color name="theme_eink_dark_stats_card_background">#FF000000</color>
+    <color name="theme_eink_dark_accent">#FFFFFFFF</color>
+    <color name="theme_eink_dark_highlight">#FFFFFFFF</color>
+    <color name="theme_eink_dark_list_highlight">#26FFFFFF</color>
+    <color name="theme_eink_dark_stroke">#FF000000</color>
 </resources>
