@@ -125,7 +125,7 @@ BatteryAssistant/
 
 ## 许可证
 
-本项目以 [GNU General Public License v3.0](LICENSE) 授权。衍生项目和修改版本必须以相同协议开源。
+本项目以 [GNU General Public License v3.0](COPYING) 授权。衍生项目和修改版本必须以相同协议开源。
 
 ---
 
