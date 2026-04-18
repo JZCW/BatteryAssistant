@@ -638,9 +638,12 @@ public class StatsPeriodFragment extends Fragment {
             R.string.stats_cycle_count_text_value));
         detailCapacity.setText(formatDetailOptionalPositiveValue(
             entry.getCapacity(),
-            R.string.stats_estimated_capacity_value,
-            R.string.stats_estimated_capacity_text_value));
-        detailMaxLevelChange.setText(formatDetailOptionalLevelChange(entry.getMaxLevelChange()));
+            R.string.stats_capacity_value,
+            R.string.stats_capacity_text_value));
+        detailMaxLevelChange.setText(formatDetailOptionalPositiveValue(
+            entry.getMaxLevelChange(),
+            R.string.stats_max_change_value,
+            R.string.stats_max_change_text_value));
     }
 
     private void showLatestEntry() {
@@ -723,13 +726,6 @@ public class StatsPeriodFragment extends Fragment {
             return getString(noDataFormatResId, getString(R.string.common_no_data));
         }
         return getString(valueFormatResId, value);
-    }
-
-    private String formatDetailOptionalLevelChange(int value) {
-        if (value <= 0) {
-            return getString(R.string.stats_level_change_value, getString(R.string.common_no_data));
-        }
-        return getString(R.string.stats_level_change_value, value + "%");
     }
 
     private List<StatsEntry> buildDisplayEntries(StatsPeriodType type, List<StatsEntry> rawEntries) {

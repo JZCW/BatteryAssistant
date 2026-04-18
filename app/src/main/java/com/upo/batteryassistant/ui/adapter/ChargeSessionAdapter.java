@@ -143,13 +143,6 @@ public class ChargeSessionAdapter extends RecyclerView.Adapter<ChargeSessionAdap
                 session.getMinTemperatureCelsius());
             endInfoText.setText(endInfo);
 
-            itemView.setContentDescription(context.getString(
-                R.string.charge_history_item_cd,
-                session.getSessionTypeText(),
-                timeRange,
-                durationLabel,
-                levelChangeLabel));
-
             itemView.setOnClickListener(v -> {
                 Intent intent = new Intent(itemView.getContext(), ChargeSessionDetailActivity.class);
                 intent.putExtra(ChargeSessionDetailActivity.EXTRA_SESSION, session);

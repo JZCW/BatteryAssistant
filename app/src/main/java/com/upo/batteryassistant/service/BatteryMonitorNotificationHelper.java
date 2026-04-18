@@ -139,14 +139,15 @@ public class BatteryMonitorNotificationHelper {
         Canvas canvas = new Canvas(bitmap);
 
         // 绘制环形进度条（底环 + 进度弧）
-        float strokeWidth = density * 4f;
+        float trackStrokeWidth = density * 3f;
+        float strokeWidth = density * 5f;
         float margin = strokeWidth / 2f + density * 0f;
         RectF ringBounds = new RectF(margin, margin, sizePx - margin, sizePx - margin);
 
         Paint ringTrackPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         ringTrackPaint.setColor(Color.argb(90, 255, 255, 255));
         ringTrackPaint.setStyle(Paint.Style.STROKE);
-        ringTrackPaint.setStrokeWidth(strokeWidth);
+        ringTrackPaint.setStrokeWidth(trackStrokeWidth);
         ringTrackPaint.setStrokeCap(Paint.Cap.ROUND);
         canvas.drawArc(ringBounds, 0f, 360f, false, ringTrackPaint);
 
@@ -163,7 +164,7 @@ public class BatteryMonitorNotificationHelper {
         textPaint.setColor(Color.WHITE);
         textPaint.setTypeface(Typeface.DEFAULT_BOLD);
         // 字号根据位数自适应
-        float textSize = safeLevel == 100 ? sizePx * 0.38f : sizePx * 0.50f;
+        float textSize = safeLevel == 100 ? sizePx * 0.40f : sizePx * 0.53f;
         textPaint.setTextSize(textSize);
         textPaint.setTextAlign(Paint.Align.CENTER);
         // 垂直居中（在图标中心）

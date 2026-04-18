@@ -10,8 +10,12 @@
     <string name="stats_session_count_value">会话次数：%1$d 次</string>
     <string name="stats_level_change_value">电量变化：%1$s</string>
     <string name="stats_charge_counter_diff_value">充电计数变化：%1$s</string>
+    <string name="stats_capacity_value">可用容量：%1$d mAh</string>
+    <string name="stats_capacity_text_value">可用容量：%1$s</string>
     <string name="stats_estimated_capacity_value">估算容量：%1$d mAh</string>
     <string name="stats_estimated_capacity_text_value">估算容量：%1$s</string>
+    <string name="stats_max_change_value">最大电量变化：%1$d%%</string>
+    <string name="stats_max_change_text_value">最大电量变化：%1$s</string>
     <string name="stats_cycle_count_value">循环次数：%1$d</string>
     <string name="stats_cycle_count_text_value">循环次数：%1$s</string>
     <string name="stats_signed_value_with_unit">%1$+d %2$s</string>
@@ -26,6 +30,7 @@
     <string name="stats_capacity_range_3m">最近3个月</string>
     <string name="stats_capacity_range_12m">最近12个月</string>
     <string name="stats_capacity_range_all">全部时间</string>
+    <string name="stats_capacity_detail">%1$s  估计容量: %2$d mAh</string>
     <string name="stats_detail_title">%1$s</string>
     <string name="stats_detail_description">%1$s</string>
     <string name="stats_detail_level_change_value">%1$s</string>
@@ -45,7 +50,6 @@
     <string name="charge_history_level_change_label">电量变化: %1$s</string>
     <string name="charge_history_start_level">开始: %1$d%%</string>
     <string name="charge_history_end_info">结束: %1$d%% | 最高%2$.1f°C | 最低%3$.1f°C</string>
-    <string name="charge_history_item_cd">%1$s，会话时间 %2$s，%3$s，%4$s</string>
 
     <string name="common_none">无</string>
     <string name="common_no_data">无数据</string>
@@ -69,6 +73,7 @@
     <string name="battery_info_title">电池信息</string>
     <string name="battery_info_level_label">电量</string>
     <string name="battery_info_detail_title">详细信息</string>
+    <string name="battery_info_advanced_title">高级信息</string>
     <string name="battery_info_status_label">充电状态</string>
     <string name="battery_info_voltage_label">电压</string>
     <string name="battery_info_temperature_label">温度</string>
@@ -82,13 +87,27 @@
     <string name="battery_info_cycle_count_label">循环次数</string>
     <string name="battery_info_full_capacity_label">满电容量</string>
     <string name="battery_info_design_capacity_label">设计容量</string>
+    <string name="battery_info_usb_online_label">USB 状态</string>
+    <string name="battery_info_usb_voltage_now_label">USB 当前电压</string>
+    <string name="battery_info_usb_voltage_max_label">USB 最大电压</string>
+    <string name="battery_info_usb_current_max_label">USB 最大电流</string>
+    <string name="battery_info_usb_type_label">USB 类型</string>
+    <string name="battery_info_wireless_online_label">无线充状态</string>
+    <string name="battery_info_wireless_voltage_now_label">无线充当前电压</string>
+    <string name="battery_info_wireless_voltage_max_label">无线充最大电压</string>
+    <string name="battery_info_wireless_current_max_label">无线充最大电流</string>
+    <string name="battery_info_wireless_type_label">无线充类型</string>
+    <string name="battery_info_in_current_now_label">当前输入电流</string>
+    <string name="battery_info_scenario_fcc_label">电流限制</string>
+    <string name="battery_info_online">在线</string>
+    <string name="battery_info_offline">离线</string>
 
     <string name="detail_section_basic_info">基础信息</string>
     <string name="detail_label_type">类型</string>
     <string name="detail_label_start_time">开始时间</string>
     <string name="detail_label_end_time">结束时间</string>
-    <string name="detail_label_duration">持续时间</string>
     <string name="detail_label_pause_time">暂停时间</string>
+    <string name="detail_label_duration">持续时间</string>
     <string name="detail_label_status">状态</string>
     <string name="detail_label_counter">更新计数</string>
     <string name="detail_label_record_id">记录ID</string>
@@ -102,34 +121,20 @@
     <string name="detail_section_temperature_info">温度信息</string>
     <string name="detail_label_max_temperature">最高温度</string>
     <string name="detail_label_min_temperature">最低温度</string>
-    <string name="detail_section_screen_info">屏幕信息</string>
-    <string name="detail_label_screen_on_duration">屏幕开启时长</string>
-    <string name="detail_label_screen_on_counter_diff">屏幕开启电量变化(±mAh)</string>
-    <string name="detail_section_doze_info">Doze信息</string>
-    <string name="detail_label_doze_duration">Doze时长</string>
-    <string name="detail_label_doze_counter_diff">Doze使用电量</string>
-    <string name="detail_section_nondoze_info">息屏非Doze信息</string>
-    <string name="detail_label_nondoze_duration">息屏非Doze时长</string>
-    <string name="detail_label_nondoze_counter_diff">息屏非Doze电量变化(±mAh)</string>
+    <string name="detail_section_state_stats">分状态统计信息</string>
+    <string name="detail_section_screen_info">亮屏</string>
+    <string name="detail_label_screen_on_duration">亮屏时长</string>
+    <string name="detail_label_screen_on_counter_diff">亮屏电量变化</string>
+    <string name="detail_section_nondoze_info">息屏</string>
+    <string name="detail_label_nondoze_duration">息屏时长</string>
+    <string name="detail_label_nondoze_counter_diff">息屏电量变化</string>
+    <string name="detail_section_doze_info">深度休眠</string>
+    <string name="detail_label_doze_duration">深度休眠时长</string>
+    <string name="detail_label_doze_counter_diff">深度休眠电量变化</string>
     <string name="detail_section_capacity_cycle">容量和周期信息</string>
     <string name="detail_label_estimated_capacity">估计容量</string>
     <string name="detail_label_cycle_count">周期计数</string>
     <string name="detail_screen_title">充放电详情</string>
-
-    <string name="a11y_charge_history_list">充放电历史列表</string>
-    <string name="a11y_stats_bar_chart">统计柱状图</string>
-    <string name="a11y_stats_capacity_chart">容量散点图</string>
-    <string name="a11y_stats_period_toggle">统计周期切换</string>
-    <string name="a11y_stats_capacity_toggle">容量时间范围切换</string>
-    <string name="a11y_view_charge_history">查看充放电历史</string>
-    <string name="stats_capacity_detail">%1$s  估计容量: %2$d mAh</string>
-    <string name="a11y_battery_level">电池电量：%1$s</string>
-    <string name="a11y_battery_status">电池状态：%1$s</string>
-    <string name="a11y_battery_voltage">电池电压：%1$s</string>
-    <string name="a11y_battery_temperature">电池温度：%1$s</string>
-    <string name="a11y_battery_current">电池电流：%1$s</string>
-    <string name="a11y_battery_health">电池健康度：%1$s</string>
-    <string name="a11y_field_value">%1$s：%2$s</string>
 
     <!-- 主题相关 -->
     <string name="action_theme">主题</string>

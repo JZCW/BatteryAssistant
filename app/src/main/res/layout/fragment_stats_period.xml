@@ -25,7 +25,6 @@
                     android:id="@+id/stats_period_toggle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:contentDescription="@string/a11y_stats_period_toggle"
                     android:layout_gravity="center"
                     android:layout_marginTop="16dp"
                     android:layout_marginBottom="16dp"
@@ -64,7 +63,6 @@
                     android:id="@+id/stats_chart"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/stats_chart_height"
-                    android:contentDescription="@string/a11y_stats_bar_chart"
                     android:layout_marginBottom="16dp" />
 
                 
@@ -181,7 +179,6 @@
                     android:id="@+id/capacity_range_toggle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:contentDescription="@string/a11y_stats_capacity_toggle"
                     android:layout_marginBottom="8dp"
                     app:singleSelection="true">
 
@@ -218,7 +215,6 @@
                     android:id="@+id/capacity_scatter_chart"
                     android:layout_width="match_parent"
                     android:layout_height="@dimen/stats_capacity_chart_height"
-                    android:contentDescription="@string/a11y_stats_capacity_chart"
                     android:layout_marginBottom="8dp" />
 
                 <com.upo.batteryassistant.ui.widget.StrokeTextView
@@ -234,7 +230,6 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
-                    android:contentDescription="@string/a11y_view_charge_history"
                     android:textColor="?attr/baColorStatsPrimaryText"
                     app:strokeColor="?attr/baColorStatsAccent"
                     android:text="@string/btn_charge_history"

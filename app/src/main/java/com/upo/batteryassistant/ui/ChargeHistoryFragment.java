@@ -46,6 +46,10 @@ public class ChargeHistoryFragment extends Fragment {
     private SwipeRefreshLayout swipeRefreshLayout;
     private TextView emptyView;
     
+    // 滚动位置保存
+    private int savedScrollPosition = -1;
+    private boolean needsDataReload = true;
+    
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
@@ -72,7 +76,22 @@ public class ChargeHistoryFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        reloadFirstPage(true);
+        // 如果有保存的位置且不需要强制重新加载，则恢复位置
+        if (savedScrollPosition >= 0 && !needsDataReload) {
+            restoreScrollPosition();
+        } else {
+            // 初次加载或需要强制刷新时重新加载数据
+            reloadFirstPage(true);
+            needsDataReload = false;
+        }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        saveScrollPosition();
+        // 标记离开时有保存位置，下次返回时应恢复（除非主动刷新）
+        needsDataReload = false;
     }
 
     @Override
@@ -125,7 +144,10 @@ public class ChargeHistoryFragment extends Fragment {
             int progressBackgroundColor = resolveThemeColor(R.attr.baColorStatsCardBackground);
             swipeRefreshLayout.setColorSchemeColors(accentColor);
             swipeRefreshLayout.setProgressBackgroundColorSchemeColor(progressBackgroundColor);
-            swipeRefreshLayout.setOnRefreshListener(this::onSwipeRefresh);
+            swipeRefreshLayout.setOnRefreshListener(() -> {
+                needsDataReload = true;  // 手动刷新时强制重新加载
+                onSwipeRefresh();
+            });
         }
     }
 
@@ -281,6 +303,34 @@ public class ChargeHistoryFragment extends Fragment {
         boolean empty = adapter.getItemCount() == 0;
         emptyView.setVisibility(empty ? View.VISIBLE : View.GONE);
         recyclerView.setVisibility(empty ? View.GONE : View.VISIBLE);
+    }
+    
+    /**
+     * 保存当前的滚动位置和数据偏移
+     */
+    private void saveScrollPosition() {
+        if (recyclerView == null || recyclerView.getLayoutManager() == null) {
+            return;
+        }
+        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+        savedScrollPosition = layoutManager.findFirstVisibleItemPosition();
+    }
+    
+    /**
+     * 恢复之前保存的滚动位置
+     */
+    private void restoreScrollPosition() {
+        if (recyclerView == null || recyclerView.getLayoutManager() == null) {
+            return;
+        }
+        
+        LinearLayoutManager layoutManager = (LinearLayoutManager) recyclerView.getLayoutManager();
+        
+        recyclerView.post(() -> {
+            if (savedScrollPosition >= 0 && savedScrollPosition < adapter.getItemCount()) {
+                layoutManager.scrollToPosition(savedScrollPosition);
+            }
+        });
     }
 }
 

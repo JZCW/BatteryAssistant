@@ -38,6 +38,18 @@ public class BatteryInfoFragment extends Fragment {
     private TextView tvCycleCount;
     private TextView tvFullCapacity;
     private TextView tvDesignCapacity;
+    private TextView tvUsbOnline;
+    private TextView tvUsbVoltageNow;
+    private TextView tvUsbVoltageMax;
+    private TextView tvUsbCurrentMax;
+    private TextView tvUsbType;
+    private TextView tvWirelessOnline;
+    private TextView tvWirelessVoltageNow;
+    private TextView tvWirelessVoltageMax;
+    private TextView tvWirelessCurrentMax;
+    private TextView tvWirelessType;
+    private TextView tvInCurrentNow;
+    private TextView tvScenarioFcc;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -91,6 +103,18 @@ public class BatteryInfoFragment extends Fragment {
         tvCycleCount = view.findViewById(R.id.tv_cycle_count);
         tvFullCapacity = view.findViewById(R.id.tv_full_capacity);
         tvDesignCapacity = view.findViewById(R.id.tv_design_capacity);
+        tvUsbOnline = view.findViewById(R.id.tv_usb_online);
+        tvUsbVoltageNow = view.findViewById(R.id.tv_usb_voltage_now);
+        tvUsbVoltageMax = view.findViewById(R.id.tv_usb_voltage_max);
+        tvUsbCurrentMax = view.findViewById(R.id.tv_usb_current_max);
+        tvUsbType = view.findViewById(R.id.tv_usb_type);
+        tvWirelessOnline = view.findViewById(R.id.tv_wireless_online);
+        tvWirelessVoltageNow = view.findViewById(R.id.tv_wireless_voltage_now);
+        tvWirelessVoltageMax = view.findViewById(R.id.tv_wireless_voltage_max);
+        tvWirelessCurrentMax = view.findViewById(R.id.tv_wireless_current_max);
+        tvWirelessType = view.findViewById(R.id.tv_wireless_type);
+        tvInCurrentNow = view.findViewById(R.id.tv_in_current_now);
+        tvScenarioFcc = view.findViewById(R.id.tv_scenario_fcc);
     }
 
     private void updateBatteryInfo() {
@@ -103,7 +127,7 @@ public class BatteryInfoFragment extends Fragment {
         // 在主线程更新UI
         getActivity().runOnUiThread(new Runnable() {
             @Override
-            public void run() {
+            public void run() { //TODO 优化代码结构，减少重复代码
                 // 电量百分比
                 if (info.getLevel() != -1) {
                     tvLevel.setText(getString(R.string.battery_percent_value, info.getLevel()));
@@ -186,13 +210,81 @@ public class BatteryInfoFragment extends Fragment {
                     tvDesignCapacity.setText(R.string.common_unavailable);
                 }
 
-                // 同步更新关键字段可访问性描述，确保读屏可读到当前值
-                tvLevel.setContentDescription(getString(R.string.a11y_battery_level, tvLevel.getText()));
-                tvStatus.setContentDescription(getString(R.string.a11y_battery_status, tvStatus.getText()));
-                tvVoltage.setContentDescription(getString(R.string.a11y_battery_voltage, tvVoltage.getText()));
-                tvTemperature.setContentDescription(getString(R.string.a11y_battery_temperature, tvTemperature.getText()));
-                tvCurrent.setContentDescription(getString(R.string.a11y_battery_current, tvCurrent.getText()));
-                tvHealth.setContentDescription(getString(R.string.a11y_battery_health, tvHealth.getText()));
+                // USB状态
+                tvUsbOnline.setText(info.isUsbOnline() ? R.string.battery_info_online : R.string.battery_info_offline);
+
+                // USB电压
+                if (info.getUsbVoltageNow() != -1) {
+                    tvUsbVoltageNow.setText(getString(R.string.battery_voltage_value, info.getUsbVoltageNowVolts()));
+                } else {
+                    tvUsbVoltageNow.setText(R.string.common_unavailable);
+                }
+
+                // USB最大电压
+                if (info.getUsbVoltageMax() != -1) {
+                    tvUsbVoltageMax.setText(getString(R.string.battery_voltage_value, info.getUsbVoltageMaxVolts()));
+                } else {
+                    tvUsbVoltageMax.setText(R.string.common_unavailable);
+                }
+
+                // USB最大电流
+                if (info.getUsbCurrentMax() != Integer.MIN_VALUE) {
+                    tvUsbCurrentMax.setText(getString(R.string.battery_current_value, info.getUsbCurrentMax()));
+                } else {
+                    tvUsbCurrentMax.setText(R.string.common_unavailable);
+                }
+
+                // USB类型
+                if (!info.getUsbType().trim().isEmpty()) {
+                    tvUsbType.setText(info.getUsbType());
+                } else {
+                    tvUsbType.setText(R.string.common_unavailable);
+                }
+
+                // 无线状态
+                tvWirelessOnline.setText(info.isWirelessOnline() ? R.string.battery_info_online : R.string.battery_info_offline);
+
+                // 无线电压
+                if (info.getWirelessVoltageNow() != -1) {
+                    tvWirelessVoltageNow.setText(getString(R.string.battery_voltage_value, info.getWirelessVoltageNowVolts()));
+                } else {
+                    tvWirelessVoltageNow.setText(R.string.common_unavailable);
+                }
+
+                // 无线最大电压
+                if (info.getWirelessVoltageMax() != -1) {
+                    tvWirelessVoltageMax.setText(getString(R.string.battery_voltage_value, info.getWirelessVoltageMaxVolts()));
+                } else {
+                    tvWirelessVoltageMax.setText(R.string.common_unavailable);
+                }
+
+                // 无线最大电流
+                if (info.getWirelessCurrentMax() != Integer.MIN_VALUE) {
+                    tvWirelessCurrentMax.setText(getString(R.string.battery_current_value, info.getWirelessCurrentMax()));
+                } else {
+                    tvWirelessCurrentMax.setText(R.string.common_unavailable);
+                }
+
+                // 无线类型
+                if (!info.getWirelessType().trim().isEmpty()) {
+                    tvWirelessType.setText(info.getWirelessType());
+                } else {
+                    tvWirelessType.setText(R.string.common_unavailable);
+                }
+
+                // 输入电流
+                if (info.getInCurrentNow() != Integer.MIN_VALUE) {
+                    tvInCurrentNow.setText(getString(R.string.battery_current_value, info.getInCurrentNow()));
+                } else {
+                    tvInCurrentNow.setText(R.string.common_unavailable);
+                }
+
+                // 电流限制
+                if (info.getScenarioFcc() != -1) {
+                    tvScenarioFcc.setText(getString(R.string.battery_current_value, info.getScenarioFcc()));
+                } else {
+                    tvScenarioFcc.setText(R.string.common_unavailable);
+                }
             }
         });
     }
