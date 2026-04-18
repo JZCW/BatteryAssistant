@@ -468,17 +468,6 @@ public class ChargeHistoryManager {
             }
         });
 
-        // 更新统计数据中的估算信息
-        if (dailyStatsCache != null) {
-            int level = session.getLevelChange();
-            if ((level > 0) && (level > dailyStatsCache.getMaxLevelChange())) {
-                dailyStatsCache.setMaxLevelChange(level);
-                int count = session.getChargeCounterDiff();
-                int capacity = count*100/level;
-                dailyStatsCache.setEstimatedCapacity(capacity);
-            }
-        }
-
         Log.i(TAG, "结束会话: " + session.getSessionTypeText());
 
         // 清空缓存
@@ -679,6 +668,17 @@ public class ChargeHistoryManager {
         // 更新其他数据(取最大值)
         dailyStatsCache.setCapacity(Math.max(dailyStatsCache.getCapacity(), currentInfo.getFullCapacity()));
         dailyStatsCache.setCycleCount(Math.max(dailyStatsCache.getCycleCount(), currentInfo.getCycleCount()));
+
+        // 更新估算信息
+        int level = currentSessionCache.getLevelChange();
+        Log.d(TAG, "updateDailyStats: levelChange=" + level + " MaxLevelChange=" + dailyStatsCache.getMaxLevelChange());
+        if ((level > 0) && (level > dailyStatsCache.getMaxLevelChange())) {
+            Log.d(TAG, "updateDailyStats: new maxLevelChange=" + level);
+            dailyStatsCache.setMaxLevelChange(level);
+            int count = currentSessionCache.getChargeCounterDiff();
+            int capacity = count*100/level;
+            dailyStatsCache.setEstimatedCapacity(capacity);
+        }
     }
 
     /**
