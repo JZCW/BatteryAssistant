@@ -127,7 +127,7 @@ public class BatteryInfoFragment extends Fragment {
         // 在主线程更新UI
         getActivity().runOnUiThread(new Runnable() {
             @Override
-            public void run() {
+            public void run() { //TODO 优化代码结构，减少重复代码
                 // 电量百分比
                 if (info.getLevel() != -1) {
                     tvLevel.setText(getString(R.string.battery_percent_value, info.getLevel()));
@@ -210,50 +210,83 @@ public class BatteryInfoFragment extends Fragment {
                     tvDesignCapacity.setText(R.string.common_unavailable);
                 }
 
-                setOnlineStateText(tvUsbOnline, info.isUsbOnline());
-                setVoltageText(tvUsbVoltageNow, info.getUsbVoltageNow(), info.getUsbVoltageNowVolts());
-                setVoltageText(tvUsbVoltageMax, info.getUsbVoltageMax(), info.getUsbVoltageMaxVolts());
-                setCurrentText(tvUsbCurrentMax, info.getUsbCurrentMax());
-                setPlainText(tvUsbType, info.getUsbType());
+                // USB状态
+                tvUsbOnline.setText(info.isUsbOnline() ? R.string.battery_info_online : R.string.battery_info_offline);
 
-                setOnlineStateText(tvWirelessOnline, info.isWirelessOnline());
-                setVoltageText(tvWirelessVoltageNow, info.getWirelessVoltageNow(), info.getWirelessVoltageNowVolts());
-                setVoltageText(tvWirelessVoltageMax, info.getWirelessVoltageMax(), info.getWirelessVoltageMaxVolts());
-                setCurrentText(tvWirelessCurrentMax, info.getWirelessCurrentMax());
-                setPlainText(tvWirelessType, info.getWirelessType());
+                // USB电压
+                if (info.getUsbVoltageNow() != -1) {
+                    tvUsbVoltageNow.setText(getString(R.string.battery_voltage_value, info.getUsbVoltageNowVolts()));
+                } else {
+                    tvUsbVoltageNow.setText(R.string.common_unavailable);
+                }
 
-                setCurrentText(tvInCurrentNow, info.getInCurrentNow());
-                setCurrentText(tvScenarioFcc, info.getScenarioFcc());
+                // USB最大电压
+                if (info.getUsbVoltageMax() != -1) {
+                    tvUsbVoltageMax.setText(getString(R.string.battery_voltage_value, info.getUsbVoltageMaxVolts()));
+                } else {
+                    tvUsbVoltageMax.setText(R.string.common_unavailable);
+                }
+
+                // USB最大电流
+                if (info.getUsbCurrentMax() != Integer.MIN_VALUE) {
+                    tvUsbCurrentMax.setText(getString(R.string.battery_current_value, info.getUsbCurrentMax()));
+                } else {
+                    tvUsbCurrentMax.setText(R.string.common_unavailable);
+                }
+
+                // USB类型
+                if (!info.getUsbType().trim().isEmpty()) {
+                    tvUsbType.setText(info.getUsbType());
+                } else {
+                    tvUsbType.setText(R.string.common_unavailable);
+                }
+
+                // 无线状态
+                tvWirelessOnline.setText(info.isWirelessOnline() ? R.string.battery_info_online : R.string.battery_info_offline);
+
+                // 无线电压
+                if (info.getWirelessVoltageNow() != -1) {
+                    tvWirelessVoltageNow.setText(getString(R.string.battery_voltage_value, info.getWirelessVoltageNowVolts()));
+                } else {
+                    tvWirelessVoltageNow.setText(R.string.common_unavailable);
+                }
+
+                // 无线最大电压
+                if (info.getWirelessVoltageMax() != -1) {
+                    tvWirelessVoltageMax.setText(getString(R.string.battery_voltage_value, info.getWirelessVoltageMaxVolts()));
+                } else {
+                    tvWirelessVoltageMax.setText(R.string.common_unavailable);
+                }
+
+                // 无线最大电流
+                if (info.getWirelessCurrentMax() != Integer.MIN_VALUE) {
+                    tvWirelessCurrentMax.setText(getString(R.string.battery_current_value, info.getWirelessCurrentMax()));
+                } else {
+                    tvWirelessCurrentMax.setText(R.string.common_unavailable);
+                }
+
+                // 无线类型
+                if (!info.getWirelessType().trim().isEmpty()) {
+                    tvWirelessType.setText(info.getWirelessType());
+                } else {
+                    tvWirelessType.setText(R.string.common_unavailable);
+                }
+
+                // 输入电流
+                if (info.getInCurrentNow() != Integer.MIN_VALUE) {
+                    tvInCurrentNow.setText(getString(R.string.battery_current_value, info.getInCurrentNow()));
+                } else {
+                    tvInCurrentNow.setText(R.string.common_unavailable);
+                }
+
+                // 电流限制
+                if (info.getScenarioFcc() != -1) {
+                    tvScenarioFcc.setText(getString(R.string.battery_current_value, info.getScenarioFcc()));
+                } else {
+                    tvScenarioFcc.setText(R.string.common_unavailable);
+                }
             }
         });
-    }
-
-    private void setOnlineStateText(TextView textView, boolean isOnline) {
-        textView.setText(isOnline ? R.string.battery_info_online : R.string.battery_info_offline);
-    }
-
-    private void setVoltageText(TextView textView, int rawValue, float voltageValue) {
-        if (rawValue != -1) {
-            textView.setText(getString(R.string.battery_voltage_value, voltageValue));
-        } else {
-            textView.setText(R.string.common_unavailable);
-        }
-    }
-
-    private void setCurrentText(TextView textView, int value) {
-        if (value != Integer.MIN_VALUE && value != -1) {
-            textView.setText(getString(R.string.battery_current_value, value));
-        } else {
-            textView.setText(R.string.common_unavailable);
-        }
-    }
-
-    private void setPlainText(TextView textView, String value) {
-        if (value != null && !value.trim().isEmpty()) {
-            textView.setText(value);
-        } else {
-            textView.setText(R.string.common_unavailable);
-        }
     }
 
     @Override
