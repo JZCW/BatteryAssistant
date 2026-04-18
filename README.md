@@ -1,6 +1,6 @@
 # BatteryAssistant
 
-在 Android 上实现 SONY 式电池保养——让电池在你需要的时间刚好充满，践行慢充理念，保护电池寿命。
+在其它设备上实现SONY的电池保养功能——让电池在你需要的时间刚好充满，践行慢充理念，保护电池寿命。
 
 > [!WARNING]
 > **本项目处于 Alpha 阶段。** 核心功能（智能充电控制、温度保护）尚未完成；当前仅在 **Nothing Phone 3** 上完整测试。请勿在重要设备上作为主力工具使用。
@@ -28,27 +28,21 @@
 
 ## 安装
 
-### 前置条件
-
-在安装前，请确认：
-
-- [ ] 设备已安装 KernelSU（推荐）或 Magisk 并获取 root 权限
-- [ ] 了解 root 权限的风险，并信任本应用
-
 ### 安装步骤
 
-1. 从 [Releases](../../releases) 页面下载最新 APK
-2. 在设备上安装 APK
-3. 首次启动时，依次完成以下授权：
+1. 安装模块 `batteryAssistant.zip`
+2. 重启设备，使模块生效
+3. 安装 APK
+4. 首次启动时，依次完成以下授权：
 
    | 权限 | 操作路径 |
    |------|--------|
    | 通知权限 | 应用启动时弹窗授权 |
    | 关闭电池优化 | 系统设置 → 应用 → BatteryAssistant → 电池 → 不限制 |
    | 允许后台运行 | 系统设置 → 应用 → BatteryAssistant → 电池 → 允许后台活动 |
-   | Root 权限 | KernelSU / Magisk 管理器弹窗授权 |
+   | Root 权限 | KernelSU / Magisk 管理器授权 |
 
-4. 返回应用，等待监控服务启动（通知栏出现持久通知即表示正常运行）
+5. 返回应用，等待监控服务启动（通知栏出现持久通知即表示正常运行）
 
 ---
 
@@ -57,17 +51,18 @@
 本项目分为两个主要部分：
 
 **Android 应用（Java）**
-- `BatteryMonitorService`：前台服务，持续监控电池状态并触发历史记录
+- `BatteryMonitorService`：主服务，监控电池状态并调整充电速率
 - `BatteryInfoManager`：从系统 API 和 daemon 采集电池数据
-- `ChargeHistoryManager`：管理充放电事件的 SQLite 存储
+- `ChargeHistoryManager`：管理充放电历史数据，使用 SQLite
 
 **系统 Daemon（C++）**
 - 以 root 权限运行，直接读写 `/sys/class/power_supply/` 下的系统节点，获取硬件层电池数据及控制充电参数
 - 通过本地 Unix domain socket 与应用通信，数据格式为 JSON
-- 包含调试版本（`batteryAssistant_debug`）和正式版本（`batteryAssistant`），以及 socket 代理（`batteryProxy`）
+- `batteryAssistant`为独立服务，不随App退出而停止
+- `batteryProxy`桥接App和Daemon，并且负责App保活，当App被用户主动结束后会退出
 
 ```
-Android App  ←──Unix socket (JSON)──→  Daemon (root)  ←──→  /sys/class/power_supply/
+Android App  ←→ Bridge(root) ←→ Daemon (root)  ←→  /sys/class/power_supply/
 ```
 
 ---
@@ -96,11 +91,10 @@ cd BatteryAssistant
 
 ```bash
 cd magisk_daemon
-# Debug 版本
-bash build_debug.sh
-# Release 版本
 bash build_release.sh
 ```
+
+输出 ZIP 位于 `magisk_daemon/out/artifacts/`。
 
 ### 项目结构
 
@@ -122,34 +116,10 @@ BatteryAssistant/
 
 ## 已知限制
 
-- **设备兼容性**：仅在 Nothing Phone 3 上完整验证，其他设备的电池驱动节点差异较大，可能功能异常或完全无法使用
+- **设备兼容性**：仅在 Nothing Phone 3 上完整测试，其他设备的电池驱动节点差异较大，可能功能异常或完全无法使用
 - **功能未完成**：智能充电控制和温度保护尚未实现，见上方功能列表
 - **服务稳定性**：部分深度定制 ROM 可能因进程冻结（cgroup freezer）导致后台服务中断
-- **安全提示**：本应用需要 root 权限，请仅在充分了解风险后使用；所有数据仅存储在本地设备上
-
----
-
-## 常见问题
-
-**Q：为什么必须要 root 权限？**
-
-充电电流等参数通过 `/sys/class/power_supply/` 下的系统文件控制，普通应用无法访问，必须以 root 权限操作。
-
-**Q：为什么推荐 KernelSU 而不是 Magisk？**
-
-daemon 在 KernelSU 环境下经过完整测试。Magisk 应兼容，但未进行完整验证。
-
-**Q：我的设备不是 Nothing Phone 3，可以用吗？**
-
-可以尝试安装，但不保证正常工作。不同厂商的电池驱动节点路径和字段差异显著，多机型适配在后续计划中。
-
-**Q：后台服务有时自动停止，怎么办？**
-
-请确认已完成安装步骤中列出的全部授权，特别是关闭电池优化和允许后台运行。部分 ROM 即使完成上述设置仍可能冻结进程。
-
-**Q：如何完全卸载？**
-
-在系统设置中卸载 APK 即可。daemon 进程会随应用卸载自动停止；若 daemon 以 Magisk/KernelSU 模块形式安装，请同时在对应管理器中移除模块。
+- **安全提示**：本应用需要 root 权限，请仅在充分了解风险后使用
 
 ---
 
@@ -161,6 +131,6 @@ daemon 在 KernelSU 环境下经过完整测试。Magisk 应兼容，但未进�
 
 ## 致谢
 
-- 项目灵感来源：SONY Xperia 的电池保养功能（Battery Care）
+- 项目灵感来源：SONY Xperia 的电池保养功能
 - [jsoncpp](https://github.com/open-source-parsers/jsoncpp) — App 与 daemon 之间的 JSON 通信库
 - [MPAndroidChart](https://github.com/PhilJay/MPAndroidChart) — 图表展示库
